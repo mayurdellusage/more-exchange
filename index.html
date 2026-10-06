@@ -135,7 +135,7 @@ header{
 #price-chart{flex:1;min-height:0;cursor:crosshair;}
 #price-chart.picking{cursor:copy;}
 .chart-pnl-badge{
-  position:absolute;top:10px;left:10px;z-index:5;
+  position:absolute;top:58px;left:10px;z-index:5;
   background:rgba(15,20,28,.9);border:1px solid var(--line);border-radius:var(--radius);
   padding:7px 10px;font-family:var(--mono);font-size:12px;font-weight:600;
   pointer-events:none;display:none;backdrop-filter:blur(2px);
@@ -289,6 +289,23 @@ tbody tr:hover{background:var(--bg-2);}
 .hist-notice{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;max-width:70%;background:rgba(232,163,61,.14);border:1px solid var(--amber);color:var(--amber);padding:7px 12px;border-radius:var(--radius);font-size:11.5px;font-weight:700;display:none;cursor:pointer;}
 .field input[type=datetime-local]{width:100%;background:var(--bg-1);border:1px solid var(--line);border-radius:var(--radius);color:var(--text);padding:7px 8px;font-family:var(--mono);font-size:12px;color-scheme:dark;}
 .field input[type=datetime-local]:focus{outline:none;border-color:var(--focus);}
+
+.chart-legend{position:absolute;top:8px;left:10px;z-index:4;pointer-events:none;max-width:calc(100% - 90px);}
+.chart-legend .lg-title{font-weight:700;font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px;white-space:nowrap;}
+.chart-legend .lg-title .tfm{color:var(--text-dim);font-weight:600;font-size:12px;}
+.chart-legend .lg-ohlc{font-family:var(--mono);font-size:11.5px;color:var(--text-dim);white-space:nowrap;margin-top:3px;}
+.chart-legend .lg-ohlc i{font-style:normal;color:var(--text-faint);margin-right:2px;}
+.chart-legend .lg-ohlc b{font-weight:500;margin-right:9px;}
+.float-tb{position:absolute;top:50px;left:50%;transform:translateX(-50%);z-index:7;display:flex;align-items:center;gap:2px;background:rgba(21,28,39,.96);border:1px solid var(--line);border-radius:6px;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.45);user-select:none;}
+.float-tb .grip{cursor:grab;color:var(--text-faint);padding:4px 6px;font-size:14px;letter-spacing:-3px;touch-action:none;}
+.float-tb .grip:active{cursor:grabbing;}
+.float-tb button{background:transparent;border:none;color:var(--text-dim);width:30px;height:28px;border-radius:4px;font-size:13px;font-weight:800;}
+.float-tb button:hover{background:var(--bg-3);color:var(--text);}
+.float-tb button.active{background:var(--bg-3);color:var(--amber);}
+.float-tb button[data-tool="long"]{color:var(--long);}
+.float-tb button[data-tool="short"]{color:var(--short);}
+.range-bar .clock{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-left:12px;}
+
 </style>
 </head>
 <body>
@@ -322,6 +339,14 @@ tbody tr:hover{background:var(--bg-2);}
   <div class="chart-col">
     <div class="chart-pnl-badge" id="chartPnlBadge"><span class="lbl">Open P&amp;L</span><span id="chartPnlValue">—</span></div>
     <div class="pick-hint" id="pickHint">Click a price on the chart to set it</div>
+        <div class="chart-legend" id="chartLegend"></div>
+    <div class="float-tb" id="floatTb">
+      <span class="grip" id="tbGrip" title="Drag to move">&#8942;&#8942;</span>
+      <button data-tool="h" title="Horizontal line (click a price)">&#9472;</button>
+      <button data-tool="long" title="Long: click your stop-loss price">L</button>
+      <button data-tool="short" title="Short: click your stop-loss price">S</button>
+      <button id="tbClear" title="Clear drawn lines on this symbol">&#128465;</button>
+    </div>
     <div class="hist-notice" id="histNotice" title="Click to dismiss"></div>
     <div id="price-chart"></div>
     <div class="range-bar">
@@ -334,10 +359,7 @@ tbody tr:hover{background:var(--bg-2);}
       <button id="goDateBtn">&#128197; Go to date</button>
       <button id="liveBtn">&#9679; Live</button>
       <span class="info" id="dataStart"></span>
-    </div>
-    <div class="chart-trade-btns" id="chartTradeBtns">
-      <button data-side="LONG" id="chartBuyBtn">BUY / LONG</button>
-      <button data-side="SHORT" id="chartSellBtn">SELL / SHORT</button>
+      <span class="clock" id="utcClock"></span>
     </div>
   </div>
 
@@ -513,6 +535,13 @@ let ui = {
   side: "LONG",
   tab: "positions"
 };
+// remember last symbol + timeframe across refreshes
+try{
+  const s = JSON.parse(localStorage.getItem("paperExchange.ui.v1")||"{}");
+  if(SYMBOLS.includes(s.symbol)) ui.symbol = s.symbol;
+  if(TF_MS[s.tf]) ui.tf = s.tf;
+}catch(e){}
+function saveUi(){ try{ localStorage.setItem("paperExchange.ui.v1", JSON.stringify({symbol:ui.symbol, tf:ui.tf})); }catch(e){} }
 
 /* ================= ACCOUNT STORAGE ================= */
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -748,7 +777,7 @@ noticeEl.addEventListener("click", hideNotice);
 function fmtDate(ms){ return new Date(ms).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}); }
 function updateLiveBtn(){ liveBtn.style.display = H.hasNewer ? "inline-block" : "none"; }
 function clearRangeActive(){ document.querySelectorAll("#rangeBtns button").forEach(b=>b.classList.remove("active")); }
-function setTfUI(tf){ ui.tf = tf; document.querySelectorAll("#tfTabs button").forEach(b=>b.classList.toggle("active", b.dataset.tf===tf)); }
+function setTfUI(tf){ ui.tf = tf; saveUi(); document.querySelectorAll("#tfTabs button").forEach(b=>b.classList.toggle("active", b.dataset.tf===tf)); }
 
 async function getListingStart(symbol, tf){
   const key = symbol+"|"+tf;
@@ -839,7 +868,7 @@ chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{
 // LIVE mode load (also used by range buttons via opts.rangeMs)
 async function refreshChart(opts){
   opts = opts || {};
-  clearOrderLines(); hideNotice(); candleSeries.setMarkers([]);
+  clearOrderLines(); hideNotice(); candleSeries.setMarkers([]); saveUi();
   if(opts.rangeMs==null) clearRangeActive();
   const g = ++H.gen; H.busy = true; H.hasOlder = true; H.hasNewer = false; updateLiveBtn();
   try{
@@ -1423,6 +1452,7 @@ function clearOrderForm(){
 /* ================= UI: order lines on chart ================= */
 function drawOrderLinesForCurrentSymbol(){
   clearOrderLines();
+  renderHLines();
   const pos = account.positions[ui.symbol];
   if(!pos) return;
   entryLine = candleSeries.createPriceLine({ price:pos.entry, color:"#8792a3", lineWidth:1, lineStyle:2, axisLabelVisible:true, title:"entry" });
@@ -1730,8 +1760,6 @@ function chartQuickTrade(side){
   }
   placeOrder();
 }
-document.getElementById("chartBuyBtn").addEventListener("click", ()=> chartQuickTrade("LONG"));
-document.getElementById("chartSellBtn").addEventListener("click", ()=> chartQuickTrade("SHORT"));
 
 document.getElementById("positionsBody").addEventListener("click",(e)=>{
   const btn = e.target.closest("button[data-act]");
@@ -1852,9 +1880,144 @@ document.getElementById("newAcctCreate").addEventListener("click", async ()=>{
   populateAccountSelect();
 });
 
+/* ================= TV-STYLE: legend, floating toolbar, tools, clock ================= */
+const SYM_NAMES = {BTCUSDT:"Bitcoin / TetherUS Perpetual", ETHUSDT:"Ethereum / TetherUS Perpetual"};
+const TF_LABEL = {"1m":"1","5m":"5","15m":"15","1h":"1H","4h":"4H","1d":"1D"};
+const legendEl = document.getElementById("chartLegend");
+let lgHover = false;
+
+function lastBar(){ return H.bars.length ? H.bars[H.bars.length-1] : null; }
+function renderLegend(bar, vol){
+  const sym = ui.symbol;
+  let html = `<div class="lg-title">${SYM_NAMES[sym]||sym}<span class="tfm">· ${TF_LABEL[ui.tf]||ui.tf} · Binance Futures</span></div>`;
+  if(bar){
+    const chg = bar.close - bar.open, pct = bar.open ? chg/bar.open*100 : 0;
+    const c = chg>=0 ? "up" : "down";
+    html += `<div class="lg-ohlc"><i>O</i><b class="${c}">${fmtPrice(sym,bar.open)}</b>`
+      + `<i>H</i><b class="${c}">${fmtPrice(sym,bar.high)}</b>`
+      + `<i>L</i><b class="${c}">${fmtPrice(sym,bar.low)}</b>`
+      + `<i>C</i><b class="${c}">${fmtPrice(sym,bar.close)}</b>`
+      + `<b class="${c}">${chg>=0?"+":""}${fmtPrice(sym,chg)} (${fmtPct(pct)})</b>`
+      + (vol!=null ? `<i>Vol</i><b>${Number(vol).toLocaleString(undefined,{maximumFractionDigits:2})}</b>` : "")
+      + `</div>`;
+  }
+  legendEl.innerHTML = html;
+}
+chart.subscribeCrosshairMove(param=>{
+  if(!param || !param.time || !param.seriesData){ lgHover=false; return; }
+  const bar = param.seriesData.get(candleSeries);
+  if(!bar){ lgHover=false; return; }
+  lgHover = true;
+  const v = param.seriesData.get(volumeSeries);
+  renderLegend(bar, v ? v.value : null);
+});
+setInterval(()=>{ if(!lgHover){ const b = lastBar(); renderLegend(b, b ? b.volume : null); } }, 400);
+
+/* ---- horizontal lines (saved per symbol) ---- */
+const HL_KEY = "paperExchange.hlines.v1";
+let hlStore = {};
+try{ hlStore = JSON.parse(localStorage.getItem(HL_KEY)||"{}") || {}; }catch(e){}
+let hlObjs = [];
+function saveHL(){ try{ localStorage.setItem(HL_KEY, JSON.stringify(hlStore)); }catch(e){} }
+function renderHLines(){
+  hlObjs.forEach(l=>candleSeries.removePriceLine(l)); hlObjs = [];
+  (hlStore[ui.symbol]||[]).forEach(p=>{
+    hlObjs.push(candleSeries.createPriceLine({ price:p, color:"#5b8cff", lineWidth:1, lineStyle:0, axisLabelVisible:true, title:"" }));
+  });
+}
+
+/* ---- drawing tools: h-line / long / short ---- */
+let tool = null;
+const pickHintEl = document.getElementById("pickHint");
+function setTool(t){
+  tool = (tool===t) ? null : t;
+  if(tool) setPickMode(null);
+  document.querySelectorAll("#floatTb button[data-tool]").forEach(b=>b.classList.toggle("active", b.dataset.tool===tool));
+  if(tool){
+    pickHintEl.textContent = tool==="h" ? "Click a price to drop a horizontal line (Esc cancels)"
+      : tool==="long" ? "LONG: click your stop-loss price, below current price (Esc cancels)"
+      : "SHORT: click your stop-loss price, above current price (Esc cancels)";
+    pickHintEl.style.display = "block"; chartEl.classList.add("picking");
+  }else{
+    pickHintEl.textContent = "Click a price on the chart to set it";
+    pickHintEl.style.display = pickMode ? "block" : "none";
+    chartEl.classList.toggle("picking", !!pickMode);
+  }
+}
+document.getElementById("floatTb").addEventListener("click",(e)=>{
+  const b = e.target.closest("button[data-tool]");
+  if(b){ setTool(b.dataset.tool); return; }
+  if(e.target.closest("#tbClear")){ hlStore[ui.symbol] = []; saveHL(); renderHLines(); }
+});
+document.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && tool) setTool(tool); });
+
+let downXY = null;
+chartEl.addEventListener("mousedown",(e)=>{ downXY = [e.clientX, e.clientY]; }, true);
+chartEl.addEventListener("click",(e)=>{
+  if(!tool || pickMode || dragTarget) return;
+  if(downXY && Math.hypot(e.clientX-downXY[0], e.clientY-downXY[1]) > 4) return; // it was a pan, not a click
+  const y = e.clientY - chartEl.getBoundingClientRect().top;
+  const raw = candleSeries.coordinateToPrice(y);
+  if(raw==null) return;
+  const price = roundPrice(ui.symbol, raw);
+  if(tool==="h"){
+    (hlStore[ui.symbol] = hlStore[ui.symbol] || []).push(price);
+    saveHL(); renderHLines(); setTool("h"); return;
+  }
+  const ref = market[ui.symbol].last;
+  if(!ref) return;
+  const isLong = tool==="long";
+  if(isLong ? price>=ref : price<=ref){
+    document.getElementById("orderWarn").textContent = isLong ? "Long stop-loss must be below the current price." : "Short stop-loss must be above the current price.";
+    return;
+  }
+  // take-profit auto-set at 1:2 risk/reward from the live price
+  const tp = roundPrice(ui.symbol, isLong ? ref + 2*(ref-price) : ref - 2*(price-ref));
+  ui.side = isLong ? "LONG" : "SHORT";
+  document.querySelectorAll(".side-toggle button").forEach(b=>b.classList.toggle("active", b.dataset.side===ui.side));
+  document.getElementById("slInput").value = price;
+  document.getElementById("tpInput").value = tp;
+  setTool(tool);
+  if(parseFloat(document.getElementById("riskInput").value) > 0) applyRiskSizing(); else refreshOrderPreview();
+});
+
+/* ---- draggable floating toolbar (position remembered) ---- */
+const tb = document.getElementById("floatTb"), grip = document.getElementById("tbGrip"), tbHost = tb.parentElement;
+const TB_KEY = "paperExchange.tbpos.v1";
+function placeTb(x, y){
+  const hr = tbHost.getBoundingClientRect();
+  x = Math.max(0, Math.min(x, hr.width - tb.offsetWidth));
+  y = Math.max(0, Math.min(y, hr.height - tb.offsetHeight));
+  tb.style.transform = "none"; tb.style.left = x+"px"; tb.style.top = y+"px";
+}
+try{ const p = JSON.parse(localStorage.getItem(TB_KEY)||"null"); if(p) placeTb(p.x, p.y); }catch(e){}
+window.addEventListener("resize", ()=>{ if(tb.style.transform==="none") placeTb(tb.offsetLeft, tb.offsetTop); });
+grip.addEventListener("pointerdown",(e)=>{
+  e.preventDefault();
+  const r = tb.getBoundingClientRect(), hr = tbHost.getBoundingClientRect();
+  const ox = e.clientX - r.left, oy = e.clientY - r.top;
+  grip.setPointerCapture(e.pointerId);
+  const move = (ev)=> placeTb(ev.clientX - hr.left - ox, ev.clientY - hr.top - oy);
+  const up = ()=>{
+    grip.removeEventListener("pointermove", move); grip.removeEventListener("pointerup", up);
+    try{ localStorage.setItem(TB_KEY, JSON.stringify({x:tb.offsetLeft, y:tb.offsetTop})); }catch(e){}
+  };
+  grip.addEventListener("pointermove", move); grip.addEventListener("pointerup", up);
+});
+
+/* ---- clock like TradingView (e.g. 12:49:50 UTC+5:30) ---- */
+function tickClock(){
+  const d = new Date(), off = -d.getTimezoneOffset(), a = Math.abs(off);
+  document.getElementById("utcClock").textContent =
+    d.toLocaleTimeString([], {hour12:false}) + " UTC" + (off>=0?"+":"-") + Math.floor(a/60) + (a%60 ? ":"+String(a%60).padStart(2,"0") : "");
+}
+tickClock(); setInterval(tickClock, 1000);
+
 /* ================= INIT ================= */
 async function init(){
   await loadExchangeInfo();
+    document.querySelectorAll("#symbolTabs button").forEach(b=>b.classList.toggle("active", b.dataset.symbol===ui.symbol));
+  setTfUI(ui.tf);
   populateAccountSelect();
   await reconcileOpenPositions();
   await refreshChart();
