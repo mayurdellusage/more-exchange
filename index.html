@@ -53,7 +53,7 @@ button{cursor:pointer;}
 /* ---------- layout ---------- */
 #app{
   display:grid;
-  grid-template-rows:44px 1fr 190px;
+  grid-template-rows:44px 1fr var(--bottom-h,260px);
   grid-template-columns:1fr 300px;
   height:100vh;
   gap:1px;
@@ -306,6 +306,39 @@ tbody tr:hover{background:var(--bg-2);}
 .float-tb button[data-tool="short"]{color:var(--short);}
 .range-bar .clock{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-left:12px;}
 
+/* ---- Paper Trading panel (TradingView style) ---- */
+.bottom-col{position:relative;overflow:hidden;}
+.pt-resize{position:absolute;top:0;left:0;right:0;height:5px;cursor:ns-resize;z-index:20;}
+.pt-resize:hover,.pt-resize.drag{background:rgba(91,140,255,.55);}
+.pt-titlebar{display:flex;align-items:center;justify-content:space-between;flex:0 0 34px;height:34px;padding:0 8px 0 12px;border-bottom:1px solid var(--line-soft);cursor:ns-resize;user-select:none;}
+.pt-name{font-weight:700;font-size:12.5px;display:flex;align-items:center;gap:6px;}
+.pt-name .pt-mark{color:var(--long);font-size:10px;}
+.pt-win{display:flex;gap:2px;}
+.pt-win button{background:transparent;border:none;color:var(--text-dim);width:28px;height:24px;border-radius:3px;font-size:14px;line-height:1;}
+.pt-win button:hover{background:var(--bg-3);color:var(--text);}
+.pt-body{flex:1;min-height:0;display:flex;flex-direction:column;}
+.pt-summary{display:flex;align-items:center;gap:26px;padding:8px 12px;overflow-x:auto;white-space:nowrap;flex:0 0 auto;}
+.pt-acct{background:var(--bg-2);border:1px solid var(--line);border-radius:4px;padding:6px 10px;font-weight:700;font-size:12px;}
+.pt-stat{display:flex;flex-direction:column;gap:2px;}
+.pt-stat span{font-size:10.5px;color:var(--text-faint);}
+.pt-stat b{font-family:var(--mono);font-size:12.5px;font-weight:600;}
+.pt-tabrow{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:0 10px 6px;flex:0 0 auto;}
+.pt-tabs{display:flex;gap:6px;overflow-x:auto;}
+.pt-tabs button{background:var(--bg-3);border:none;color:var(--text);padding:5px 12px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;}
+.pt-tabs button:hover{background:#243040;}
+.pt-tabs button.active{background:#e7ecf3;color:#0a0e14;}
+.pt-tabrow .tools{display:flex;gap:6px;align-items:center;}
+.pt-views{flex:1;min-height:0;display:flex;flex-direction:column;}
+.an-wrap{padding:8px 10px;gap:10px;flex-direction:column;}
+.an-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;flex:0 0 auto;}
+.an-card .k{font-size:11px;color:var(--text-dim);}
+.an-card .v{font-family:var(--mono);font-size:14px;font-weight:600;margin-top:2px;}
+.an-charts{flex:1 0 150px;display:flex;gap:12px;min-height:0;}
+.an-chartbox{flex:1;min-width:0;display:flex;flex-direction:column;}
+.an-chartbox h4{margin:0 0 4px;font-size:12px;font-weight:700;}
+.an-chartbox .box{flex:1;min-height:0;position:relative;overflow:hidden;}
+#equity-chart,#perf-chart{position:absolute;inset:0;width:auto;height:auto;}
+
 </style>
 </head>
 <body>
@@ -429,42 +462,113 @@ tbody tr:hover{background:var(--bg-2);}
     </section>
   </div>
 
-  <div class="bottom-col">
-    <div class="tabbar">
-      <button data-tab="positions" class="active">Positions</button>
-      <button data-tab="history">History</button>
-      <button data-tab="equity">Equity Curve</button>
-      <div class="spacer"></div>
-      <div class="tools">
-        <button id="exportCsvBtn">Export CSV</button>
-        <button id="backupBtn">Backup JSON</button>
-        <button id="restoreBtn">Restore JSON</button>
-        <input type="file" id="restoreFile" accept="application/json">
+    <div class="bottom-col" id="ptPanel">
+    <div class="pt-resize" id="ptResize" title="Drag to resize"></div>
+    <div class="pt-titlebar" id="ptTitle">
+      <div class="pt-name"><span class="pt-mark">&#9679;</span>Paper Trading</div>
+      <div class="pt-win">
+        <button id="ptMin" title="Minimize / restore">&#8211;</button>
+        <button id="ptMax" title="Maximize / restore">&#9633;</button>
       </div>
     </div>
+    <div class="pt-body" id="ptBody">
+      <div class="pt-summary">
+        <div class="pt-acct" id="ptAcct">—</div>
+        <div class="pt-stat"><span>Account balance</span><b id="sBal">—</b></div>
+        <div class="pt-stat"><span>Equity</span><b id="sEq">—</b></div>
+        <div class="pt-stat"><span>Realized PnL</span><b id="sRp">—</b></div>
+        <div class="pt-stat"><span>Unrealized PnL</span><b id="sUp">—</b></div>
+        <div class="pt-stat"><span>Account margin</span><b id="sMar">—</b></div>
+        <div class="pt-stat"><span>Available funds</span><b id="sAvail">—</b></div>
+        <div class="pt-stat"><span>Orders margin</span><b id="sOrd">—</b></div>
+        <div class="pt-stat"><span>Margin buffer</span><b id="sBuf">—</b></div>
+      </div>
+      <div class="pt-tabrow">
+        <div class="pt-tabs" id="ptTabs">
+          <button data-tab="positions" class="active">Positions</button>
+          <button data-tab="orders">Orders</button>
+          <button data-tab="orderhist">Order history</button>
+          <button data-tab="balhist">Balance history</button>
+          <button data-tab="activity">Activity log</button>
+          <button data-tab="trades">Trade history</button>
+          <button data-tab="analytics">Analytics</button>
+        </div>
+        <div class="tools">
+          <button id="exportCsvBtn">Export CSV</button>
+          <button id="backupBtn">Backup JSON</button>
+          <button id="restoreBtn">Restore JSON</button>
+          <input type="file" id="restoreFile" accept="application/json">
+        </div>
+      </div>
+      <div class="pt-views">
 
-    <div class="tab-view" id="view-positions">
-      <table>
-        <thead><tr>
-          <th>Symbol</th><th>Side</th><th>Qty</th><th>Entry</th><th>Mark</th><th>Liq. (est)</th>
-          <th>Margin</th><th>SL</th><th>TP</th><th>Unrealized P&amp;L</th><th></th>
-        </tr></thead>
-        <tbody id="positionsBody"><tr class="empty-row"><td colspan="11">No open positions</td></tr></tbody>
-      </table>
-    </div>
+        <div class="tab-view" id="view-positions">
+          <table>
+            <thead><tr>
+              <th>Symbol</th><th>Side</th><th>Quantity</th><th>Avg fill price</th><th>Take profit</th><th>Stop loss</th>
+              <th>Last price</th><th>Unrealized PnL</th><th>Unrealized PnL %</th><th>Trade value</th><th>Market value</th>
+              <th>Margin</th><th>Liq. (est)</th><th>Leverage</th><th></th>
+            </tr></thead>
+            <tbody id="positionsBody"><tr class="empty-row"><td colspan="15">There are no open positions in your trading account yet</td></tr></tbody>
+          </table>
+        </div>
 
-    <div class="tab-view" id="view-history" style="display:none;">
-      <table>
-        <thead><tr>
-          <th>Closed</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th>
-          <th>Leverage</th><th>Fees</th><th>Net P&amp;L</th><th>Reason</th>
-        </tr></thead>
-        <tbody id="historyBody"><tr class="empty-row"><td colspan="10">No closed trades yet</td></tr></tbody>
-      </table>
-    </div>
+        <div class="tab-view" id="view-orders" style="display:none;">
+          <table>
+            <thead><tr><th>Symbol</th><th>Side</th><th>Type</th><th>Quantity</th><th>Price</th><th>Status</th></tr></thead>
+            <tbody><tr class="empty-row"><td colspan="6">There are no open orders. All orders fill instantly at market for now.</td></tr></tbody>
+          </table>
+        </div>
 
-    <div class="tab-view" id="view-equity" style="display:none;padding-top:10px;">
-      <div id="equity-chart" style="width:100%;height:150px;"></div>
+        <div class="tab-view" id="view-orderhist" style="display:none;">
+          <table>
+            <thead><tr><th>Time</th><th style="text-align:left">Symbol</th><th>Side</th><th>Type</th><th>Action</th><th>Quantity</th><th>Fill price</th><th>Status</th><th style="text-align:left">Note</th></tr></thead>
+            <tbody id="ordHistBody"></tbody>
+          </table>
+        </div>
+
+        <div class="tab-view" id="view-balhist" style="display:none;">
+          <table>
+            <thead><tr><th>Time</th><th style="text-align:left">Action</th><th>Change</th><th>Balance</th></tr></thead>
+            <tbody id="balHistBody"></tbody>
+          </table>
+        </div>
+
+        <div class="tab-view" id="view-activity" style="display:none;">
+          <table>
+            <thead><tr><th>Time</th><th style="text-align:left">Event</th></tr></thead>
+            <tbody id="actBody"></tbody>
+          </table>
+        </div>
+
+        <div class="tab-view" id="view-trades" style="display:none;">
+          <table>
+            <thead><tr>
+              <th>Closed</th><th>Symbol</th><th>Side</th><th>Qty</th><th>Entry</th><th>Exit</th>
+              <th>Leverage</th><th>Fees</th><th>Net P&amp;L</th><th>Reason</th>
+            </tr></thead>
+            <tbody id="historyBody"><tr class="empty-row"><td colspan="10">No closed trades yet</td></tr></tbody>
+          </table>
+        </div>
+
+        <div class="tab-view an-wrap" id="view-analytics" style="display:none;">
+          <div class="an-cards">
+            <div class="an-card"><div class="k">Profitable trades</div><div class="v" id="anWin">—</div></div>
+            <div class="an-card"><div class="k">Profit factor</div><div class="v" id="anPF">—</div></div>
+            <div class="an-card"><div class="k">Expectancy</div><div class="v" id="anExp">—</div></div>
+            <div class="an-card"><div class="k">Average R:R</div><div class="v" id="anRR">—</div></div>
+            <div class="an-card"><div class="k">Net P&amp;L</div><div class="v" id="anNet">—</div></div>
+            <div class="an-card"><div class="k">Best trade</div><div class="v" id="anBest">—</div></div>
+            <div class="an-card"><div class="k">Worst trade</div><div class="v" id="anWorst">—</div></div>
+            <div class="an-card"><div class="k">Max drawdown</div><div class="v" id="anDD">—</div></div>
+          </div>
+          <div class="an-charts">
+            <div class="an-chartbox"><h4>Performance <span class="faint">(cumulative realized P&amp;L)</span></h4><div class="box"><div id="perf-chart"></div></div></div>
+            <div class="an-chartbox"><h4>Equity curve</h4><div class="box"><div id="equity-chart"></div></div></div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
 
@@ -1311,6 +1415,7 @@ function placeOrder(){
     openedAt: Date.now()
   };
   account.balance -= p.fee;
+  logEv({type:"open", symbol:p.symbol, side:p.side, qty:p.qty, price:p.entryEst, leverage:p.leverage, delta:-p.fee});
   account.positions[p.symbol] = position;
   saveState();
   if(p.symbol === ui.symbol) drawOrderLinesForCurrentSymbol();
@@ -1344,6 +1449,7 @@ function closePosition(symbol, fraction, reason, override){
   const netPnl = grossPnl - closeFee;
 
   account.balance += netPnl;
+  logEv({t:closedAt, type:"close", symbol, side:pos.side, qty:closedQty, price:exitPrice, delta:netPnl, reason:reason||"Manual close"});
   account.trades.push({
     closedAt, symbol, side: pos.side, qty: closedQty,
     entry: pos.entry, exit: exitPrice, leverage: pos.leverage,
@@ -1549,6 +1655,8 @@ chartEl.addEventListener("mousemove",(e)=>{
 
 window.addEventListener("mouseup",()=>{
   if(!dragTarget) return;
+  { const p = account.positions[ui.symbol];
+    if(p) logEv({type:"edit", symbol:ui.symbol, text:`${dragTarget.toUpperCase()} moved to ${fmtPrice(ui.symbol, dragTarget==="sl"?p.sl:p.tp)}`}); }
   dragTarget = null;
   saveState();
   updateAll();
@@ -1598,27 +1706,32 @@ function updatePositionsTable(){
   const body = document.getElementById("positionsBody");
   const symbols = Object.keys(account.positions);
   if(symbols.length===0){
-    body.innerHTML = '<tr class="empty-row"><td colspan="11">No open positions</td></tr>';
+    body.innerHTML = '<tr class="empty-row"><td colspan="15">There are no open positions in your trading account yet</td></tr>';
     return;
   }
   body.innerHTML = symbols.map(symbol=>{
     const pos = account.positions[symbol];
     const meta = symbolMeta[symbol];
-    const mkt = market[symbol];
+    const last = market[symbol].last || pos.entry;
     const pnl = unrealizedPnl(symbol);
-    const pnlPct = pos.margin>0 ? (pnl/pos.margin*100) : 0;
+    const pct = pos.margin>0 ? (pnl/pos.margin*100) : 0;
+    const cls = pnl>=0 ? "up" : "down";
     const liq = estimateLiquidation(pos.side, pos.entry, pos.leverage, meta.maintMarginRate);
     return `<tr>
       <td style="text-align:left">${symbol}</td>
-      <td><span class="pill ${pos.side}">${pos.side} ${pos.leverage}x</span></td>
+      <td><span class="pill ${pos.side}">${pos.side}</span></td>
       <td>${fmtQty(symbol,pos.qty)}</td>
       <td>${fmtPrice(symbol,pos.entry)}</td>
-      <td>${fmtPrice(symbol,mkt.last)}</td>
-      <td class="faint">${liq!=null?fmtPrice(symbol,liq):"—"}</td>
-      <td>${fmtUsd(pos.margin)}</td>
-      <td class="down">${pos.sl!=null?fmtPrice(symbol,pos.sl):"—"}</td>
       <td class="up">${pos.tp!=null?fmtPrice(symbol,pos.tp):"—"}</td>
-      <td class="${pnl>=0?'up':'down'}">${fmtUsd(pnl)} (${fmtPct(pnlPct)})</td>
+      <td class="down">${pos.sl!=null?fmtPrice(symbol,pos.sl):"—"}</td>
+      <td>${fmtPrice(symbol,last)}</td>
+      <td class="${cls}">${fmtUsd(pnl)}</td>
+      <td class="${cls}">${fmtPct(pct)}</td>
+      <td>${fmtUsd(pos.qty*pos.entry)}</td>
+      <td>${fmtUsd(pos.qty*last)}</td>
+      <td>${fmtUsd(pos.margin)}</td>
+      <td class="faint">${liq!=null?fmtPrice(symbol,liq):"—"}</td>
+      <td>${pos.leverage}x</td>
       <td>
         <button class="mini-btn" data-act="reverse" data-symbol="${symbol}">Reverse</button>
         <button class="mini-btn" data-act="half" data-symbol="${symbol}">Close ½</button>
@@ -1692,6 +1805,7 @@ function sampleEquity(force){
 
 function updateAccountAndPositions(){
   updateAccountPanel();
+  updatePtSummary();
   updatePositionsTable();
   updateLivePositionLine();
   updateChartPnlBadge();
@@ -1704,6 +1818,7 @@ function updateAll(){
   updateHistoryTable();
   refreshOrderPreview();
   sampleEquity(true);
+  renderPtActive();
 }
 
 /* ================= EVENTS ================= */
@@ -1770,22 +1885,6 @@ document.getElementById("positionsBody").addEventListener("click",(e)=>{
   else if(btn.dataset.act==="reverse") reversePosition(symbol);
 });
 
-document.querySelector(".tabbar").addEventListener("click",(e)=>{
-  const btn = e.target.closest("button[data-tab]");
-  if(!btn) return;
-  ui.tab = btn.dataset.tab;
-  document.querySelectorAll(".tabbar button[data-tab]").forEach(b=>b.classList.toggle("active", b===btn));
-  ["positions","history","equity"].forEach(t=>{
-    document.getElementById("view-"+t).style.display = (t===ui.tab) ? "block" : "none";
-  });
-  if(ui.tab==="equity"){
-    requestAnimationFrame(()=>{
-      const el = document.getElementById("equity-chart");
-      eqChart.applyOptions({ width: el.clientWidth, height: el.clientHeight });
-      eqChart.timeScale().fitContent();
-    });
-  }
-});
 
 document.getElementById("resetAcctBtn").addEventListener("click", ()=>{
   if(!confirm("Reset this paper account to its starting balance? This clears positions, trades, and equity history.")) return;
@@ -2012,6 +2111,205 @@ function tickClock(){
     d.toLocaleTimeString([], {hour12:false}) + " UTC" + (off>=0?"+":"-") + Math.floor(a/60) + (a%60 ? ":"+String(a%60).padStart(2,"0") : "");
 }
 tickClock(); setInterval(tickClock, 1000);
+
+/* ================= PAPER TRADING PANEL (TradingView style) ================= */
+const tdate = ms => new Date(ms).toLocaleString();
+
+// event log: powers Order history, Balance history, Activity log
+function logEv(e){
+  account.log = account.log || [];
+  e.t = e.t || Date.now();
+  e.bal = account.balance;
+  account.log.push(e);
+  if(account.log.length > 3000) account.log.splice(0, account.log.length - 3000);
+}
+
+function updatePtSummary(){
+  const eq = equity(), used = marginUsed();
+  const rp = account.trades.reduce((s,t)=>s+t.netPnl,0), up = totalUnrealizedPnl();
+  const put = (id, txt, cls)=>{ const el = document.getElementById(id); el.textContent = txt; if(cls) el.className = cls; };
+  put("ptAcct", account.name + " · " + account.currencySymbol);
+  put("sBal", fmtUsd(account.balance));
+  put("sEq", fmtUsd(eq));
+  put("sRp", fmtUsd(rp), rp>=0 ? "up" : "down");
+  put("sUp", fmtUsd(up), up>=0 ? "up" : "down");
+  put("sMar", fmtUsd(used));
+  put("sAvail", fmtUsd(availableMargin()));
+  put("sOrd", fmtUsd(0));
+  put("sBuf", eq>0 ? ((eq-used)/eq*100).toFixed(2) + "%" : "—");
+}
+
+function evText(e){
+  if(e.type==="open") return `Opened ${e.side} ${fmtQty(e.symbol,e.qty)} ${e.symbol} @ ${fmtPrice(e.symbol,e.price)} · ${e.leverage}x`;
+  if(e.type==="close") return `Closed ${e.side} ${fmtQty(e.symbol,e.qty)} ${e.symbol} @ ${fmtPrice(e.symbol,e.price)} — ${e.reason||""} · P&L ${fmtUsd(e.delta)}`;
+  return e.text || "";
+}
+
+function renderOrderHist(){
+  const body = document.getElementById("ordHistBody");
+  const rows = (account.log||[]).filter(e=>e.type==="open"||e.type==="close").slice().reverse().slice(0,500);
+  if(!rows.length){ body.innerHTML = '<tr class="empty-row"><td colspan="9">No orders yet</td></tr>'; return; }
+  body.innerHTML = rows.map(e=>{
+    const buy = (e.type==="open") === (e.side==="LONG");
+    return `<tr><td style="text-align:left">${tdate(e.t)}</td><td style="text-align:left">${e.symbol}</td>
+      <td class="${buy?'up':'down'}">${buy?"Buy":"Sell"}</td><td>Market</td>
+      <td>${e.type==="open"?"Open":"Close"} ${e.side}</td><td>${fmtQty(e.symbol,e.qty)}</td>
+      <td>${fmtPrice(e.symbol,e.price)}</td><td>Filled</td>
+      <td class="faint" style="text-align:left;font-family:var(--sans)">${escapeHtml(e.reason||"")}</td></tr>`;
+  }).join("");
+}
+function renderBalHist(){
+  const body = document.getElementById("balHistBody");
+  const rows = (account.log||[]).filter(e=>e.delta).slice().reverse().slice(0,500);
+  if(!rows.length){ body.innerHTML = '<tr class="empty-row"><td colspan="4">No balance changes yet</td></tr>'; return; }
+  body.innerHTML = rows.map(e=>`<tr><td style="text-align:left">${tdate(e.t)}</td>
+      <td style="text-align:left;font-family:var(--sans)">${e.type==="open" ? "Trading fee · open " : "Realized P&L (after fee) · close "}${e.side} ${e.symbol}</td>
+      <td class="${e.delta>=0?'up':'down'}">${fmtUsd(e.delta)}</td><td>${fmtUsd(e.bal)}</td></tr>`).join("");
+}
+function renderActivity(){
+  const body = document.getElementById("actBody");
+  const rows = (account.log||[]).slice().reverse().slice(0,500);
+  if(!rows.length){ body.innerHTML = '<tr class="empty-row"><td colspan="2">No activity yet</td></tr>'; return; }
+  body.innerHTML = rows.map(e=>`<tr><td style="text-align:left">${tdate(e.t)}</td>
+      <td style="text-align:left;font-family:var(--sans)">${escapeHtml(evText(e))}</td></tr>`).join("");
+}
+
+/* ---- Analytics (based on the selected account's closed trades) ---- */
+const perfChart = LightweightCharts.createChart(document.getElementById("perf-chart"), {
+  layout:{ background:{color:"transparent"}, textColor:"#8792a3", fontFamily:"IBM Plex Mono, monospace", fontSize:11 },
+  grid:{ vertLines:{color:"#151c27"}, horzLines:{color:"#151c27"} },
+  rightPriceScale:{ borderColor:"#232d3b" },
+  timeScale:{ borderColor:"#232d3b", timeVisible:true }
+});
+const perfSeries = perfChart.addBaselineSeries({
+  baseValue:{ type:"price", price:0 },
+  topLineColor:"#3ddc97", topFillColor1:"rgba(61,220,151,.25)", topFillColor2:"rgba(61,220,151,0)",
+  bottomLineColor:"#ff5c6c", bottomFillColor1:"rgba(255,92,108,0)", bottomFillColor2:"rgba(255,92,108,.25)",
+  lineWidth:2
+});
+new ResizeObserver(()=>{
+  const el = document.getElementById("perf-chart");
+  perfChart.applyOptions({ width:el.clientWidth, height:el.clientHeight });
+}).observe(document.getElementById("perf-chart"));
+
+function fitAnalytics(){
+  [[eqChart,"equity-chart"],[perfChart,"perf-chart"]].forEach(([c,id])=>{
+    const el = document.getElementById(id);
+    c.applyOptions({ width:el.clientWidth, height:el.clientHeight });
+    c.timeScale().fitContent();
+  });
+}
+
+function computeAnalytics(){
+  const tr = account.trades.slice().sort((a,b)=>a.closedAt-b.closedAt);
+  const wins = tr.filter(t=>t.netPnl>0), losses = tr.filter(t=>t.netPnl<0);
+  const gp = wins.reduce((s,t)=>s+t.netPnl,0);
+  const gl = Math.abs(losses.reduce((s,t)=>s+t.netPnl,0));
+  let cum = 0, peak = 0, mdd = 0, last = 0;
+  const pts = tr.map(t=>{
+    let s = Math.floor(t.closedAt/1000); if(s<=last) s = last+1; last = s;
+    cum += t.netPnl; if(cum>peak) peak = cum; if(peak-cum>mdd) mdd = peak-cum;
+    return { time:s, value:cum };
+  });
+  if(pts.length) pts.unshift({ time:pts[0].time-1, value:0 });
+  return {
+    n:tr.length, w:wins.length, gp, gl, total:gp-gl, mdd, pts,
+    best: tr.length ? Math.max(...tr.map(t=>t.netPnl)) : null,
+    worst: tr.length ? Math.min(...tr.map(t=>t.netPnl)) : null,
+    avgWin: wins.length ? gp/wins.length : 0,
+    avgLoss: losses.length ? gl/losses.length : 0
+  };
+}
+function renderAnalytics(){
+  const a = computeAnalytics();
+  const set = (id, txt, cls)=>{ const el = document.getElementById(id); el.textContent = txt; el.className = "v" + (cls ? " "+cls : ""); };
+  if(!a.n){
+    ["anWin","anPF","anExp","anRR","anNet","anBest","anWorst","anDD"].forEach(id=>set(id,"—"));
+    perfSeries.setData([]);
+    return;
+  }
+  set("anWin", (a.w/a.n*100).toFixed(2) + "%  " + a.w + "/" + a.n);
+  set("anPF", a.gl>0 ? (a.gp/a.gl).toFixed(3) : (a.gp>0 ? "∞" : "—"));
+  set("anExp", fmtUsd(a.total/a.n), a.total>=0 ? "up" : "down");
+  set("anRR", a.avgLoss>0 ? (a.avgWin/a.avgLoss).toFixed(2) : "—");
+  set("anNet", fmtUsd(a.total), a.total>=0 ? "up" : "down");
+  set("anBest", fmtUsd(a.best), a.best>=0 ? "up" : "down");
+  set("anWorst", fmtUsd(a.worst), a.worst>=0 ? "up" : "down");
+  set("anDD", fmtUsd(a.mdd), a.mdd>0 ? "down" : "");
+  perfSeries.setData(a.pts);
+  perfChart.timeScale().fitContent();
+}
+
+/* ---- tabs ---- */
+let ptTab = "positions";
+function renderPtActive(){
+  if(ptTab==="orderhist") renderOrderHist();
+  else if(ptTab==="balhist") renderBalHist();
+  else if(ptTab==="activity") renderActivity();
+  else if(ptTab==="analytics") renderAnalytics();
+}
+document.getElementById("ptTabs").addEventListener("click",(e)=>{
+  const b = e.target.closest("button[data-tab]"); if(!b) return;
+  ptTab = b.dataset.tab; ui.tab = ptTab;
+  document.querySelectorAll("#ptTabs button").forEach(x=>x.classList.toggle("active", x===b));
+  ["positions","orders","orderhist","balhist","activity","trades","analytics"].forEach(t=>{
+    document.getElementById("view-"+t).style.display = (t===ptTab) ? (t==="analytics" ? "flex" : "block") : "none";
+  });
+  if(ptState.min) setPtHeight(ptState.prev || 260); // opening a tab un-minimizes
+  renderPtActive();
+  if(ptTab==="analytics") requestAnimationFrame(fitAnalytics);
+});
+
+/* ---- resize / minimize / maximize ---- */
+const appEl = document.getElementById("app");
+const PT_KEY = "paperExchange.ptpanel.v1", PT_MIN = 35;
+const ptState = { h:260, prev:260, min:false, max:false };
+function ptMaxH(){ return Math.max(PT_MIN, window.innerHeight - 44 - 140); }
+function setPtHeight(h){
+  h = Math.round(Math.max(PT_MIN, Math.min(h, ptMaxH())));
+  ptState.h = h; ptState.min = h <= PT_MIN+4; ptState.max = h >= ptMaxH()-4;
+  appEl.style.setProperty("--bottom-h", h + "px");
+  if(tb.style.transform==="none") placeTb(tb.offsetLeft, tb.offsetTop); // keep floating toolbar inside the chart
+}
+function savePt(){ try{ localStorage.setItem(PT_KEY, JSON.stringify({h:ptState.h, prev:ptState.prev})); }catch(e){} }
+function togglePtMin(){
+  if(ptState.min) setPtHeight(ptState.prev || 260);
+  else { if(!ptState.max) ptState.prev = ptState.h; setPtHeight(PT_MIN); }
+  savePt();
+}
+function togglePtMax(){
+  if(ptState.max) setPtHeight(ptState.prev || 260);
+  else { if(!ptState.min) ptState.prev = ptState.h; setPtHeight(ptMaxH()); }
+  savePt();
+  if(ptTab==="analytics") requestAnimationFrame(fitAnalytics);
+}
+document.getElementById("ptMin").addEventListener("click", togglePtMin);
+document.getElementById("ptMax").addEventListener("click", togglePtMax);
+document.getElementById("ptTitle").addEventListener("dblclick",(e)=>{ if(!e.target.closest("button")) togglePtMin(); });
+
+function startPtDrag(e){
+  if(e.target.closest("button")) return;
+  e.preventDefault();
+  const startY = e.clientY, startH = ptState.h, handle = document.getElementById("ptResize");
+  handle.classList.add("drag"); document.body.style.userSelect = "none";
+  const move = (ev)=> setPtHeight(startH + (startY - ev.clientY));
+  const up = ()=>{
+    window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
+    handle.classList.remove("drag"); document.body.style.userSelect = "";
+    if(!ptState.min && !ptState.max) ptState.prev = ptState.h;
+    savePt();
+    if(ptTab==="analytics") fitAnalytics();
+  };
+  window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+}
+document.getElementById("ptResize").addEventListener("pointerdown", startPtDrag);
+document.getElementById("ptTitle").addEventListener("pointerdown", startPtDrag);
+window.addEventListener("resize", ()=> setPtHeight(ptState.h));
+
+try{
+  const s = JSON.parse(localStorage.getItem(PT_KEY)||"null");
+  if(s){ ptState.prev = s.prev || 260; setPtHeight(s.h); } else setPtHeight(260);
+}catch(e){ setPtHeight(260); }
 
 /* ================= INIT ================= */
 async function init(){
