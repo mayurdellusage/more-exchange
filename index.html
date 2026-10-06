@@ -147,7 +147,7 @@ header{
   padding:6px 10px;border-radius:var(--radius);font-size:11.5px;font-weight:700;display:none;
 }
 .chart-trade-btns{
-  position:absolute;bottom:14px;left:50%;transform:translateX(-50%);
+  position:absolute;bottom:46px;left:50%;transform:translateX(-50%);
   z-index:5;display:flex;gap:8px;
 }
 .chart-trade-btns button{
@@ -278,6 +278,17 @@ tbody tr:hover{background:var(--bg-2);}
   .tf-tabs{margin-left:0;}
   .bottom-col{grid-column:1/2;}
 }
+.range-bar{display:flex;align-items:center;gap:6px;padding:4px 10px;border-top:1px solid var(--line);background:var(--bg-1);flex-wrap:wrap;}
+.range-btns{display:flex;gap:2px;}
+.range-bar button{background:transparent;border:none;color:var(--text-dim);padding:4px 8px;border-radius:2px;font-size:11.5px;font-weight:700;}
+.range-bar button:hover{background:var(--bg-3);color:var(--text);}
+.range-bar button.active{background:var(--bg-3);color:var(--amber);}
+.range-bar .sep{width:1px;height:16px;background:var(--line);margin:0 4px;}
+.range-bar .info{margin-left:auto;font-size:11px;color:var(--text-faint);font-family:var(--mono);}
+#liveBtn{display:none;color:var(--long);border:1px solid var(--long-dim);}
+.hist-notice{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;max-width:70%;background:rgba(232,163,61,.14);border:1px solid var(--amber);color:var(--amber);padding:7px 12px;border-radius:var(--radius);font-size:11.5px;font-weight:700;display:none;cursor:pointer;}
+.field input[type=datetime-local]{width:100%;background:var(--bg-1);border:1px solid var(--line);border-radius:var(--radius);color:var(--text);padding:7px 8px;font-family:var(--mono);font-size:12px;color-scheme:dark;}
+.field input[type=datetime-local]:focus{outline:none;border-color:var(--focus);}
 </style>
 </head>
 <body>
@@ -311,7 +322,19 @@ tbody tr:hover{background:var(--bg-2);}
   <div class="chart-col">
     <div class="chart-pnl-badge" id="chartPnlBadge"><span class="lbl">Open P&amp;L</span><span id="chartPnlValue">—</span></div>
     <div class="pick-hint" id="pickHint">Click a price on the chart to set it</div>
+    <div class="hist-notice" id="histNotice" title="Click to dismiss"></div>
     <div id="price-chart"></div>
+    <div class="range-bar">
+      <div class="range-btns" id="rangeBtns">
+        <button data-r="1D">1D</button><button data-r="5D">5D</button><button data-r="1M">1M</button>
+        <button data-r="3M">3M</button><button data-r="6M">6M</button><button data-r="YTD">YTD</button>
+        <button data-r="1Y">1Y</button><button data-r="5Y">5Y</button><button data-r="ALL">ALL</button>
+      </div>
+      <span class="sep"></span>
+      <button id="goDateBtn">&#128197; Go to date</button>
+      <button id="liveBtn">&#9679; Live</button>
+      <span class="info" id="dataStart"></span>
+    </div>
     <div class="chart-trade-btns" id="chartTradeBtns">
       <button data-side="LONG" id="chartBuyBtn">BUY / LONG</button>
       <button data-side="SHORT" id="chartSellBtn">SELL / SHORT</button>
@@ -437,6 +460,24 @@ tbody tr:hover{background:var(--bg-2);}
       <button class="mini-btn" id="newAcctCancel">Cancel</button>
       <button class="submit-btn LONG" id="newAcctCreate">Create account</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="dateOverlay">
+  <div class="modal" style="width:340px">
+    <h3>Go to date</h3>
+    <div class="field"><label>Specific date &amp; time (your local time)</label><input type="datetime-local" id="gotoDt"></div>
+    <div class="modal-actions" style="margin:0 0 16px"><button class="submit-btn LONG" id="gotoGo">Go</button></div>
+    <h3>Custom date range</h3>
+    <div class="row2">
+      <div class="field"><label>From</label><input type="datetime-local" id="rngFrom"></div>
+      <div class="field"><label>To</label><input type="datetime-local" id="rngTo"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="mini-btn" id="dateCancel">Close</button>
+      <button class="submit-btn LONG" id="rangeGo">Load range</button>
+    </div>
+    <div class="warn" id="dateWarn"></div>
   </div>
 </div>
 
@@ -686,39 +727,267 @@ async function load24h(symbol){
 }
 
 let lastLoadedBar = null;
-let liveBar = null; // the currently-forming candle for ui.symbol/ui.tf, updated on every price tick
+let liveBar = null; // currently-forming candle (live mode only)
 
-async function refreshChart(){
-  clearOrderLines();
-  const bars = await loadKlines(ui.symbol, ui.tf);
-  candleSeries.setData(bars.map(b=>({time:b.time, open:b.open, high:b.high, low:b.low, close:b.close})));
-  volumeSeries.setData(bars.map(b=>({time:b.time, value:b.volume, color: b.close>=b.open ? "rgba(61,220,151,.35)" : "rgba(255,92,108,.35)"})));
-  chart.timeScale().fitContent();
-  lastLoadedBar = bars[bars.length-1] || null;
-  liveBar = lastLoadedBar ? { time:lastLoadedBar.time, open:lastLoadedBar.open, high:lastLoadedBar.high, low:lastLoadedBar.low, close:lastLoadedBar.close } : null;
-  if(lastLoadedBar){
-    market[ui.symbol].last = lastLoadedBar.close;
-    market[ui.symbol].bid = lastLoadedBar.close;
-    market[ui.symbol].ask = lastLoadedBar.close;
-  }
-  await load24h(ui.symbol);
-  chart.applyOptions({ watermark:{ text: ui.symbol + " · " + ui.tf.toUpperCase() + " · Lightweight Charts" } });
-  drawOrderLinesForCurrentSymbol();
-  updateAll();
+/* ===== History engine: paged loading, jump-to-date, ranges ===== */
+const PAGE = 1500;
+const TF_LIST = ["1m","5m","15m","1h","4h","1d"];
+const listingStart = {}; // "BTCUSDT|5m" -> first candle ms (from API, cached)
+const H = { bars:[], hasOlder:true, hasNewer:false, busy:false, gen:0 };
+const noticeEl = document.getElementById("histNotice");
+const liveBtn = document.getElementById("liveBtn");
+let noticeTimer = null;
+
+function showNotice(msg){
+  noticeEl.textContent = noticeEl.textContent ? noticeEl.textContent + "  ·  " + msg : msg;
+  noticeEl.style.display = "block";
+  clearTimeout(noticeTimer); noticeTimer = setTimeout(hideNotice, 14000);
+}
+function hideNotice(){ noticeEl.textContent=""; noticeEl.style.display="none"; }
+noticeEl.addEventListener("click", hideNotice);
+function fmtDate(ms){ return new Date(ms).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}); }
+function updateLiveBtn(){ liveBtn.style.display = H.hasNewer ? "inline-block" : "none"; }
+function clearRangeActive(){ document.querySelectorAll("#rangeBtns button").forEach(b=>b.classList.remove("active")); }
+function setTfUI(tf){ ui.tf = tf; document.querySelectorAll("#tfTabs button").forEach(b=>b.classList.toggle("active", b.dataset.tf===tf)); }
+
+async function getListingStart(symbol, tf){
+  const key = symbol+"|"+tf;
+  if(listingStart[key]) return listingStart[key];
+  try{
+    const first = await loadKlines(symbol, tf, "&startTime=0&limit=1");
+    if(first.length) listingStart[key] = first[0].timeMs;
+  }catch(e){}
+  return listingStart[key] || null;
+}
+async function announceStart(){
+  const s = await getListingStart(ui.symbol, ui.tf);
+  if(s) showNotice(`${ui.symbol} futures data starts ${fmtDate(s)} — nothing exists before this.`);
 }
 
-// Bucket the current moment into the start time of the active-timeframe candle.
+function paintAll(){
+  candleSeries.setData(H.bars.map(b=>({time:b.time,open:b.open,high:b.high,low:b.low,close:b.close})));
+  volumeSeries.setData(H.bars.map(b=>({time:b.time,value:b.volume,color:b.close>=b.open?"rgba(61,220,151,.35)":"rgba(255,92,108,.35)"})));
+}
+// keep H.bars in sync with live updates so later prepends don't lose the forming candle
+function syncLast(bar, vol){
+  const last = H.bars[H.bars.length-1];
+  if(last && last.time===bar.time){
+    last.open=bar.open; last.high=bar.high; last.low=bar.low; last.close=bar.close;
+    if(vol!=null) last.volume=vol;
+  }else{
+    H.bars.push({time:bar.time,timeMs:bar.time*1000,open:bar.open,high:bar.high,low:bar.low,close:bar.close,volume:vol||0});
+  }
+}
+
+// fetch one older page, prepend to H.bars (no repaint). returns count added.
+async function pullOlder(g){
+  const first = H.bars[0];
+  const chunk = await loadKlines(ui.symbol, ui.tf, `&endTime=${first.timeMs-1}&limit=${PAGE}`);
+  if(g!==H.gen) return 0;
+  if(chunk.length < PAGE){
+    const listing = await getListingStart(ui.symbol, ui.tf);
+    // empty result only counts as "start reached" if we're really at the listing candle (not a network/rate-limit hiccup)
+    if(chunk.length>0 || (listing && first.timeMs <= listing + TF_MS[ui.tf])){
+      if(H.hasOlder){ H.hasOlder=false; announceStart(); }
+    }
+  }
+  if(chunk.length) H.bars = chunk.concat(H.bars);
+  return chunk.length;
+}
+async function loadOlder(){
+  if(H.busy || !H.hasOlder || !H.bars.length) return;
+  H.busy = true; const g = H.gen;
+  try{
+    const vr = chart.timeScale().getVisibleLogicalRange();
+    const n = await pullOlder(g);
+    if(g!==H.gen) return;
+    if(n){
+      paintAll();
+      if(vr) chart.timeScale().setVisibleLogicalRange({from:vr.from+n, to:vr.to+n});
+    }
+  }catch(e){ console.warn("loadOlder failed", e); }
+  finally{ if(g===H.gen) H.busy=false; }
+}
+async function loadNewer(){
+  if(H.busy || !H.hasNewer || !H.bars.length) return;
+  H.busy = true; const g = H.gen;
+  try{
+    const last = H.bars[H.bars.length-1];
+    const chunk = await loadKlines(ui.symbol, ui.tf, `&startTime=${last.timeMs+TF_MS[ui.tf]}&limit=${PAGE}`);
+    if(g!==H.gen) return;
+    const vr = chart.timeScale().getVisibleLogicalRange();
+    if(chunk.length){
+      H.bars = H.bars.concat(chunk);
+      paintAll();
+      if(vr) chart.timeScale().setVisibleLogicalRange(vr);
+    }
+    if(chunk.length < PAGE){ // reached the present -> hand over to live ticks
+      H.hasNewer = false;
+      const l = H.bars[H.bars.length-1];
+      liveBar = l ? {time:l.time,open:l.open,high:l.high,low:l.low,close:l.close} : null;
+      updateLiveBtn();
+    }
+  }catch(e){ console.warn("loadNewer failed", e); }
+  finally{ if(g===H.gen) H.busy=false; }
+}
+chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{
+  if(!r || H.busy || !H.bars.length) return;
+  if(r.from < 80 && H.hasOlder) loadOlder();
+  else if(r.to > H.bars.length-80 && H.hasNewer) loadNewer();
+});
+
+// LIVE mode load (also used by range buttons via opts.rangeMs)
+async function refreshChart(opts){
+  opts = opts || {};
+  clearOrderLines(); hideNotice(); candleSeries.setMarkers([]);
+  if(opts.rangeMs==null) clearRangeActive();
+  const g = ++H.gen; H.busy = true; H.hasOlder = true; H.hasNewer = false; updateLiveBtn();
+  try{
+    const bars = await loadKlines(ui.symbol, ui.tf, "&limit=1000");
+    if(g!==H.gen) return;
+    H.bars = bars;
+    lastLoadedBar = bars[bars.length-1] || null;
+    liveBar = lastLoadedBar ? {time:lastLoadedBar.time,open:lastLoadedBar.open,high:lastLoadedBar.high,low:lastLoadedBar.low,close:lastLoadedBar.close} : null;
+    if(lastLoadedBar){
+      market[ui.symbol].last = market[ui.symbol].bid = market[ui.symbol].ask = lastLoadedBar.close;
+    }
+    let startMs = null;
+    if(opts.rangeMs!=null){
+      startMs = Date.now() - opts.rangeMs; // -Infinity for ALL
+      let guard = 0;
+      while(H.bars.length && H.hasOlder && H.bars[0].timeMs > startMs && guard++ < 40){
+        if(!(await pullOlder(g))) break;
+      }
+      if(g!==H.gen) return;
+    }
+    paintAll();
+    const n = H.bars.length;
+    if(opts.rangeMs==null){
+      chart.timeScale().setVisibleLogicalRange({from:Math.max(0,n-200), to:n+5});
+    }else if(isFinite(startMs)){
+      let i = H.bars.findIndex(b=>b.timeMs>=startMs); if(i<0) i=0;
+      chart.timeScale().setVisibleLogicalRange({from:i-1, to:n+4});
+    }else{
+      chart.timeScale().fitContent();
+    }
+    await load24h(ui.symbol);
+    chart.applyOptions({ watermark:{ text: ui.symbol + " · " + ui.tf.toUpperCase() + " · Lightweight Charts" } });
+    getListingStart(ui.symbol, ui.tf).then(s=>{
+      document.getElementById("dataStart").textContent = s ? "Data since " + fmtDate(s) : "";
+    });
+    drawOrderLinesForCurrentSymbol();
+    updateAll();
+  }finally{ if(g===H.gen) H.busy=false; }
+}
+
+// HISTORY mode: load a window around a date / a custom range.
+async function loadWindow(startMs, endMs, focusMs){
+  const g = ++H.gen; H.busy = true;
+  candleSeries.setMarkers([]); setPickMode(null); clearRangeActive();
+  const tf = TF_MS[ui.tf], now = Date.now();
+  try{
+    const listing = await getListingStart(ui.symbol, ui.tf);
+    if(g!==H.gen) return;
+    const before = focusMs!=null ? focusMs : startMs;
+    if(listing && before < listing){
+      showNotice(`${ui.symbol} futures didn't exist then — data starts ${fmtDate(listing)}. Showing from the first candle.`);
+      if(focusMs!=null){ focusMs = listing; endMs = listing + 900*tf; }
+      startMs = listing;
+    }else if(listing && startMs < listing){ startMs = listing; }
+    if(endMs > now) endMs = now;
+
+    let all = [], cursor = startMs, pages = 0;
+    while(pages < 10){
+      const chunk = await loadKlines(ui.symbol, ui.tf, `&startTime=${cursor}&limit=${PAGE}`);
+      if(g!==H.gen) return;
+      if(!chunk.length) break;
+      all = all.concat(chunk); pages++;
+      cursor = chunk[chunk.length-1].timeMs + tf;
+      if(chunk.length < PAGE || chunk[chunk.length-1].timeMs >= endMs) break;
+    }
+    if(!all.length){ showNotice("No candles returned for that selection."); return; }
+
+    H.bars = all;
+    H.hasOlder = !(listing && all[0].timeMs <= listing);
+    H.hasNewer = all[all.length-1].timeMs + 2*tf < now;
+    const l = all[all.length-1];
+    liveBar = H.hasNewer ? null : {time:l.time,open:l.open,high:l.high,low:l.low,close:l.close};
+    paintAll();
+    if(focusMs!=null){
+      let i = all.findIndex(b=>b.timeMs>=focusMs); if(i<0) i = all.length-1;
+      chart.timeScale().setVisibleLogicalRange({from:i-120, to:i+120});
+      candleSeries.setMarkers([{time:all[i].time, position:"aboveBar", color:"#e8a33d", shape:"arrowDown", text:"target"}]);
+    }else{
+      try{ chart.timeScale().setVisibleRange({from:Math.floor(startMs/1000), to:Math.floor(endMs/1000)}); }
+      catch(e){ chart.timeScale().fitContent(); }
+    }
+  }catch(e){ console.warn("loadWindow failed", e); showNotice("Could not load that range — try again."); }
+  finally{ if(g===H.gen) H.busy=false; updateLiveBtn(); }
+}
+
+/* ---- bottom bar events ---- */
+const RANGES = {
+  "1D":{ms:864e5,tf:"5m"}, "5D":{ms:5*864e5,tf:"15m"}, "1M":{ms:30*864e5,tf:"1h"},
+  "3M":{ms:90*864e5,tf:"1h"}, "6M":{ms:182*864e5,tf:"4h"}, "YTD":{ms:null,tf:"4h"},
+  "1Y":{ms:365*864e5,tf:"1d"}, "5Y":{ms:5*365*864e5,tf:"1d"}, "ALL":{ms:Infinity,tf:"1d"}
+};
+document.getElementById("rangeBtns").addEventListener("click", async (e)=>{
+  const b = e.target.closest("button[data-r]"); if(!b) return;
+  const r = RANGES[b.dataset.r];
+  let ms = r.ms;
+  if(b.dataset.r==="YTD") ms = Date.now() - Date.UTC(new Date().getUTCFullYear(),0,1);
+  setPickMode(null); setTfUI(r.tf);
+  await refreshChart({rangeMs:ms});
+  document.querySelectorAll("#rangeBtns button").forEach(x=>x.classList.toggle("active", x===b));
+  connectWS();
+});
+liveBtn.addEventListener("click", async ()=>{ await refreshChart(); connectWS(); });
+
+function toLocalInput(ms){ return new Date(ms - new Date(ms).getTimezoneOffset()*60000).toISOString().slice(0,16); }
+const dateOverlay = document.getElementById("dateOverlay");
+document.getElementById("goDateBtn").addEventListener("click", ()=>{
+  const now = Date.now(), mx = toLocalInput(now);
+  ["gotoDt","rngFrom","rngTo"].forEach(id=>document.getElementById(id).max = mx);
+  document.getElementById("gotoDt").value = toLocalInput(now - 7*864e5);
+  document.getElementById("rngFrom").value = toLocalInput(now - 30*864e5);
+  document.getElementById("rngTo").value = mx;
+  document.getElementById("dateWarn").textContent = "";
+  dateOverlay.style.display = "flex";
+});
+document.getElementById("dateCancel").addEventListener("click", ()=> dateOverlay.style.display="none");
+dateOverlay.addEventListener("click", (e)=>{ if(e.target===dateOverlay) dateOverlay.style.display="none"; });
+
+document.getElementById("gotoGo").addEventListener("click", async ()=>{
+  const v = document.getElementById("gotoDt").value;
+  if(!v){ document.getElementById("dateWarn").textContent = "Pick a date & time first."; return; }
+  const t = new Date(v).getTime(), tf = TF_MS[ui.tf];
+  dateOverlay.style.display = "none"; hideNotice();
+  await loadWindow(t - 300*tf, t + 900*tf, t);
+});
+document.getElementById("rangeGo").addEventListener("click", async ()=>{
+  const f = new Date(document.getElementById("rngFrom").value).getTime();
+  const t = new Date(document.getElementById("rngTo").value).getTime();
+  const warn = document.getElementById("dateWarn");
+  if(isNaN(f) || isNaN(t) || f >= t){ warn.textContent = "Choose a valid From and To (From must be earlier)."; return; }
+  dateOverlay.style.display = "none"; hideNotice();
+  // keep the chart smooth: bump to a larger timeframe if the range would exceed ~6000 candles
+  let tf = ui.tf;
+  if((t-f)/TF_MS[tf] > 6000){
+    tf = TF_LIST.find(x=>TF_MS[x]>=TF_MS[ui.tf] && (t-f)/TF_MS[x] <= 6000) || "1d";
+  }
+  const switched = tf !== ui.tf;
+  if(switched) setTfUI(tf);
+  await loadWindow(f, t, null);
+  if(switched){ showNotice(`Switched to ${tf.toUpperCase()} to keep the chart smooth.`); connectWS(); }
+});
+
+/* ---- live candle (only when we're at the present) ---- */
 function bucketStartSec(tf){
   const ms = TF_MS[tf];
   return Math.floor(Date.now()/ms) * ms / 1000;
 }
-
-// Called on EVERY bid/ask tick (not just kline pushes) so the candle visibly
-// grows/moves in real time instead of waiting for the next 1-6s kline message
-// or a manual refresh. The kline stream (handleKline) remains authoritative
-// for final OHLCV once a bar closes — this just keeps things live in between.
 function updateLiveBar(price){
-  if(!price || isNaN(price)) return;
+  if(H.hasNewer || !price || isNaN(price)) return;
   const bStart = bucketStartSec(ui.tf);
   if(!liveBar || liveBar.time !== bStart){
     const prevClose = liveBar ? liveBar.close : price;
@@ -729,6 +998,7 @@ function updateLiveBar(price){
     liveBar.close = price;
   }
   candleSeries.update(liveBar);
+  syncLast(liveBar);
 }
 
 /* ================= WEBSOCKET ================= */
@@ -823,6 +1093,7 @@ function handleKline(d){
   // away from — a late message from the old interval would otherwise be
   // plotted with a mismatched timestamp.
   if(d.s !== ui.symbol || k.i !== ui.tf) return;
+    if(H.hasNewer) return; // in history mode, don't append live candles
   const bar = {
     time: Math.floor(k.t/1000),
     open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c)
@@ -831,6 +1102,7 @@ function handleKline(d){
   candleSeries.update(bar);
   volumeSeries.update({ time:bar.time, value: parseFloat(k.v)||0, color: bar.close>=bar.open ? "rgba(61,220,151,.35)" : "rgba(255,92,108,.35)" });
   liveBar = bar; // kline is authoritative — resync so the next tick continues from the real bar
+    syncLast(bar, parseFloat(k.v)||0);
   lastKlineTs = Date.now();
 }
 
