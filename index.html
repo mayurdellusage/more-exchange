@@ -1049,7 +1049,7 @@ async function loadWindow(startMs, endMs, focusMs){
     if(focusMs!=null){
       let i = all.findIndex(b=>b.timeMs>=focusMs); if(i<0) i = all.length-1;
       chart.timeScale().setVisibleLogicalRange({from:i-120, to:i+120});
-      candleSeries.setMarkers([{time:all[i].time, position:"aboveBar", color:"#e8a33d", shape:"arrowDown", text:"target"}]);
+      candleSeries.setMarkers([{time:all[i].time, position:"aboveBar", color:"#e8a33d", shape:"arrowDown", text:"from here"}]);
     }else{
       try{ chart.timeScale().setVisibleRange({from:Math.floor(startMs/1000), to:Math.floor(endMs/1000)}); }
       catch(e){ chart.timeScale().fitContent(); }
