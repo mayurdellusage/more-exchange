@@ -339,6 +339,72 @@ tbody tr:hover{background:var(--bg-2);}
 .an-chartbox .box{flex:1;min-height:0;position:relative;overflow:hidden;}
 #equity-chart,#perf-chart{position:absolute;inset:0;width:auto;height:auto;}
 
+.editable{cursor:pointer;text-decoration:underline dotted;}
+/* ---- Strategy Builder (Part 1) ---- */
+.sb-overlay{position:fixed;inset:0;background:rgba(5,8,12,.78);display:none;align-items:center;justify-content:center;z-index:120;}
+.sb-overlay.open{display:flex;}
+.sb-win{width:min(1280px,96vw);height:min(780px,92vh);background:var(--bg-1);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;}
+.sb-top{display:flex;align-items:center;gap:16px;padding:8px 12px;border-bottom:1px solid var(--line);}
+.sb-title{font-weight:800;font-size:14px;}
+.sb-nav{display:flex;gap:6px;}
+.sb-nav button{background:var(--bg-3);border:none;color:var(--text);padding:6px 14px;border-radius:999px;font-size:12px;font-weight:600;}
+.sb-nav button.active{background:#e7ecf3;color:#0a0e14;}
+.sb-x{margin-left:auto;background:transparent;border:none;color:var(--text-dim);font-size:16px;width:28px;height:28px;border-radius:4px;}
+.sb-x:hover{background:var(--bg-3);color:var(--text);}
+.sb-body{flex:1;min-height:0;display:grid;grid-template-columns:250px 1fr 270px;}
+.sb-side{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;padding:10px;gap:8px;}
+.sb-side-head{display:flex;gap:6px;flex-wrap:wrap;}
+.sb-btn{background:var(--bg-3);border:1px solid var(--line);color:var(--text-dim);padding:5px 10px;border-radius:3px;font-size:11.5px;font-weight:700;}
+.sb-btn:hover{color:var(--text);border-color:var(--focus);}
+.sb-btn.danger:hover{color:var(--short);border-color:var(--short-dim);}
+.sb-search{width:100%;background:var(--bg-1);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:7px 8px;font-size:12px;}
+.sb-list{flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:2px;}
+.sb-item{display:flex;align-items:center;gap:6px;padding:6px 6px;border-radius:3px;cursor:pointer;border:1px solid transparent;}
+.sb-item:hover{background:var(--bg-2);}
+.sb-item.sel{background:var(--bg-3);border-color:var(--line);}
+.sb-dot{width:9px;height:9px;border-radius:50%;flex:0 0 9px;}
+.sb-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:700;font-size:12.5px;}
+.sb-ico{background:transparent;border:none;color:var(--text-faint);font-size:13px;padding:2px 3px;border-radius:3px;}
+.sb-ico:hover{color:var(--text);}
+.sb-ico.on{color:var(--amber);}
+.sb-chip{background:var(--bg-2);border:1px solid var(--line);color:var(--text-faint);font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px;}
+.sb-chip.on{color:var(--long);border-color:var(--long-dim);background:rgba(61,220,151,.1);}
+.sb-empty{color:var(--text-faint);font-size:12px;padding:14px 6px;}
+.sb-editor-col{display:flex;flex-direction:column;min-height:0;padding:10px;gap:8px;min-width:0;}
+.sb-tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.sb-cur{font-weight:800;font-size:13px;margin-right:8px;}
+.sb-dirty{margin-left:auto;font-size:11.5px;color:var(--text-faint);}
+.sb-dirty.on{color:var(--amber);font-weight:700;}
+.sb-editor{flex:1;min-height:0;display:flex;background:var(--bg-0);border:1px solid var(--line);border-radius:3px;overflow:hidden;}
+.sb-gutter{margin:0;padding:10px 8px;min-width:44px;text-align:right;color:var(--text-faint);background:var(--bg-1);border-right:1px solid var(--line);font:12.5px/19px var(--mono);overflow:hidden;user-select:none;}
+#sbCode{flex:1;border:none;outline:none;resize:none;background:transparent;color:var(--text);font:12.5px/19px var(--mono);padding:10px;white-space:pre;overflow:auto;tab-size:4;}
+.sb-foot{font-size:11px;color:var(--text-faint);font-family:var(--mono);}
+.sb-settings{border-left:1px solid var(--line);padding:12px;overflow:auto;}
+.sb-sh{font-size:11px;font-weight:700;color:var(--text-dim);margin-bottom:10px;}
+.sb-sel,.sb-inp{width:100%;background:var(--bg-1);border:1px solid var(--line);border-radius:3px;color:var(--text);padding:7px 8px;font-size:12px;font-family:var(--sans);}
+.sb-inp{resize:vertical;}
+.sb-color{width:100%;height:32px;background:var(--bg-1);border:1px solid var(--line);border-radius:3px;padding:2px;}
+.sb-checks label,.modal .sb-checks label{display:flex;align-items:center;gap:8px;font-size:12px;margin:7px 0;color:var(--text);}
+.sb-note{font-size:11px;color:var(--text-faint);margin:10px 0;line-height:1.45;}
+.sb-actions{display:flex;gap:6px;margin:10px 0;}
+.sb-meta{font-size:10.5px;color:var(--text-faint);margin-bottom:8px;}
+.sb-pane{flex:1;padding:28px;overflow:auto;font-size:13px;line-height:1.6;}
+.sb-pane h3{margin:0 0 10px;font-size:15px;}
+.strat-chips{position:absolute;top:94px;left:10px;z-index:5;display:flex;flex-direction:column;gap:4px;pointer-events:none;}
+.strat-chip{pointer-events:auto;display:flex;align-items:center;gap:6px;background:rgba(15,20,28,.92);border:1px solid var(--line);border-radius:3px;padding:3px 6px;font-size:11.5px;font-weight:700;}
+.strat-chip .meta{color:var(--text-faint);font-weight:500;}
+.strat-chip button{background:transparent;border:none;color:var(--text-dim);font-size:12px;padding:0 2px;}
+.strat-chip button:hover{color:var(--text);}
+.layers-pop{display:none;position:absolute;left:10px;bottom:38px;z-index:8;width:330px;max-height:60%;overflow:auto;background:var(--bg-2);border:1px solid var(--line);border-radius:4px;padding:8px;box-shadow:0 10px 30px rgba(0,0,0,.5);}
+.layers-pop.open{display:block;}
+.lp-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12px;}
+.lp-head button{background:var(--bg-3);border:1px solid var(--line);color:var(--text-dim);font-size:11px;border-radius:3px;padding:3px 8px;}
+.lp-row{display:flex;align-items:center;gap:6px;padding:4px 2px;}
+.lp-vis{flex:1;display:flex;align-items:center;gap:6px;min-width:0;font-size:12px;font-weight:700;}
+.lp-vis .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lp-note{font-size:10.5px;color:var(--text-faint);margin-top:8px;line-height:1.4;}
+#sbCfgOverlay{z-index:130;}
+
 </style>
 </head>
 <body>
@@ -363,6 +429,7 @@ tbody tr:hover{background:var(--bg-2);}
       <button data-tf="1d">1D</button>
     </div>
     <div class="acct-switch">
+      <button id="sbOpenBtn" title="Strategy Builder">&#402; Strategies</button>
       <select id="acctSelect" title="Paper trading account"></select>
       <button id="newAcctBtn">+ New account</button>
     </div>
@@ -373,6 +440,8 @@ tbody tr:hover{background:var(--bg-2);}
     <div class="chart-pnl-badge" id="chartPnlBadge"><span class="lbl">Open P&amp;L</span><span id="chartPnlValue">—</span></div>
     <div class="pick-hint" id="pickHint">Click a price on the chart to set it</div>
         <div class="chart-legend" id="chartLegend"></div>
+        <div class="strat-chips" id="stratChips"></div>
+        <div class="layers-pop" id="layersPop"></div>
     <div class="float-tb" id="floatTb">
       <span class="grip" id="tbGrip" title="Drag to move">&#8942;&#8942;</span>
       <button data-tool="h" title="Horizontal line (click a price)">&#9472;</button>
@@ -390,6 +459,7 @@ tbody tr:hover{background:var(--bg-2);}
       </div>
       <span class="sep"></span>
       <button id="goDateBtn">&#128197; Go to date</button>
+      <button id="layersBtn" title="Strategy layers">&#9776; Layers</button>
       <button id="liveBtn">&#9679; Live</button>
       <span class="info" id="dataStart"></span>
       <span class="clock" id="utcClock"></span>
@@ -604,6 +674,109 @@ tbody tr:hover{background:var(--bg-2);}
       <button class="submit-btn LONG" id="rangeGo">Load range</button>
     </div>
     <div class="warn" id="dateWarn"></div>
+  </div>
+</div>
+
+<div class="sb-overlay" id="sbOverlay">
+  <div class="sb-win">
+    <div class="sb-top">
+      <div class="sb-title">Strategy Lab</div>
+      <div class="sb-nav" id="sbNav">
+        <button data-nav="builder" class="active">Strategy Builder</button>
+        <button data-nav="tester">Strategy Tester</button>
+        <button data-nav="analytics">Analytics</button>
+      </div>
+      <button class="sb-x" id="sbClose" title="Close (Esc)">&#10005;</button>
+    </div>
+
+    <div class="sb-body" id="sbBuilder">
+      <aside class="sb-side">
+        <div class="sb-side-head">
+          <button class="sb-btn" id="sbNew">+ New</button>
+          <button class="sb-btn" id="sbImport">Import</button>
+          <button class="sb-btn" id="sbExportAll">Export all</button>
+          <input type="file" id="sbImportFile" accept=".json,.pine,.txt" style="display:none">
+        </div>
+        <input class="sb-search" id="sbSearch" placeholder="Search strategies…">
+        <div class="sb-list" id="sbList"></div>
+      </aside>
+
+      <section class="sb-editor-col">
+        <div class="sb-tools">
+          <span class="sb-cur" id="sbCurName">—</span>
+          <button class="sb-btn" id="sbSave" title="Ctrl+S">Save</button>
+          <button class="sb-btn" id="sbSaveAs">Save As</button>
+          <button class="sb-btn" id="sbReset">Reset</button>
+          <button class="sb-btn" id="sbUndo">Undo</button>
+          <button class="sb-btn" id="sbRedo">Redo</button>
+          <span class="sb-dirty" id="sbDirty"></span>
+        </div>
+        <div class="sb-editor">
+          <pre class="sb-gutter" id="sbGutter">1</pre>
+          <textarea id="sbCode" spellcheck="false" wrap="off"></textarea>
+        </div>
+        <div class="sb-foot" id="sbFoot"></div>
+      </section>
+
+      <aside class="sb-settings" id="sbSettings">
+        <div class="sb-sh">STRATEGY SETTINGS</div>
+        <div class="field"><label>Name</label><input type="text" id="sbfName" maxlength="80"></div>
+        <div class="field"><label>Notes</label><textarea class="sb-inp" id="sbfNotes" rows="3"></textarea></div>
+        <div class="row2">
+          <div class="field"><label>Symbol</label><select class="sb-sel" id="sbfSymbol"><option value="BTCUSDT">BTCUSDT</option><option value="ETHUSDT">ETHUSDT</option></select></div>
+          <div class="field"><label>Timeframe</label><select class="sb-sel" id="sbfTf"><option value="1m">1m</option><option value="5m">5m</option><option value="15m">15m</option><option value="1h">1H</option><option value="4h">4H</option><option value="1d">1D</option></select></div>
+        </div>
+        <div class="field"><label>Color</label><input type="color" class="sb-color" id="sbfColor"></div>
+        <div class="sb-checks">
+          <label><input type="checkbox" id="sbfVis"> Visible on chart (Strategy Layers)</label>
+          <label><input type="checkbox" id="sbfBt"> Enabled for backtest</label>
+          <label><input type="checkbox" id="sbfPt"> Enabled for paper trading</label>
+        </div>
+        <div class="sb-note">Hide ≠ Disable. These flags are saved now; the backtester and paper runner that use them come in later parts.</div>
+        <div class="sb-actions">
+          <button class="sb-btn" id="sbDup">Duplicate</button>
+          <button class="sb-btn" id="sbExp">Export</button>
+          <button class="sb-btn danger" id="sbDel">Delete</button>
+        </div>
+        <div class="sb-meta" id="sbMeta"></div>
+        <div class="sb-note">Inputs extracted from the script will appear here once the Pine engine is added (later part).</div>
+      </aside>
+    </div>
+
+    <div class="sb-pane" id="sbTester" style="display:none;">
+      <h3>Strategy Tester</h3>
+      <p>Not built yet. Backtesting on historical data is a later part. Your saved strategies, code, symbol, timeframe and enabled flags are stored now and will be used by it.</p>
+    </div>
+
+    <div class="sb-pane" id="sbAnalytics" style="display:none;">
+      <h3>Analytics</h3>
+      <p id="sbAnCount"></p>
+      <p>Account performance (win rate, profit factor, equity, drawdown) already works in the bottom <b>Paper Trading → Analytics</b> tab.</p>
+      <p><button class="sb-btn" id="sbOpenAccAnalytics">Open account analytics</button></p>
+      <p class="sb-note">Per-strategy analytics will be added once strategies can run (later parts).</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="sbCfgOverlay">
+  <div class="modal" style="width:340px">
+    <h3>Strategy configuration</h3>
+    <div class="field"><label>Name</label><input type="text" id="sbcName" maxlength="80"></div>
+    <div class="row2">
+      <div class="field"><label>Symbol</label><select class="sb-sel" id="sbcSymbol"><option value="BTCUSDT">BTCUSDT</option><option value="ETHUSDT">ETHUSDT</option></select></div>
+      <div class="field"><label>Timeframe</label><select class="sb-sel" id="sbcTf"><option value="1m">1m</option><option value="5m">5m</option><option value="15m">15m</option><option value="1h">1H</option><option value="4h">4H</option><option value="1d">1D</option></select></div>
+    </div>
+    <div class="field"><label>Color</label><input type="color" class="sb-color" id="sbcColor"></div>
+    <div class="sb-checks">
+      <label><input type="checkbox" id="sbcVis"> Visible on chart</label>
+      <label><input type="checkbox" id="sbcBt"> Enabled for backtest</label>
+      <label><input type="checkbox" id="sbcPt"> Enabled for paper trading</label>
+    </div>
+    <div class="modal-actions">
+      <button class="mini-btn" id="sbcEdit">Open in editor</button>
+      <button class="mini-btn" id="sbcCancel">Cancel</button>
+      <button class="submit-btn LONG" id="sbcApply">Apply</button>
+    </div>
   </div>
 </div>
 
@@ -1470,11 +1643,18 @@ function closePosition(symbol, fraction, reason, override){
 function reversePosition(symbol){
   const pos = account.positions[symbol];
   if(!pos) return;
+  if(symbol!==ui.symbol){ alert("Switch the chart to "+symbol+" first, then press Reverse."); return; }
+  const side = pos.side==="LONG" ? "SHORT" : "LONG", qty = pos.qty, lev = pos.leverage;
   closePosition(symbol, 1, "Reverse");
-  ui.side = pos.side==="LONG" ? "SHORT" : "LONG";
+  ui.side = side;
   document.querySelectorAll(".side-toggle button").forEach(b=> b.classList.toggle("active", b.dataset.side===ui.side));
-  document.getElementById("qtyInput").value = fmtQty(symbol,pos.qty);
-  refreshOrderPreview();
+  document.getElementById("levSlider").value = lev;
+  document.getElementById("levVal").textContent = lev + "x";
+  document.getElementById("qtyInput").value = fmtQty(symbol,qty);
+  document.getElementById("slInput").value = "";
+  document.getElementById("tpInput").value = "";
+  const p = computeOrderPreview();
+  if(p.valid) placeOrder(); else refreshOrderPreview();
 }
 
 function checkSlTp(symbol){
@@ -1622,13 +1802,13 @@ chartEl.addEventListener("mousedown",(e)=>{
   const HIT = 6;
   if(pos.sl!=null){
     const slY = candleSeries.priceToCoordinate(pos.sl);
-    if(slY!=null && Math.abs(slY-y)<=HIT){ dragTarget="sl"; e.preventDefault(); return; }
+    if(slY!=null && Math.abs(slY-y)<=HIT){ dragTarget="sl"; e.preventDefault(); e.stopPropagation(); return; }
   }
   if(pos.tp!=null){
     const tpY = candleSeries.priceToCoordinate(pos.tp);
-    if(tpY!=null && Math.abs(tpY-y)<=HIT){ dragTarget="tp"; e.preventDefault(); return; }
+    if(tpY!=null && Math.abs(tpY-y)<=HIT){ dragTarget="tp"; e.preventDefault(); e.stopPropagation(); return; }
   }
-});
+}, true);
 
 chartEl.addEventListener("mousemove",(e)=>{
   const rect = chartEl.getBoundingClientRect();
@@ -1702,43 +1882,83 @@ function updateAccountPanel(){
   document.getElementById("acctAvail").textContent = fmtUsd(availableMargin());
 }
 
+let posSig = "";
 function updatePositionsTable(){
   const body = document.getElementById("positionsBody");
   const symbols = Object.keys(account.positions);
   if(symbols.length===0){
-    body.innerHTML = '<tr class="empty-row"><td colspan="15">There are no open positions in your trading account yet</td></tr>';
+    if(posSig!=="empty"){
+      body.innerHTML = '<tr class="empty-row"><td colspan="15">There are no open positions in your trading account yet</td></tr>';
+      posSig = "empty";
+    }
     return;
   }
-  body.innerHTML = symbols.map(symbol=>{
+  const sig = symbols.map(s=>{ const p=account.positions[s]; return [s,p.side,p.qty,p.entry,p.sl,p.tp,p.margin,p.leverage].join(":"); }).join("|");
+  if(sig!==posSig){
+    posSig = sig;
+    body.innerHTML = symbols.map(symbol=>{
+      const pos = account.positions[symbol];
+      const meta = symbolMeta[symbol];
+      const liq = estimateLiquidation(pos.side, pos.entry, pos.leverage, meta.maintMarginRate);
+      return `<tr data-sym="${symbol}">
+        <td style="text-align:left">${symbol}</td>
+        <td><span class="pill ${pos.side}">${pos.side}</span></td>
+        <td>${fmtQty(symbol,pos.qty)}</td>
+        <td>${fmtPrice(symbol,pos.entry)}</td>
+        <td class="up editable" data-act="settp" data-symbol="${symbol}" title="Click to set take profit">${pos.tp!=null?fmtPrice(symbol,pos.tp):"set"}</td>
+        <td class="down editable" data-act="setsl" data-symbol="${symbol}" title="Click to set stop loss">${pos.sl!=null?fmtPrice(symbol,pos.sl):"set"}</td>
+        <td data-f="last">—</td>
+        <td data-f="pnl">—</td>
+        <td data-f="pct">—</td>
+        <td>${fmtUsd(pos.qty*pos.entry)}</td>
+        <td data-f="mval">—</td>
+        <td>${fmtUsd(pos.margin)}</td>
+        <td class="faint">${liq!=null?fmtPrice(symbol,liq):"—"}</td>
+        <td>${pos.leverage}x</td>
+        <td>
+          <button class="mini-btn" data-act="reverse" data-symbol="${symbol}">Reverse</button>
+          <button class="mini-btn" data-act="half" data-symbol="${symbol}">Close ½</button>
+          <button class="mini-btn danger" data-act="close" data-symbol="${symbol}">Close</button>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+  symbols.forEach(symbol=>{
+    const tr = body.querySelector('tr[data-sym="'+symbol+'"]');
+    if(!tr) return;
     const pos = account.positions[symbol];
-    const meta = symbolMeta[symbol];
     const last = market[symbol].last || pos.entry;
     const pnl = unrealizedPnl(symbol);
     const pct = pos.margin>0 ? (pnl/pos.margin*100) : 0;
     const cls = pnl>=0 ? "up" : "down";
-    const liq = estimateLiquidation(pos.side, pos.entry, pos.leverage, meta.maintMarginRate);
-    return `<tr>
-      <td style="text-align:left">${symbol}</td>
-      <td><span class="pill ${pos.side}">${pos.side}</span></td>
-      <td>${fmtQty(symbol,pos.qty)}</td>
-      <td>${fmtPrice(symbol,pos.entry)}</td>
-      <td class="up">${pos.tp!=null?fmtPrice(symbol,pos.tp):"—"}</td>
-      <td class="down">${pos.sl!=null?fmtPrice(symbol,pos.sl):"—"}</td>
-      <td>${fmtPrice(symbol,last)}</td>
-      <td class="${cls}">${fmtUsd(pnl)}</td>
-      <td class="${cls}">${fmtPct(pct)}</td>
-      <td>${fmtUsd(pos.qty*pos.entry)}</td>
-      <td>${fmtUsd(pos.qty*last)}</td>
-      <td>${fmtUsd(pos.margin)}</td>
-      <td class="faint">${liq!=null?fmtPrice(symbol,liq):"—"}</td>
-      <td>${pos.leverage}x</td>
-      <td>
-        <button class="mini-btn" data-act="reverse" data-symbol="${symbol}">Reverse</button>
-        <button class="mini-btn" data-act="half" data-symbol="${symbol}">Close ½</button>
-        <button class="mini-btn danger" data-act="close" data-symbol="${symbol}">Close</button>
-      </td>
-    </tr>`;
-  }).join("");
+    const set = (f,txt,c)=>{ const el = tr.querySelector('[data-f="'+f+'"]'); if(!el) return; if(el.textContent!==txt) el.textContent = txt; if(c && el.className!==c) el.className = c; };
+    set("last", fmtPrice(symbol,last));
+    set("pnl", fmtUsd(pnl), cls);
+    set("pct", fmtPct(pct), cls);
+    set("mval", fmtUsd(pos.qty*last));
+  });
+}
+
+function editLevel(symbol, which){
+  const pos = account.positions[symbol];
+  if(!pos) return;
+  const label = which==="sl" ? "Stop loss" : "Take profit";
+  const raw = prompt(label+" price for "+symbol+" (leave empty to remove):", pos[which]!=null ? pos[which] : "");
+  if(raw===null) return;
+  const txt = raw.trim();
+  if(txt===""){ pos[which] = null; }
+  else{
+    const v = roundPrice(symbol, parseFloat(txt));
+    if(!(v>0)){ alert("Enter a valid price."); return; }
+    const last = market[symbol].last || pos.entry, isLong = pos.side==="LONG";
+    if(which==="sl" && (isLong ? v>=last : v<=last)){ alert("Stop loss must be "+(isLong?"below":"above")+" the current price ("+fmtPrice(symbol,last)+")."); return; }
+    if(which==="tp" && (isLong ? v<=last : v>=last)){ alert("Take profit must be "+(isLong?"above":"below")+" the current price ("+fmtPrice(symbol,last)+")."); return; }
+    pos[which] = v;
+  }
+  logEv({type:"edit", symbol, text: label+(pos[which]==null ? " removed" : " set to "+fmtPrice(symbol,pos[which]))});
+  saveState();
+  drawOrderLinesForCurrentSymbol();
+  updateAll();
 }
 
 function updateHistoryTable(){
@@ -1877,12 +2097,14 @@ function chartQuickTrade(side){
 }
 
 document.getElementById("positionsBody").addEventListener("click",(e)=>{
-  const btn = e.target.closest("button[data-act]");
-  if(!btn) return;
-  const symbol = btn.dataset.symbol;
-  if(btn.dataset.act==="close") closePosition(symbol,1,"Manual close");
-  else if(btn.dataset.act==="half") closePosition(symbol,0.5,"Partial close");
-  else if(btn.dataset.act==="reverse") reversePosition(symbol);
+  const el = e.target.closest("[data-act]");
+  if(!el) return;
+  const symbol = el.dataset.symbol, act = el.dataset.act;
+  if(act==="close") closePosition(symbol,1,"Manual close");
+  else if(act==="half") closePosition(symbol,0.5,"Partial close");
+  else if(act==="reverse") reversePosition(symbol);
+  else if(act==="setsl") editLevel(symbol,"sl");
+  else if(act==="settp") editLevel(symbol,"tp");
 });
 
 
@@ -2310,6 +2532,296 @@ try{
   const s = JSON.parse(localStorage.getItem(PT_KEY)||"null");
   if(s){ ptState.prev = s.prev || 260; setPtHeight(s.h); } else setPtHeight(260);
 }catch(e){ setPtHeight(260); }
+
+/* ================= STRATEGY BUILDER — PART 1 ================= */
+const SB_KEY = "paperExchange.strategies.v1";
+const SB_COLORS = ["#5b8cff","#e8a33d","#3ddc97","#ff5c6c","#b78cff","#4dd0e1","#ff8fb1","#c0ca33"];
+const SB_TEMPLATE = [
+  "//@version=5",
+  'strategy("My Strategy", overlay=true, initial_capital=10000, default_qty_type=strategy.percent_of_equity, default_qty_value=10)',
+  "",
+  'fastLen = input.int(20, "EMA Fast")',
+  'slowLen = input.int(50, "EMA Slow")',
+  "",
+  "fast = ta.ema(close, fastLen)",
+  "slow = ta.ema(close, slowLen)",
+  "",
+  "if ta.crossover(fast, slow)",
+  '    strategy.entry("Long", strategy.long)',
+  "if ta.crossunder(fast, slow)",
+  '    strategy.close("Long")'
+].join("\n");
+const sb = { list:[], sel:null, nav:"builder", search:"" };
+const sbq = id => document.getElementById(id);
+const sbCode = sbq("sbCode");
+
+function sbMake(name, code, extra){
+  const s = { id:uid(), name:name||"Untitled strategy", code:(code!=null?code:SB_TEMPLATE), notes:"", symbol:"BTCUSDT", tf:"1h",
+    color:SB_COLORS[sb.list.length % SB_COLORS.length], fav:false, visible:false, enBacktest:true, enPaper:false, created:Date.now(), updated:Date.now() };
+  return Object.assign(s, extra||{});
+}
+function sbCur(){ return sb.list.find(s=>s.id===sb.sel) || null; }
+function sbLoad(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(SB_KEY)||"null");
+    if(raw && Array.isArray(raw.list)){ sb.list = raw.list.filter(s=>s && s.id && typeof s.code==="string"); sb.sel = raw.sel; }
+  }catch(e){}
+  if(!sb.list.find(s=>s.id===sb.sel)) sb.sel = sb.list.length ? sb.list[0].id : null;
+}
+function sbPersist(){
+  try{ localStorage.setItem(SB_KEY, JSON.stringify({list:sb.list, sel:sb.sel})); }
+  catch(e){ alert("Could not save strategies — browser storage may be full."); }
+}
+function sbChanged(){
+  sbPersist(); sbRenderList(); sbRenderLayers();
+  document.dispatchEvent(new CustomEvent("mx-strategies-changed"));
+}
+function sbDirty(){ const s = sbCur(); return !!s && sbCode.value !== s.code; }
+
+/* ---- list (left) ---- */
+function sbRenderList(){
+  const q = sb.search.trim().toLowerCase();
+  const rows = sb.list.filter(s=>!q || s.name.toLowerCase().includes(q) || (s.notes||"").toLowerCase().includes(q))
+    .sort((a,b)=> (b.fav?1:0)-(a.fav?1:0) || a.created-b.created);
+  const box = sbq("sbList");
+  if(!rows.length){ box.innerHTML = '<div class="sb-empty">'+(sb.list.length ? "No strategy matches your search." : "No strategies yet. Click “+ New” or “Import”.")+'</div>'; return; }
+  box.innerHTML = rows.map(s=>`<div class="sb-item${s.id===sb.sel?" sel":""}" data-id="${s.id}">
+    <span class="sb-dot" style="background:${s.color}"></span>
+    <span class="sb-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span>
+    <button class="sb-ico${s.fav?" on":""}" data-act="fav" title="Pin / favorite">&#9733;</button>
+    <button class="sb-ico${s.visible?" on":""}" data-act="vis" title="Show / hide on chart">&#128065;</button>
+    <button class="sb-chip${s.enBacktest?" on":""}" data-act="bt" title="Enabled for backtest">BT</button>
+    <button class="sb-chip${s.enPaper?" on":""}" data-act="pt" title="Enabled for paper trading">PT</button>
+  </div>`).join("");
+}
+sbq("sbList").addEventListener("click",(e)=>{
+  const row = e.target.closest(".sb-item"); if(!row) return;
+  const s = sb.list.find(x=>x.id===row.dataset.id); if(!s) return;
+  const act = e.target.closest("[data-act]");
+  if(act){
+    const a = act.dataset.act;
+    if(a==="fav") s.fav = !s.fav; else if(a==="vis") s.visible = !s.visible; else if(a==="bt") s.enBacktest = !s.enBacktest; else if(a==="pt") s.enPaper = !s.enPaper;
+    s.updated = Date.now(); sbChanged(); if(s.id===sb.sel) sbFillSettings();
+    return;
+  }
+  sbSelect(s.id);
+});
+sbq("sbSearch").addEventListener("input",(e)=>{ sb.search = e.target.value; sbRenderList(); });
+
+function sbSelect(id){
+  if(id!==sb.sel && sbDirty() && !confirm("You have unsaved changes in this strategy. Discard them?")) return false;
+  sb.sel = id; sbPersist(); sbLoadEditor(); sbFillSettings(); sbRenderList();
+  return true;
+}
+
+/* ---- editor (center) ---- */
+function sbGutter(){
+  const n = sbCode.value.split("\n").length, g = sbq("sbGutter");
+  if(g.dataset.n !== String(n)){ g.dataset.n = n; g.textContent = Array.from({length:n},(_,i)=>i+1).join("\n"); }
+  g.scrollTop = sbCode.scrollTop;
+}
+function sbStatus(){
+  const s = sbCur(), d = sbDirty();
+  const el = sbq("sbDirty");
+  el.textContent = !s ? "" : d ? "● unsaved changes" : "saved";
+  el.className = "sb-dirty" + (d ? " on" : "");
+  sbq("sbCurName").textContent = s ? s.name : "No strategy selected";
+  const v = sbCode.value, before = v.slice(0, sbCode.selectionStart).split("\n");
+  sbq("sbFoot").textContent = "Ln "+before.length+", Col "+(before[before.length-1].length+1)+" · "+v.split("\n").length+" lines · "+v.length+" chars";
+}
+function sbLoadEditor(){
+  const s = sbCur();
+  sbCode.disabled = !s; sbCode.value = s ? s.code : "";
+  sbGutter(); sbStatus();
+}
+sbCode.addEventListener("input", ()=>{ sbGutter(); sbStatus(); });
+sbCode.addEventListener("scroll", ()=>{ sbq("sbGutter").scrollTop = sbCode.scrollTop; });
+sbCode.addEventListener("keyup", sbStatus);
+sbCode.addEventListener("click", sbStatus);
+sbCode.addEventListener("keydown",(e)=>{
+  if(e.key==="Tab"){
+    e.preventDefault();
+    if(!document.execCommand("insertText", false, "    ")) sbCode.setRangeText("    ", sbCode.selectionStart, sbCode.selectionEnd, "end");
+    sbGutter(); sbStatus(); return;
+  }
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==="s"){ e.preventDefault(); sbSaveCode(); }
+});
+function sbSaveCode(){ const s = sbCur(); if(!s) return; s.code = sbCode.value; s.updated = Date.now(); sbChanged(); sbStatus(); }
+function sbSaveAs(){
+  const s = sbCur();
+  const name = prompt("Save as a new strategy named:", s ? s.name+" copy" : "New strategy");
+  if(name===null) return;
+  const n = sbMake(name.trim()||"Untitled strategy", sbCode.value, s ? {notes:s.notes, symbol:s.symbol, tf:s.tf} : {});
+  sb.list.push(n); sb.sel = n.id; sbChanged(); sbLoadEditor(); sbFillSettings();
+}
+function sbNew(){
+  if(sbDirty() && !confirm("Discard unsaved changes in the current strategy?")) return;
+  const s = sbMake("Strategy "+(sb.list.length+1)); sb.list.push(s); sb.sel = s.id;
+  sbChanged(); sbLoadEditor(); sbFillSettings();
+}
+sbq("sbNew").addEventListener("click", sbNew);
+sbq("sbSave").addEventListener("click", sbSaveCode);
+sbq("sbSaveAs").addEventListener("click", sbSaveAs);
+sbq("sbReset").addEventListener("click", ()=>{ if(!sbDirty()) return; if(confirm("Discard unsaved changes?")) sbLoadEditor(); });
+sbq("sbUndo").addEventListener("click", ()=>{ sbCode.focus(); document.execCommand("undo"); });
+sbq("sbRedo").addEventListener("click", ()=>{ sbCode.focus(); document.execCommand("redo"); });
+window.addEventListener("beforeunload",(e)=>{ if(sbDirty()){ e.preventDefault(); e.returnValue = ""; } });
+
+/* ---- settings (right) ---- */
+const SB_FIELDS = ["sbfName","sbfNotes","sbfSymbol","sbfTf","sbfColor","sbfVis","sbfBt","sbfPt","sbDup","sbExp","sbDel"];
+function sbFillSettings(){
+  const s = sbCur();
+  SB_FIELDS.forEach(id=>{ sbq(id).disabled = !s; });
+  if(!s){ sbq("sbfName").value = ""; sbq("sbfNotes").value = ""; sbq("sbMeta").textContent = ""; return; }
+  sbq("sbfName").value = s.name; sbq("sbfNotes").value = s.notes||""; sbq("sbfSymbol").value = s.symbol; sbq("sbfTf").value = s.tf; sbq("sbfColor").value = s.color;
+  sbq("sbfVis").checked = !!s.visible; sbq("sbfBt").checked = !!s.enBacktest; sbq("sbfPt").checked = !!s.enPaper;
+  sbq("sbMeta").textContent = "Created "+new Date(s.created).toLocaleString()+" · Updated "+new Date(s.updated).toLocaleString();
+}
+function sbCommitSettings(){
+  const s = sbCur(); if(!s) return;
+  s.name = sbq("sbfName").value.trim() || "Untitled strategy"; s.notes = sbq("sbfNotes").value; s.symbol = sbq("sbfSymbol").value; s.tf = sbq("sbfTf").value; s.color = sbq("sbfColor").value;
+  s.visible = sbq("sbfVis").checked; s.enBacktest = sbq("sbfBt").checked; s.enPaper = sbq("sbfPt").checked; s.updated = Date.now();
+  sbChanged(); sbStatus(); sbFillSettings();
+}
+["sbfName","sbfNotes","sbfSymbol","sbfTf","sbfColor","sbfVis","sbfBt","sbfPt"].forEach(id=> sbq(id).addEventListener("change", sbCommitSettings));
+sbq("sbDup").addEventListener("click", ()=>{
+  const s = sbCur(); if(!s) return;
+  const n = sbMake(s.name+" (copy)", s.code, {notes:s.notes, symbol:s.symbol, tf:s.tf, enBacktest:s.enBacktest, enPaper:false, visible:false});
+  sb.list.push(n); sbSelect(n.id); sbChanged();
+});
+sbq("sbDel").addEventListener("click", ()=>{
+  const s = sbCur(); if(!s) return;
+  if(!confirm("Delete strategy “"+s.name+"”? This cannot be undone.")) return;
+  sb.list = sb.list.filter(x=>x.id!==s.id); sb.sel = sb.list.length ? sb.list[0].id : null;
+  sbChanged(); sbLoadEditor(); sbFillSettings();
+});
+
+/* ---- import / export ---- */
+function sbExport(items, fname){
+  const payload = { format:"more-exchange-strategies", version:1, exportedAt:new Date().toISOString(),
+    strategies: items.map(s=>({name:s.name, code:s.code, notes:s.notes, symbol:s.symbol, tf:s.tf, color:s.color, enBacktest:s.enBacktest})) };
+  downloadBlob(JSON.stringify(payload,null,2), fname, "application/json");
+}
+sbq("sbExp").addEventListener("click", ()=>{ const s = sbCur(); if(!s) return; sbExport([Object.assign({},s,{code:sbCode.value})], s.name.replace(/[^\w\-]+/g,"_")+".strategy.json"); });
+sbq("sbExportAll").addEventListener("click", ()=>{ if(!sb.list.length){ alert("Nothing to export."); return; } sbExport(sb.list, "all-strategies.json"); });
+sbq("sbImport").addEventListener("click", ()=> sbq("sbImportFile").click());
+function sbImportText(fname, text){
+  let items = []; const t = text.trim();
+  if(t.startsWith("{") || t.startsWith("[")){
+    const j = JSON.parse(t);
+    const arr = Array.isArray(j) ? j : Array.isArray(j.strategies) ? j.strategies : j.strategy ? [j.strategy] : (typeof j.code==="string" ? [j] : null);
+    if(!arr) throw new Error("This is not a More Exchange strategy file.");
+    items = arr.filter(x=>x && typeof x.code==="string");
+  }else{
+    items = [{ name:fname.replace(/\.[^.]+$/,""), code:text }];
+  }
+  if(!items.length) throw new Error("No strategy found in this file.");
+  items.forEach(x=>{
+    sb.list.push(sbMake(String(x.name||"Imported strategy").slice(0,80), x.code, {
+      notes:String(x.notes||""), symbol:SYMBOLS.includes(x.symbol)?x.symbol:"BTCUSDT", tf:TF_MS[x.tf]?x.tf:"1h",
+      color:(typeof x.color==="string" && /^#[0-9a-f]{6}$/i.test(x.color)) ? x.color : SB_COLORS[sb.list.length % SB_COLORS.length], enBacktest:x.enBacktest!==false }));
+  });
+  sb.sel = sb.list[sb.list.length-1].id; sbChanged(); sbLoadEditor(); sbFillSettings();
+  alert("Imported "+items.length+" strategy(ies).");
+}
+sbq("sbImportFile").addEventListener("change",(e)=>{
+  const f = e.target.files[0]; e.target.value = ""; if(!f) return;
+  if(sbDirty() && !confirm("Discard unsaved changes in the current strategy and import?")) return;
+  const rd = new FileReader();
+  rd.onload = ()=>{ try{ sbImportText(f.name, String(rd.result)); }catch(err){ alert("Import failed: "+err.message); } };
+  rd.readAsText(f);
+});
+
+/* ---- workspace navigation ---- */
+function sbNav(name){
+  sb.nav = name;
+  document.querySelectorAll("#sbNav button").forEach(b=>b.classList.toggle("active", b.dataset.nav===name));
+  sbq("sbBuilder").style.display = name==="builder" ? "grid" : "none";
+  sbq("sbTester").style.display = name==="tester" ? "block" : "none";
+  sbq("sbAnalytics").style.display = name==="analytics" ? "block" : "none";
+  if(name==="analytics"){
+    sbq("sbAnCount").textContent = sb.list.length + " saved · " + sb.list.filter(s=>s.enBacktest).length + " enabled for backtest · " + sb.list.filter(s=>s.enPaper).length + " enabled for paper trading";
+  }
+}
+function sbOpen(open, nav){
+  sbq("sbOverlay").classList.toggle("open", open);
+  if(open){ sbNav(nav || sb.nav); sbRenderList(); }
+}
+sbq("sbNav").addEventListener("click",(e)=>{ const b = e.target.closest("button[data-nav]"); if(b) sbNav(b.dataset.nav); });
+sbq("sbClose").addEventListener("click", ()=> sbOpen(false));
+sbq("sbOpenBtn").addEventListener("click", ()=> sbOpen(true,"builder"));
+sbq("sbOverlay").addEventListener("mousedown",(e)=>{ if(e.target===sbq("sbOverlay")) sbOpen(false); });
+sbq("sbOpenAccAnalytics").addEventListener("click", ()=>{
+  sbOpen(false);
+  const b = document.querySelector('#ptTabs button[data-tab="analytics"]'); if(b) b.click();
+});
+
+/* ---- Strategy Layers (chart chips + popup) ---- */
+function sbRenderLayers(){
+  const vis = sb.list.filter(s=>s.visible);
+  sbq("stratChips").innerHTML = vis.map(s=>`<div class="strat-chip" data-id="${s.id}">
+    <span class="sb-dot" style="background:${s.color}"></span><span class="nm">${escapeHtml(s.name)}</span><span class="meta">${s.symbol} · ${s.tf}</span>
+    <button data-act="vis" title="Hide from chart">&#128065;</button><button data-act="cfg" title="Configure">&#9881;</button></div>`).join("");
+  sbq("layersPop").innerHTML = '<div class="lp-head"><b>Strategy layers</b><button data-act="builder">Open builder</button></div>'
+    + (sb.list.length ? sb.list.map(s=>`<div class="lp-row" data-id="${s.id}">
+        <label class="lp-vis"><input type="checkbox" data-act="vis" ${s.visible?"checked":""}><span class="sb-dot" style="background:${s.color}"></span><span class="nm">${escapeHtml(s.name)}</span></label>
+        <button class="sb-chip${s.enBacktest?" on":""}" data-act="bt" title="Enabled for backtest">BT</button>
+        <button class="sb-chip${s.enPaper?" on":""}" data-act="pt" title="Enabled for paper trading">PT</button>
+        <button class="sb-ico" data-act="cfg" title="Configure">&#9881;</button></div>`).join("") : '<div class="sb-empty">No strategies yet.</div>')
+    + '<div class="lp-note">Hide ≠ Disable. Visible strategies are listed on the chart; entries/exits are drawn once the backtester exists (later part).</div>';
+}
+function sbLayerClick(e){
+  const act = e.target.closest("[data-act]"); if(!act) return;
+  const a = act.dataset.act;
+  if(a==="builder"){ sbq("layersPop").classList.remove("open"); sbOpen(true,"builder"); return; }
+  const row = e.target.closest("[data-id]"); if(!row) return;
+  const s = sb.list.find(x=>x.id===row.dataset.id); if(!s) return;
+  if(a==="cfg"){ sbCfgOpen(s.id); return; }
+  if(a==="vis") s.visible = (act.type==="checkbox") ? act.checked : !s.visible;
+  else if(a==="bt") s.enBacktest = !s.enBacktest; else if(a==="pt") s.enPaper = !s.enPaper;
+  s.updated = Date.now(); sbChanged(); if(s.id===sb.sel) sbFillSettings();
+}
+sbq("stratChips").addEventListener("click", sbLayerClick);
+sbq("layersPop").addEventListener("click", sbLayerClick);
+sbq("layersBtn").addEventListener("click",(e)=>{ e.stopPropagation(); sbq("layersPop").classList.toggle("open"); });
+document.addEventListener("click",(e)=>{ const p = sbq("layersPop"); if(p.classList.contains("open") && !p.contains(e.target) && e.target!==sbq("layersBtn")) p.classList.remove("open"); });
+
+/* ---- configuration popup ---- */
+let sbCfgId = null;
+function sbCfgOpen(id){
+  const s = sb.list.find(x=>x.id===id); if(!s) return;
+  sbCfgId = id;
+  sbq("sbcName").value = s.name; sbq("sbcSymbol").value = s.symbol; sbq("sbcTf").value = s.tf; sbq("sbcColor").value = s.color;
+  sbq("sbcVis").checked = !!s.visible; sbq("sbcBt").checked = !!s.enBacktest; sbq("sbcPt").checked = !!s.enPaper;
+  sbq("layersPop").classList.remove("open"); sbq("sbCfgOverlay").style.display = "flex";
+}
+function sbCfgClose(){ sbq("sbCfgOverlay").style.display = "none"; sbCfgId = null; }
+sbq("sbcCancel").addEventListener("click", sbCfgClose);
+sbq("sbCfgOverlay").addEventListener("mousedown",(e)=>{ if(e.target===sbq("sbCfgOverlay")) sbCfgClose(); });
+sbq("sbcApply").addEventListener("click", ()=>{
+  const s = sb.list.find(x=>x.id===sbCfgId); if(!s){ sbCfgClose(); return; }
+  s.name = sbq("sbcName").value.trim() || "Untitled strategy"; s.symbol = sbq("sbcSymbol").value; s.tf = sbq("sbcTf").value; s.color = sbq("sbcColor").value;
+  s.visible = sbq("sbcVis").checked; s.enBacktest = sbq("sbcBt").checked; s.enPaper = sbq("sbcPt").checked; s.updated = Date.now();
+  sbChanged(); if(s.id===sb.sel){ sbFillSettings(); sbStatus(); } sbCfgClose();
+});
+sbq("sbcEdit").addEventListener("click", ()=>{ const id = sbCfgId; sbCfgClose(); if(id && sbSelect(id)) sbOpen(true,"builder"); });
+document.addEventListener("keydown",(e)=>{
+  if(e.key!=="Escape") return;
+  if(sbq("sbCfgOverlay").style.display==="flex") sbCfgClose();
+  else if(sbq("sbOverlay").classList.contains("open")) sbOpen(false);
+  else sbq("layersPop").classList.remove("open");
+});
+
+/* ---- integration point for later parts ---- */
+window.MXStrat = {
+  list: ()=> JSON.parse(JSON.stringify(sb.list)),
+  get: (id)=>{ const s = sb.list.find(x=>x.id===id); return s ? JSON.parse(JSON.stringify(s)) : null; },
+  selectedId: ()=> sb.sel,
+  visibleIds: ()=> sb.list.filter(s=>s.visible).map(s=>s.id),
+  open: ()=> sbOpen(true,"builder")
+};
+
+sbLoad(); sbLoadEditor(); sbFillSettings(); sbRenderList(); sbRenderLayers();
 
 /* ================= INIT ================= */
 async function init(){
