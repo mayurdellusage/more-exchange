@@ -10715,7 +10715,7 @@ async function init(){
   connectWS();
   initDragHandles();
   if(typeof setLeverage === "function") setLeverage(parseInt(document.getElementById("levSlider").value, 10) || 10);
-  else document.getElementById("levVal").textContent = document.getElementById("levSlider").va	lue + "x";
+  else document.getElementById("levVal").textContent = document.getElementById("levSlider").value + "x";
   updateAll();
   MXLiveStrategyEngine.init();
   await MXStorage.init();
