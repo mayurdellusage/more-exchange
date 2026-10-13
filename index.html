@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<script src="pine-engine.js"></script>
 <style>
 :root{
   --bg-0:#131722;
@@ -5092,13 +5093,18 @@ const MXPine = (function(){
     const vars = Object.assign({}, inputs);
 
     // Fast interpreter for Part 2 common patterns
-    const lines = code.split("\n");
+    const rawLines = code.split("\n");
     const scriptLines = [];
-    lines.forEach(line => {
-      const trimmed = line.trim();
-      if(!trimmed || trimmed.startsWith("//") || trimmed.startsWith("strategy(") || trimmed.startsWith("indicator(")) return;
-      scriptLines.push(trimmed);
-    });
+    for(let r = 0; r < rawLines.length; r++){
+      const raw = rawLines[r];
+      const trimmed = raw.trim();
+      if(!trimmed || trimmed.startsWith("//") || trimmed.startsWith("strategy(") || trimmed.startsWith("indicator(")) continue;
+      if((raw.startsWith("  ") || raw.startsWith("\t")) && scriptLines.length > 0 && scriptLines[scriptLines.length - 1].startsWith("if ")) {
+        scriptLines[scriptLines.length - 1] += " " + trimmed;
+      } else {
+        scriptLines.push(trimmed);
+      }
+    }
 
     // Detect indicator definitions: e.g. `fast = ta.ema(close, fastLen)`
     scriptLines.forEach(l => {
@@ -5134,24 +5140,29 @@ const MXPine = (function(){
     // Bar by bar signal simulation
     for(let i = 1; i < N; i++){
       scriptLines.forEach(l => {
-        // Crossover long entry
-        const crossOverM = l.match(/^if\s+ta\.crossover\s*\(\s*([a-zA-Z_]\w*)\s*,\s*([a-zA-Z_]\w*)\s*\)\s*(?:strategy\.entry\s*\(\s*["']([^"']+)["']\s*,\s*(strategy\.long|strategy\.short)\s*\))?/);
+        // Crossover long entry or close
+        const crossOverM = l.match(/^if\s+ta\.crossover\s*\(\s*([a-zA-Z_]\w*)\s*,\s*([a-zA-Z_]\w*)\s*\)\s*(?:strategy\.(close|entry)\s*\(\s*["']([^"']+)["'](?:\s*,\s*(strategy\.long|strategy\.short))?\s*\))?/);
         if(crossOverM){
           const s1 = seriesCache[crossOverM[1]];
           const s2 = seriesCache[crossOverM[2]];
           if(s1 && s2 && s1[i] > s2[i] && s1[i-1] <= s2[i-1]){
-            const id = crossOverM[3] || "Long";
-            signals.push({ barIndex: i, time: times[i], action: "entry", id: id, direction: "LONG", price: closes[i] });
+            const act = crossOverM[3] || "entry";
+            const id = crossOverM[4] || "Long";
+            if(act === "close"){
+              signals.push({ barIndex: i, time: times[i], action: "close", id: id, price: closes[i] });
+            } else {
+              signals.push({ barIndex: i, time: times[i], action: "entry", id: id, direction: "LONG", price: closes[i] });
+            }
           }
         }
         // Crossunder close or short
-        const crossUnderM = l.match(/^if\s+ta\.crossunder\s*\(\s*([a-zA-Z_]\w*)\s*,\s*([a-zA-Z_]\w*)\s*\)\s*(?:strategy\.(close|entry)\s*\(\s*["']([^"']+)["'](?:,\s*(strategy\.long|strategy\.short))?\s*\))?/);
+        const crossUnderM = l.match(/^if\s+ta\.crossunder\s*\(\s*([a-zA-Z_]\w*)\s*,\s*([a-zA-Z_]\w*)\s*\)\s*(?:strategy\.(close|entry)\s*\(\s*["']([^"']+)["'](?:\s*,\s*(strategy\.long|strategy\.short))?\s*\))?/);
         if(crossUnderM){
           const s1 = seriesCache[crossUnderM[1]];
           const s2 = seriesCache[crossUnderM[2]];
           if(s1 && s2 && s1[i] < s2[i] && s1[i-1] >= s2[i-1]){
             const act = crossUnderM[3] || "close";
-            const id = crossUnderM[4] || "Long";
+            const id = crossUnderM[4] || "Short";
             if(act === "close"){
               signals.push({ barIndex: i, time: times[i], action: "close", id: id, price: closes[i] });
             } else {
@@ -5189,6 +5200,126 @@ const MXPine = (function(){
     };
   }
 
+  // Web Worker Bridge for high-performance off-thread execution
+  let pineWorker = null;
+  let workerMsgId = 0;
+  const activeWorkerJobs = new Map();
+
+  function getWorker() {
+    if (!pineWorker && typeof Worker !== "undefined") {
+      try {
+        pineWorker = new Worker("pine-engine.js");
+        pineWorker.onmessage = function(e) {
+          const data = e.data || {};
+          const p = activeWorkerJobs.get(data.jobId);
+          if (p) {
+            if (data.type === "COMPLETE" || data.type === "VALIDATE_RESULT") {
+              activeWorkerJobs.delete(data.jobId);
+              p.resolve(data.result);
+            } else if (data.type === "ERROR") {
+              activeWorkerJobs.delete(data.jobId);
+              p.reject(data.error);
+            } else if (data.type === "CANCELLED") {
+              activeWorkerJobs.delete(data.jobId);
+              p.resolve({ success: false, cancelled: true });
+            } else if (data.type === "PROGRESS" && p.onProgress) {
+              p.onProgress(data);
+            }
+          }
+        };
+      } catch (err) {
+        console.warn("Could not instantiate Web Worker for pine-engine.js:", err);
+      }
+    }
+    return pineWorker;
+  }
+
+  function barsToDataset(bars) {
+    if (!bars || !bars.length) {
+      return { times: new Float64Array(0), opens: new Float64Array(0), highs: new Float64Array(0), lows: new Float64Array(0), closes: new Float64Array(0), volumes: new Float64Array(0) };
+    }
+    if (bars.times && bars.closes) return bars;
+    const N = bars.length;
+    const times = new Float64Array(N);
+    const opens = new Float64Array(N);
+    const highs = new Float64Array(N);
+    const lows = new Float64Array(N);
+    const closes = new Float64Array(N);
+    const volumes = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      const b = bars[i];
+      times[i] = b.time || b.openTime || 0;
+      opens[i] = b.open || 0;
+      highs[i] = b.high || 0;
+      lows[i] = b.low || 0;
+      closes[i] = b.close || 0;
+      volumes[i] = b.volume || 0;
+    }
+    return { times, opens, highs, lows, closes, volumes };
+  }
+
+  function runAsync(code, bars, inputs = {}, opts = {}, onProgress = null) {
+    return new Promise((resolve, reject) => {
+      const w = getWorker();
+      if (!w) {
+        // Fallback to synchronous run
+        try {
+          const res = run(code, bars, inputs);
+          resolve(res);
+        } catch (err) {
+          reject(err);
+        }
+        return;
+      }
+      const jobId = ++workerMsgId;
+      activeWorkerJobs.set(jobId, { resolve, reject, onProgress });
+
+      const dataset = barsToDataset(bars);
+      const transferables = [
+        dataset.times.buffer, dataset.opens.buffer, dataset.highs.buffer,
+        dataset.lows.buffer, dataset.closes.buffer, dataset.volumes.buffer
+      ];
+      w.postMessage({
+        cmd: "BACKTEST",
+        jobId,
+        script: code,
+        dataset,
+        options: Object.assign({}, opts, { inputs })
+      }, transferables);
+    });
+  }
+
+  // Enhanced run with PineEngine adapter
+  function runEnhanced(code, bars, inputs = {}) {
+    if (typeof window !== "undefined" && window.PineEngine && typeof window.PineEngine.executePineScript === "function") {
+      const dataset = barsToDataset(bars);
+      const res = window.PineEngine.executePineScript(code, dataset, { inputs });
+      if (!res.success) {
+        return {
+          success: false,
+          errors: res.errors || [],
+          inputs,
+          signals: [],
+          barCount: bars ? bars.length : 0,
+          meta: {}
+        };
+      }
+      return {
+        success: true,
+        errors: [],
+        inputs,
+        signals: res.signals || [],
+        trades: res.trades || [],
+        metrics: res.metrics || null,
+        plots: res.plots || {},
+        equityCurve: res.equityCurve || [],
+        barCount: bars ? bars.length : 0,
+        meta: {}
+      };
+    }
+    return run(code, bars, inputs);
+  }
+
   return {
     SUPPORTED_INDICATORS,
     SUPPORTED_MATH,
@@ -5197,7 +5328,10 @@ const MXPine = (function(){
     highlight,
     extractInputs,
     parseAndValidate,
-    run
+    run: runEnhanced,
+    runLegacy: run,
+    runAsync,
+    barsToDataset
   };
 })();
 window.MXPine = MXPine;
@@ -5990,6 +6124,11 @@ const MXHistoryCache = {
 };
 
 const MXBacktestEngine = {
+  simulate(strat, bars, opts, inputs){
+    const code = (strat && (strat.code || strat.pineScript)) ? (strat.code || strat.pineScript) : (typeof strat === "string" ? strat : "");
+    const mergedOpts = Object.assign({}, opts || {}, { inputs: inputs || (strat && strat.inputs) || {} });
+    return this.run(code, bars, mergedOpts);
+  },
   run(strategyCode, bars, opts){
     opts = Object.assign({
       symbol: "BTCUSDT",
@@ -6013,6 +6152,24 @@ const MXBacktestEngine = {
     const pineRes = MXPine.run(strategyCode, bars, opts.inputs);
     if(!pineRes.success){
       return { success:false, errors: pineRes.errors, trades:[], metrics:null };
+    }
+
+    // Parse strategy.exit declarations from script
+    let scriptStop = null;
+    let scriptLimit = null;
+    const exitMatch = strategyCode.match(/strategy\.exit\s*\(([^)]+)\)/i);
+    if(exitMatch){
+      const exitArgs = exitMatch[1];
+      const stopM = exitArgs.match(/stop\s*=\s*([^,)]+)/i);
+      const limitM = exitArgs.match(/limit\s*=\s*([^,)]+)/i);
+      if(stopM){
+        const val = parseFloat(stopM[1].trim());
+        if(!isNaN(val)) scriptStop = val;
+      }
+      if(limitM){
+        const val = parseFloat(limitM[1].trim());
+        if(!isNaN(val)) scriptLimit = val;
+      }
     }
 
     const N = bars.length;
@@ -6094,16 +6251,39 @@ const MXBacktestEngine = {
         // SL & TP evaluation
         if(!exitPrice){
           if(position.side === "LONG"){
-            if(position.sl != null && barLow <= position.sl){
-              exitPrice = position.sl; exitReason = opts.trailingStopPct > 0 ? "Trailing Stop" : "Stop Loss";
-            } else if(position.tp != null && barHigh >= position.tp){
-              exitPrice = position.tp; exitReason = "Take Profit";
+            const hitStop = position.sl != null && barLow <= position.sl;
+            const hitLimit = position.tp != null && barHigh >= position.tp;
+            const effectiveStop = (position.sl != null && barOpen <= position.sl) ? barOpen : position.sl;
+            const effectiveLimit = (position.tp != null && barOpen >= position.tp) ? barOpen : position.tp;
+
+            if(hitStop && hitLimit){
+              // Same-bar collision: evaluate open proximity
+              if(Math.abs(barOpen - position.sl) < Math.abs(barOpen - position.tp)){
+                exitPrice = effectiveStop; exitReason = opts.trailingStopPct > 0 ? "Trailing Stop" : "Stop Loss";
+              } else {
+                exitPrice = effectiveLimit; exitReason = "Take Profit";
+              }
+            } else if(hitStop){
+              exitPrice = effectiveStop; exitReason = opts.trailingStopPct > 0 ? "Trailing Stop" : "Stop Loss";
+            } else if(hitLimit){
+              exitPrice = effectiveLimit; exitReason = "Take Profit";
             }
           } else {
-            if(position.sl != null && barHigh >= position.sl){
-              exitPrice = position.sl; exitReason = opts.trailingStopPct > 0 ? "Trailing Stop" : "Stop Loss";
-            } else if(position.tp != null && barLow <= position.tp){
-              exitPrice = position.tp; exitReason = "Take Profit";
+            const hitStop = position.sl != null && barHigh >= position.sl;
+            const hitLimit = position.tp != null && barLow <= position.tp;
+            const effectiveStop = (position.sl != null && barOpen >= position.sl) ? barOpen : position.sl;
+            const effectiveLimit = (position.tp != null && barOpen <= position.tp) ? barOpen : position.tp;
+
+            if(hitStop && hitLimit){
+              if(Math.abs(barOpen - position.sl) < Math.abs(barOpen - position.tp)){
+                exitPrice = effectiveStop; exitReason = opts.trailingStopPct > 0 ? "Trailing Stop" : "Stop Loss";
+              } else {
+                exitPrice = effectiveLimit; exitReason = "Take Profit";
+              }
+            } else if(hitStop){
+              exitPrice = effectiveStop; exitReason = opts.trailingStopPct > 0 ? "Trailing Stop" : "Stop Loss";
+            } else if(hitLimit){
+              exitPrice = effectiveLimit; exitReason = "Take Profit";
             }
           }
         }
@@ -6201,15 +6381,14 @@ const MXBacktestEngine = {
           const marginReq = (qty * slippedEntry) / opts.leverage;
           if(marginReq + entryFee > capital) continue;
 
-          capital -= entryFee;
-
-          let sl = null, tp = null;
-          if(opts.defaultSlPct > 0){
+          let sl = scriptStop !== null ? scriptStop : null;
+          let tp = scriptLimit !== null ? scriptLimit : null;
+          if(sl === null && opts.defaultSlPct > 0){
             sl = dir === "LONG"
               ? roundPrice(opts.symbol, slippedEntry * (1 - opts.defaultSlPct / 100))
               : roundPrice(opts.symbol, slippedEntry * (1 + opts.defaultSlPct / 100));
           }
-          if(opts.defaultTpPct > 0){
+          if(tp === null && opts.defaultTpPct > 0){
             tp = dir === "LONG"
               ? roundPrice(opts.symbol, slippedEntry * (1 + opts.defaultTpPct / 100))
               : roundPrice(opts.symbol, slippedEntry * (1 - opts.defaultTpPct / 100));
@@ -6338,8 +6517,59 @@ const MXBacktestEngine = {
         sharpe
       }
     };
+  },
+  simulate(strat, bars, opts = {}, inputs = {}) {
+    const initCap = (opts && opts.initialCapital) || 10000;
+    if (!bars || bars.length < 2) {
+      return {
+        success: false,
+        trades: [],
+        equityCurve: [{ time: (bars && bars[0] && (bars[0].time || bars[0].openTime)) || 0, value: initCap }],
+        metrics: {
+          initialCapital: initCap,
+          finalCapital: initCap,
+          netProfit: 0,
+          netProfitPct: 0,
+          totalTrades: 0,
+          winRate: 0,
+          profitFactor: 0,
+          maxDrawdownUsd: 0,
+          maxDrawdownPct: 0,
+          sharpe: 0
+        }
+      };
+    }
+    const code = typeof strat === "string" ? strat : (strat && (strat.code || strat.script) ? (strat.code || strat.script) : "");
+    const combinedOpts = Object.assign({}, opts, {
+      inputs: Object.assign({}, (strat && strat.inputs) || {}, inputs || {}),
+      defaultSlPct: (strat && strat.slPct != null) ? strat.slPct : (opts.defaultSlPct || 0),
+      defaultTpPct: (strat && strat.tpPct != null) ? strat.tpPct : (opts.defaultTpPct || 0),
+      trailingStopPct: (strat && strat.trailPct != null) ? strat.trailPct : (opts.trailingStopPct || 0)
+    });
+    const res = this.run(code, bars, combinedOpts);
+    if (!res || !res.metrics) {
+      return {
+        success: false,
+        trades: (res && res.trades) || [],
+        equityCurve: (res && res.equityCurve) || [{ time: (bars[0].time || bars[0].openTime) || 0, value: initCap }],
+        metrics: {
+          initialCapital: initCap,
+          finalCapital: initCap,
+          netProfit: 0,
+          netProfitPct: 0,
+          totalTrades: 0,
+          winRate: 0,
+          profitFactor: 0,
+          maxDrawdownUsd: 0,
+          maxDrawdownPct: 0,
+          sharpe: 0
+        }
+      };
+    }
+    return res;
   }
 };
+window.MXBacktestEngine = MXBacktestEngine;
 window.MXBacktest = MXBacktestEngine;
 
 /* ---- Strategy Tester UI Controller ---- */
@@ -10485,7 +10715,7 @@ async function init(){
   connectWS();
   initDragHandles();
   if(typeof setLeverage === "function") setLeverage(parseInt(document.getElementById("levSlider").value, 10) || 10);
-  else document.getElementById("levVal").textContent = document.getElementById("levSlider").value + "x";
+  else document.getElementById("levVal").textContent = document.getElementById("levSlider").va	lue + "x";
   updateAll();
   MXLiveStrategyEngine.init();
   await MXStorage.init();
