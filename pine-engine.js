@@ -111,6 +111,14 @@
         continue;
       }
 
+      // Arrow operator =>
+      if (source.slice(i, i + 2) === "=>") {
+        tokens.push({ type: TOKEN_TYPES.OPERATOR, value: "=>", line, col });
+        i += 2;
+        col += 2;
+        continue;
+      }
+
       // Compound Operators: :=, +=, -=, *=, /=, ==, !=, <=, >=
       const op2 = source.slice(i, i + 2);
       if (op2 === ":=" || op2 === "+=" || op2 === "-=" || op2 === "*=" || op2 === "/=" ||
@@ -226,141 +234,664 @@
   ]);
 
   // --------------------------------------------------------------------------
-  // 3. Validation & AST Preflight
+  // 3. Recursive-Descent AST Parser & Syntax Diagnostics (Phase 6 Foundation)
   // --------------------------------------------------------------------------
-  function validateScript(source) {
-    const errors = [];
-    const tokens = tokenize(source);
-    let idx = 0;
-
-    function peek(offset = 0) {
-      return tokens[idx + offset] || { type: TOKEN_TYPES.EOF, value: "" };
+  class PineParser {
+    constructor(tokens) {
+      this.tokens = tokens;
+      this.pos = 0;
+      this.errors = [];
+      this.declaredVars = new Set([...BUILTIN_SERIES, ...BUILTIN_CONSTANTS]);
     }
 
-    const declaredVars = new Set([...BUILTIN_SERIES, ...BUILTIN_CONSTANTS]);
-    let hasDeclaration = false;
+    current() {
+      return this.tokens[this.pos] || { type: TOKEN_TYPES.EOF, value: "", line: 1, col: 1 };
+    }
 
-    // Check header / declaration
-    for (let k = 0; k < tokens.length; k++) {
-      const t = tokens[k];
-      if (t.type === TOKEN_TYPES.IDENTIFIER || t.type === TOKEN_TYPES.KEYWORD) {
-        if (t.value === "indicator" || t.value === "strategy") {
-          hasDeclaration = true;
-          break;
-        }
+    peek(offset = 1) {
+      return this.tokens[this.pos + offset] || { type: TOKEN_TYPES.EOF, value: "", line: 1, col: 1 };
+    }
+
+    isAtEnd() {
+      return this.pos >= this.tokens.length || this.current().type === TOKEN_TYPES.EOF;
+    }
+
+    advance() {
+      const tok = this.current();
+      if (!this.isAtEnd()) this.pos++;
+      return tok;
+    }
+
+    match(expectedValue) {
+      if (this.current().value === expectedValue) {
+        return this.advance();
+      }
+      return null;
+    }
+
+    consumeNewlines() {
+      while (this.current().type === TOKEN_TYPES.NEWLINE) {
+        this.advance();
       }
     }
 
-    if (!hasDeclaration) {
-      errors.push({
-        line: 1,
-        column: 1,
-        message: "Script must declare either indicator(...) or strategy(...) on the first active statement."
+    addError(message, token = null) {
+      const tok = token || this.current();
+      this.errors.push({
+        line: tok.line,
+        column: tok.col,
+        message
       });
     }
 
-    // Pass 1: Collect declared identifiers
-    for (let k = 0; k < tokens.length; k++) {
-      const t = tokens[k];
-      const next = tokens[k + 1];
+    // Program entry point
+    parse() {
+      this.consumeNewlines();
+      const body = [];
+      let scriptType = null;
+      let scriptHeader = null;
 
-      // Variable declaration: name = expr OR var name = expr
-      if (t.type === TOKEN_TYPES.IDENTIFIER && next && next.value === "=") {
-        declaredVars.add(t.value);
-      } else if (t.value === "var" && next && next.type === TOKEN_TYPES.IDENTIFIER) {
-        declaredVars.add(next.value);
-      } else if (t.value === "[" && tokens[k + 1] && tokens[k + 2] && tokens[k + 2].value === ",") {
-        // Multi-assignment tuple: [a, b, c] = ...
-        let m = k + 1;
-        while (m < tokens.length && tokens[m].value !== "]") {
-          if (tokens[m].type === TOKEN_TYPES.IDENTIFIER) declaredVars.add(tokens[m].value);
-          m++;
+      let firstStatement = true;
+      while (!this.isAtEnd()) {
+        const loopStart = this.pos;
+        this.consumeNewlines();
+        if (this.isAtEnd()) break;
+
+        const tok = this.current();
+
+        // Reject unsupported features explicitly
+        if (tok.value === "for") {
+          this.addError("Loops ('for') are not supported in this version.", tok);
+          this.advance();
+          this.skipToNextLine();
+          continue;
         }
-      }
-    }
+        if (tok.value === "while") {
+          this.addError("Loops ('while') are not supported in this version.", tok);
+          this.advance();
+          this.skipToNextLine();
+          continue;
+        }
 
-    // Pass 2: Check function call arities and unknown identifiers
-    let parenDepth = 0;
-    for (let k = 0; k < tokens.length; k++) {
-      const t = tokens[k];
-
-      if (t.value === "(") parenDepth++;
-      if (t.value === ")") parenDepth--;
-
-      // Function calls: name(...)
-      if (t.type === TOKEN_TYPES.IDENTIFIER && tokens[k + 1] && tokens[k + 1].value === "(") {
-        const fnName = t.value;
-        const sig = FUNCTION_SIGNATURES[fnName];
-
-        if (sig) {
-          // Count arguments within this call
-          let depth = 1;
-          let p = k + 2;
-          let argCount = 0;
-          let hasTokensInArg = false;
-
-          while (p < tokens.length && depth > 0) {
-            if (tokens[p].value === "(") depth++;
-            else if (tokens[p].value === ")") {
-              depth--;
-              if (depth === 0) {
-                if (hasTokensInArg) argCount++;
-                break;
+        const stmt = this.parseStatement();
+        if (stmt) {
+          if (firstStatement) {
+            firstStatement = false;
+            if (stmt.type === "ExpressionStatement" && stmt.expression && stmt.expression.type === "CallExpression") {
+              const callee = stmt.expression.callee.name;
+              if (callee === "indicator" || callee === "strategy") {
+                scriptType = callee;
+                scriptHeader = stmt;
               }
-            } else if (tokens[p].value === "," && depth === 1) {
-              argCount++;
-              hasTokensInArg = false;
-              p++;
-              continue;
-            } else if (tokens[p].type !== TOKEN_TYPES.NEWLINE) {
-              hasTokensInArg = true;
             }
-            p++;
+            if (!scriptType) {
+              this.addError("Script must declare either indicator(...) or strategy(...) on the first active statement.", tok);
+            }
           }
-
-          if (argCount < sig.minArgs) {
-            errors.push({
-              line: t.line,
-              column: t.col,
-              message: `Function '${fnName}' expects at least ${sig.minArgs} argument(s) ${sig.desc}, but received ${argCount}.`
-            });
-          } else if (sig.maxArgs && argCount > sig.maxArgs) {
-            errors.push({
-              line: t.line,
-              column: t.col,
-              message: `Function '${fnName}' expects at most ${sig.maxArgs} argument(s) ${sig.desc}, but received ${argCount}.`
-            });
-          }
-        } else if (fnName.startsWith("ta.") || fnName.startsWith("math.") || fnName.startsWith("strategy.")) {
-          errors.push({
-            line: t.line,
-            column: t.col,
-            message: `Unknown or unsupported namespace member '${fnName}'.`
-          });
+          body.push(stmt);
+        } else {
+          this.skipToNextLine();
         }
-      } else if (t.type === TOKEN_TYPES.IDENTIFIER && !tokens[k + 1]?.value?.startsWith("(") && tokens[k - 1]?.value !== ".") {
-        // Free identifier
-        if (!declaredVars.has(t.value) && !FUNCTION_SIGNATURES[t.value]) {
-          errors.push({
-            line: t.line,
-            column: t.col,
-            message: `Undeclared identifier '${t.value}'.`
-          });
+
+        if (this.pos === loopStart) {
+          this.advance();
         }
       }
+
+      return {
+        type: "Program",
+        scriptType,
+        header: scriptHeader,
+        body,
+        errors: this.errors
+      };
     }
 
-    if (parenDepth !== 0) {
-      errors.push({
-        line: tokens[tokens.length - 1]?.line || 1,
-        column: 1,
-        message: "Syntax error: Unmatched parentheses '(' and ')'."
-      });
+    skipToNextLine() {
+      while (!this.isAtEnd() && this.current().type !== TOKEN_TYPES.NEWLINE) {
+        this.advance();
+      }
+      this.consumeNewlines();
     }
 
+    parseStatement() {
+      const tok = this.current();
+
+      // Check for user-defined function definition f(x) => ...
+      if (tok.type === TOKEN_TYPES.IDENTIFIER && this.peek(1).value === "(") {
+        let look = this.pos + 2;
+        let depth = 1;
+        while (look < this.tokens.length && depth > 0 && this.tokens[look].type !== TOKEN_TYPES.NEWLINE) {
+          if (this.tokens[look].value === "(") depth++;
+          else if (this.tokens[look].value === ")") depth--;
+          look++;
+        }
+        if (look < this.tokens.length && this.tokens[look].value === "=>") {
+          this.addError("User-defined functions ('=>') are not supported in this version.", this.tokens[look]);
+          this.skipToNextLine();
+          return null;
+        }
+      }
+
+      // Check for multi-timeframe request.*
+      if (tok.value && tok.value.startsWith("request.")) {
+        this.addError("Multi-timeframe requests ('request.*') are not supported in this version.", tok);
+        this.skipToNextLine();
+        return null;
+      }
+
+      // 1. Variable declaration: var / varip name = expr
+      if (tok.value === "var" || tok.value === "varip") {
+        const isVarip = tok.value === "varip";
+        const varTok = this.advance();
+        const idTok = this.current();
+        if (idTok.type !== TOKEN_TYPES.IDENTIFIER) {
+          this.addError(`Expected variable identifier after '${varTok.value}', got '${idTok.value}'`, idTok);
+          this.skipToNextLine();
+          return null;
+        }
+        this.advance();
+        this.declaredVars.add(idTok.value);
+
+        if (!this.match("=")) {
+          this.addError(`Expected '=' in variable declaration for '${idTok.value}'`, this.current());
+          this.skipToNextLine();
+          return null;
+        }
+
+        const init = this.parseExpression();
+        return {
+          type: "Declaration",
+          name: idTok.value,
+          isVar: true,
+          isVarip,
+          init,
+          loc: { line: varTok.line, col: varTok.col }
+        };
+      }
+
+      // 2. Tuple declaration: [a, b, c] = expr
+      if (tok.value === "[") {
+        const startTok = this.advance();
+        const names = [];
+        while (!this.isAtEnd() && this.current().value !== "]") {
+          const loopStart = this.pos;
+          const item = this.current();
+          if (item.type === TOKEN_TYPES.IDENTIFIER) {
+            names.push(item.value);
+            this.declaredVars.add(item.value);
+            this.advance();
+          } else if (item.value === ",") {
+            this.advance();
+          } else {
+            this.addError(`Unexpected token in tuple declaration: '${item.value}'`, item);
+            break;
+          }
+          if (this.pos === loopStart) this.advance();
+        }
+        this.match("]");
+        if (!this.match("=")) {
+          this.addError("Expected '=' after tuple declaration", this.current());
+          this.skipToNextLine();
+          return null;
+        }
+        const init = this.parseExpression();
+        return {
+          type: "TupleDeclaration",
+          names,
+          init,
+          loc: { line: startTok.line, col: startTok.col }
+        };
+      }
+
+      // 3. Reassignment (:=, +=, -=, *=, /=) or Simple Declaration (name = expr)
+      if (tok.type === TOKEN_TYPES.IDENTIFIER) {
+        const next = this.peek(1);
+        if (next.value === "=") {
+          const idTok = this.advance();
+          this.advance(); // consume '='
+          this.declaredVars.add(idTok.value);
+          const init = this.parseExpression();
+          return {
+            type: "Declaration",
+            name: idTok.value,
+            isVar: false,
+            isVarip: false,
+            init,
+            loc: { line: idTok.line, col: idTok.col }
+          };
+        } else if (next.value === ":=" || next.value === "+=" || next.value === "-=" || next.value === "*=" || next.value === "/=") {
+          const idTok = this.advance();
+          const opTok = this.advance();
+          if (!this.declaredVars.has(idTok.value)) {
+            this.addError(`Cannot reassign undeclared identifier '${idTok.value}'`, idTok);
+          }
+          const val = this.parseExpression();
+          return {
+            type: "Reassignment",
+            name: idTok.value,
+            operator: opTok.value,
+            value: val,
+            loc: { line: idTok.line, col: idTok.col }
+          };
+        }
+      }
+
+      // 4. Conditional statement: if cond ... [else ...]
+      if (tok.value === "if") {
+        return this.parseIfStatement();
+      }
+
+      // 5. Expression Statement (e.g. function calls, plot, strategy.entry)
+      const expr = this.parseExpression();
+      if (expr) {
+        return {
+          type: "ExpressionStatement",
+          expression: expr,
+          loc: expr.loc
+        };
+      }
+
+      return null;
+    }
+
+    parseIfStatement() {
+      const ifTok = this.advance(); // consume 'if'
+      const ifCol = ifTok.col;
+
+      let cond;
+      if (this.current().value === "(") {
+        this.advance();
+        cond = this.parseExpression();
+        if (!this.match(")")) {
+          this.addError("Expected ')' after if condition", this.current());
+        }
+      } else {
+        cond = this.parseExpression();
+      }
+
+      const consequent = [];
+      let alternate = null;
+
+      // Check if body is on next line indented or same line
+      if (this.current().type === TOKEN_TYPES.NEWLINE) {
+        this.consumeNewlines();
+        while (!this.isAtEnd() && this.current().type !== TOKEN_TYPES.EOF) {
+          const loopStart = this.pos;
+          if (this.current().type === TOKEN_TYPES.NEWLINE) {
+            this.advance();
+            continue;
+          }
+          if (this.current().col <= ifCol) {
+            break; // End of indented block
+          }
+          const stmt = this.parseStatement();
+          if (stmt) consequent.push(stmt);
+          else this.skipToNextLine();
+
+          if (this.pos === loopStart) this.advance();
+        }
+
+        // Check for 'else' at same indentation level
+        if (this.current().value === "else" && this.current().col === ifCol) {
+          this.advance(); // consume 'else'
+          alternate = [];
+          if (this.current().type === TOKEN_TYPES.NEWLINE) {
+            this.consumeNewlines();
+            while (!this.isAtEnd() && this.current().type !== TOKEN_TYPES.EOF) {
+              const loopStart = this.pos;
+              if (this.current().type === TOKEN_TYPES.NEWLINE) {
+                this.advance();
+                continue;
+              }
+              if (this.current().col <= ifCol) break;
+              const stmt = this.parseStatement();
+              if (stmt) alternate.push(stmt);
+              else this.skipToNextLine();
+
+              if (this.pos === loopStart) this.advance();
+            }
+          } else {
+            const singleStmt = this.parseStatement();
+            if (singleStmt) alternate.push(singleStmt);
+          }
+        }
+      } else {
+        const stmt = this.parseStatement();
+        if (stmt) consequent.push(stmt);
+      }
+
+      return {
+        type: "IfStatement",
+        condition: cond,
+        consequent,
+        alternate,
+        loc: { line: ifTok.line, col: ifTok.col }
+      };
+    }
+
+    // ------------------------------------------------------------------------
+    // Expression Parsing with Proper Precedence
+    // ------------------------------------------------------------------------
+    parseExpression() {
+      return this.parseTernary();
+    }
+
+    parseTernary() {
+      const expr = this.parseLogicalOr();
+      if (this.current().value === "?") {
+        const qTok = this.advance();
+        const consequent = this.parseTernary();
+        if (!this.match(":")) {
+          this.addError("Expected ':' in ternary expression", this.current());
+        }
+        const alternate = this.parseTernary();
+        return {
+          type: "TernaryExpression",
+          test: expr,
+          consequent,
+          alternate,
+          loc: expr ? expr.loc : { line: qTok.line, col: qTok.col }
+        };
+      }
+      return expr;
+    }
+
+    parseLogicalOr() {
+      let left = this.parseLogicalAnd();
+      while (this.current().value === "or") {
+        const opTok = this.advance();
+        const right = this.parseLogicalAnd();
+        left = {
+          type: "BinaryExpression",
+          operator: "or",
+          left,
+          right,
+          loc: left ? left.loc : { line: opTok.line, col: opTok.col }
+        };
+      }
+      return left;
+    }
+
+    parseLogicalAnd() {
+      let left = this.parseEquality();
+      while (this.current().value === "and") {
+        const opTok = this.advance();
+        const right = this.parseEquality();
+        left = {
+          type: "BinaryExpression",
+          operator: "and",
+          left,
+          right,
+          loc: left ? left.loc : { line: opTok.line, col: opTok.col }
+        };
+      }
+      return left;
+    }
+
+    parseEquality() {
+      let left = this.parseComparison();
+      while (this.current().value === "==" || this.current().value === "!=") {
+        const opTok = this.advance();
+        const right = this.parseComparison();
+        left = {
+          type: "BinaryExpression",
+          operator: opTok.value,
+          left,
+          right,
+          loc: left ? left.loc : { line: opTok.line, col: opTok.col }
+        };
+      }
+      return left;
+    }
+
+    parseComparison() {
+      let left = this.parseAdditive();
+      while (this.current().value === "<" || this.current().value === "<=" ||
+             this.current().value === ">" || this.current().value === ">=") {
+        const opTok = this.advance();
+        const right = this.parseAdditive();
+        left = {
+          type: "BinaryExpression",
+          operator: opTok.value,
+          left,
+          right,
+          loc: left ? left.loc : { line: opTok.line, col: opTok.col }
+        };
+      }
+      return left;
+    }
+
+    parseAdditive() {
+      let left = this.parseMultiplicative();
+      while (this.current().value === "+" || this.current().value === "-") {
+        const opTok = this.advance();
+        const right = this.parseMultiplicative();
+        left = {
+          type: "BinaryExpression",
+          operator: opTok.value,
+          left,
+          right,
+          loc: left ? left.loc : { line: opTok.line, col: opTok.col }
+        };
+      }
+      return left;
+    }
+
+    parseMultiplicative() {
+      let left = this.parseUnary();
+      while (this.current().value === "*" || this.current().value === "/" || this.current().value === "%") {
+        const opTok = this.advance();
+        const right = this.parseUnary();
+        left = {
+          type: "BinaryExpression",
+          operator: opTok.value,
+          left,
+          right,
+          loc: left ? left.loc : { line: opTok.line, col: opTok.col }
+        };
+      }
+      return left;
+    }
+
+    parseUnary() {
+      if (this.current().value === "-" || this.current().value === "+" || this.current().value === "not") {
+        const opTok = this.advance();
+        const arg = this.parseUnary();
+        return {
+          type: "UnaryExpression",
+          operator: opTok.value,
+          argument: arg,
+          prefix: true,
+          loc: { line: opTok.line, col: opTok.col }
+        };
+      }
+      return this.parsePrimary();
+    }
+
+    parsePrimary() {
+      const tok = this.current();
+
+      // Literals: Number
+      if (tok.type === TOKEN_TYPES.NUMBER) {
+        this.advance();
+        return {
+          type: "Literal",
+          value: tok.value,
+          raw: tok.raw,
+          loc: { line: tok.line, col: tok.col }
+        };
+      }
+
+      // Literals: String
+      if (tok.type === TOKEN_TYPES.STRING) {
+        this.advance();
+        return {
+          type: "Literal",
+          value: tok.value,
+          raw: tok.value,
+          loc: { line: tok.line, col: tok.col }
+        };
+      }
+
+      // Literals: Booleans & na
+      if (tok.value === "true" || tok.value === "false" || tok.value === "na") {
+        this.advance();
+        return {
+          type: "Literal",
+          value: tok.value === "true" ? true : (tok.value === "false" ? false : null),
+          raw: tok.value,
+          loc: { line: tok.line, col: tok.col }
+        };
+      }
+
+      // Parentheses: ( expr )
+      if (tok.value === "(") {
+        const startTok = this.advance();
+        const expr = this.parseExpression();
+        if (!this.match(")")) {
+          this.addError("Syntax error: Unmatched parentheses '(' and ')'.", startTok);
+        }
+        return expr;
+      }
+
+      // Identifiers / Calls / History Indexing
+      if (tok.type === TOKEN_TYPES.IDENTIFIER || tok.type === TOKEN_TYPES.KEYWORD) {
+        const idTok = this.advance();
+        const idName = idTok.value;
+
+        // Function call: name(...)
+        if (this.current().value === "(") {
+          return this.parseCall(idTok);
+        }
+
+        // History indexing: name[k]
+        if (this.current().value === "[") {
+          this.advance(); // consume '['
+          const idxTok = this.current();
+          let indexVal = 0;
+          if (idxTok.type === TOKEN_TYPES.NUMBER) {
+            indexVal = idxTok.value;
+            this.advance();
+          } else {
+            const idxExpr = this.parseExpression();
+            indexVal = idxExpr;
+          }
+          if (!this.match("]")) {
+            this.addError("Expected ']' in history indexing", this.current());
+          }
+          return {
+            type: "HistoryIndexExpression",
+            series: { type: "Identifier", name: idName, loc: { line: idTok.line, col: idTok.col } },
+            index: indexVal,
+            loc: { line: idTok.line, col: idTok.col }
+          };
+        }
+
+        // Undeclared identifier validation
+        if (!this.declaredVars.has(idName) && !FUNCTION_SIGNATURES[idName]) {
+          this.addError(`Undeclared identifier '${idName}'.`, idTok);
+        }
+
+        return {
+          type: "Identifier",
+          name: idName,
+          loc: { line: idTok.line, col: idTok.col }
+        };
+      }
+
+      this.addError(`Unexpected token '${tok.value}'`, tok);
+      this.advance();
+      return null;
+    }
+
+    parseCall(idTok) {
+      const calleeName = idTok.value;
+      const parenTok = this.advance(); // consume '('
+      const args = [];
+
+      let rawArgCount = 0;
+      while (!this.isAtEnd() && this.current().value !== ")") {
+        const loopStartPos = this.pos;
+        this.consumeNewlines();
+        if (this.current().value === ")") break;
+
+        // Named argument check: name = expr
+        if (this.current().type === TOKEN_TYPES.IDENTIFIER && this.peek(1).value === "=" && this.peek(1).type === TOKEN_TYPES.OPERATOR) {
+          const argNameTok = this.advance();
+          this.advance(); // consume '='
+          const argVal = this.parseExpression();
+          args.push({
+            type: "NamedArgument",
+            name: argNameTok.value,
+            value: argVal,
+            loc: { line: argNameTok.line, col: argNameTok.col }
+          });
+          rawArgCount++;
+        } else {
+          const argVal = this.parseExpression();
+          if (argVal) {
+            args.push(argVal);
+            rawArgCount++;
+          }
+        }
+
+        if (this.current().value === ",") {
+          this.advance();
+        } else if (this.current().value !== ")") {
+          this.consumeNewlines();
+        }
+
+        if (this.pos === loopStartPos) {
+          this.addError(`Unexpected token '${this.current().value}' in argument list`, this.current());
+          this.advance();
+        }
+      }
+
+      if (!this.match(")")) {
+        this.addError("Syntax error: Unmatched parentheses '(' and ')'.", parenTok);
+      }
+
+      // Built-in Function Signature & Arity Validation
+      const sig = FUNCTION_SIGNATURES[calleeName];
+      if (calleeName.startsWith("request.")) {
+        this.addError("Multi-timeframe requests ('request.*') are not supported in this version.", idTok);
+      } else if (sig) {
+        if (rawArgCount < sig.minArgs) {
+          this.addError(`Function '${calleeName}' expects at least ${sig.minArgs} argument(s) ${sig.desc}, but received ${rawArgCount}.`, idTok);
+        } else if (sig.maxArgs && rawArgCount > sig.maxArgs) {
+          this.addError(`Function '${calleeName}' expects at most ${sig.maxArgs} argument(s) ${sig.desc}, but received ${rawArgCount}.`, idTok);
+        }
+      } else if (calleeName.startsWith("ta.") || calleeName.startsWith("math.") || calleeName.startsWith("strategy.")) {
+        this.addError(`Unknown or unsupported namespace member '${calleeName}'.`, idTok);
+      }
+
+      return {
+        type: "CallExpression",
+        callee: { type: "Identifier", name: calleeName, loc: { line: idTok.line, col: idTok.col } },
+        args,
+        loc: { line: idTok.line, col: idTok.col }
+      };
+    }
+  }
+
+  function parsePine(source) {
+    const tokens = tokenize(source);
+    const parser = new PineParser(tokens);
+    const ast = parser.parse();
     return {
-      isValid: errors.length === 0,
-      errors
+      ast,
+      isValid: ast.errors.length === 0,
+      errors: ast.errors
+    };
+  }
+
+  function validateScript(source) {
+    const p = parsePine(source);
+    return {
+      isValid: p.isValid,
+      errors: p.errors,
+      ast: p.ast
     };
   }
 
@@ -1346,6 +1877,12 @@
         return;
       }
 
+      if (cmd === "PARSE") {
+        const p = parsePine(script || "");
+        self.postMessage({ type: "PARSE_RESULT", jobId, result: p });
+        return;
+      }
+
       if (cmd === "EXECUTE" || cmd === "BACKTEST") {
         currentJobId = jobId || (currentJobId + 1);
         const thisJob = currentJobId;
@@ -1394,10 +1931,125 @@
     };
   }
 
+  // --------------------------------------------------------------------------
+  // Adapters & Exports for Main Thread & External Callers
+  // --------------------------------------------------------------------------
+  function barsToDataset(bars) {
+    if (!bars || !bars.length) {
+      return { times: new Float64Array(0), opens: new Float64Array(0), highs: new Float64Array(0), lows: new Float64Array(0), closes: new Float64Array(0), volumes: new Float64Array(0) };
+    }
+    if (bars.times && bars.closes) return bars;
+    const N = bars.length;
+    const times = new Float64Array(N);
+    const opens = new Float64Array(N);
+    const highs = new Float64Array(N);
+    const lows = new Float64Array(N);
+    const closes = new Float64Array(N);
+    const volumes = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      const b = bars[i];
+      times[i] = b.time || b.openTime || 0;
+      opens[i] = b.open || 0;
+      highs[i] = b.high || 0;
+      lows[i] = b.low || 0;
+      closes[i] = b.close || 0;
+      volumes[i] = b.volume || 0;
+    }
+    return { times, opens, highs, lows, closes, volumes };
+  }
+
+  const MXPineEngineAdapter = {
+    validateScript,
+    parsePine,
+    tokenize,
+    barsToDataset,
+    parseAndValidate: (code) => validateScript(code),
+    extractInputs: (code) => {
+      const res = validateScript(code);
+      return res.inputs || [];
+    },
+    run: (code, bars, inputs = {}, opts = {}) => {
+      const dataset = barsToDataset(bars);
+      const mergedOpts = Object.assign({}, opts, { inputs: inputs || {} });
+      const res = executePineScript(code, dataset, mergedOpts);
+      return {
+        success: res.success,
+        errors: res.errors || [],
+        inputs: inputs || {},
+        signals: res.signals || [],
+        trades: res.trades || [],
+        metrics: res.metrics || null,
+        plots: res.plots || {},
+        equityCurve: res.equityCurve || [],
+        barCount: bars ? bars.length : 0,
+        meta: {}
+      };
+    },
+    runAsync: (code, bars, inputs = {}, opts = {}, onProgress = null) => {
+      const dataset = barsToDataset(bars);
+      const mergedOpts = Object.assign({}, opts, { inputs: inputs || {} });
+      return executePineScriptAsync(code, dataset, mergedOpts, () => false, onProgress);
+    }
+  };
+
+  const MXBacktestEngineAdapter = {
+    run: (strategyCode, bars, opts = {}) => {
+      const dataset = barsToDataset(bars);
+      const res = executePineScript(strategyCode, dataset, opts);
+      if (!res || !res.success) {
+        return {
+          success: false,
+          errors: (res && res.errors) || [{ line: 1, message: "Engine execution failed" }],
+          trades: [],
+          metrics: null,
+          equityCurve: []
+        };
+      }
+      return {
+        success: true,
+        opts: opts,
+        trades: res.trades || [],
+        metrics: res.metrics || null,
+        equityCurve: res.equityCurve || [],
+        signals: res.signals || []
+      };
+    },
+    simulate: (strat, bars, opts = {}, inputs = {}) => {
+      const code = typeof strat === "string" ? strat : (strat && (strat.code || strat.script || strat.pineScript) ? (strat.code || strat.script || strat.pineScript) : "");
+      const mergedInputs = Object.assign({}, (strat && strat.inputs) || {}, inputs || {});
+      const mergedOpts = Object.assign({}, opts || {}, {
+        inputs: mergedInputs,
+        symbol: (opts && opts.symbol) || (strat && strat.symbol) || "BTCUSDT",
+        initialCapital: (opts && opts.initialCapital) || (strat && strat.initialCapital) || 10000,
+        leverage: (opts && opts.leverage) || (strat && strat.leverage) || 10,
+        slPct: (strat && strat.slPct != null) ? strat.slPct : ((opts && opts.slPct != null) ? opts.slPct : (opts && opts.defaultSlPct)),
+        tpPct: (strat && strat.tpPct != null) ? strat.tpPct : ((opts && opts.tpPct != null) ? opts.tpPct : (opts && opts.defaultTpPct))
+      });
+      return MXBacktestEngineAdapter.run(code, bars, mergedOpts);
+    }
+  };
+
+  const engineExports = {
+    validateScript,
+    parsePine,
+    executePineScript,
+    executePineScriptAsync,
+    tokenize,
+    barsToDataset,
+    PineEngine: { validateScript, parsePine, executePineScript, executePineScriptAsync, tokenize },
+    MXPine: MXPineEngineAdapter,
+    MXBacktestEngine: MXBacktestEngineAdapter,
+    MXBacktest: MXBacktestEngineAdapter
+  };
+
   // Export for main thread direct / fallback usage
   if (typeof module !== "undefined" && module.exports) {
-    module.exports = { validateScript, executePineScript, tokenize };
-  } else if (typeof window !== "undefined") {
-    window.PineEngine = { validateScript, executePineScript, tokenize };
+    module.exports = engineExports;
+  }
+  if (typeof window !== "undefined") {
+    window.PineEngine = engineExports.PineEngine;
+    window.MXPine = engineExports.MXPine;
+    window.MXBacktestEngine = engineExports.MXBacktestEngine;
+    window.MXBacktest = engineExports.MXBacktest;
   }
 })();
