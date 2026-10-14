@@ -178,6 +178,8 @@
     // Technical Analysis
     "ta.ema": { minArgs: 2, maxArgs: 2, desc: "(source, length)" },
     "ta.sma": { minArgs: 2, maxArgs: 2, desc: "(source, length)" },
+    "ta.wma": { minArgs: 2, maxArgs: 2, desc: "(source, length)" },
+    "ta.vwma": { minArgs: 2, maxArgs: 2, desc: "(source, length)" },
     "ta.rsi": { minArgs: 2, maxArgs: 2, desc: "(source, length)" },
     "ta.macd": { minArgs: 4, maxArgs: 4, desc: "(source, fastlen, slowlen, siglen)" },
     "ta.atr": { minArgs: 1, maxArgs: 1, desc: "(length)" },
@@ -185,6 +187,9 @@
     "ta.crossunder": { minArgs: 2, maxArgs: 2, desc: "(source1, source2)" },
     "ta.highest": { minArgs: 2, maxArgs: 2, desc: "(source, length)" },
     "ta.lowest": { minArgs: 2, maxArgs: 2, desc: "(source, length)" },
+    "ta.highestbars": { minArgs: 2, maxArgs: 2, desc: "(source, length)" },
+    "ta.lowestbars": { minArgs: 2, maxArgs: 2, desc: "(source, length)" },
+    "ta.valuewhen": { minArgs: 2, maxArgs: 3, desc: "(condition, source, occurrence?)" },
     "ta.change": { minArgs: 1, maxArgs: 2, desc: "(source, length?)" },
     "ta.cum": { minArgs: 1, maxArgs: 1, desc: "(source)" },
     "ta.barssince": { minArgs: 1, maxArgs: 1, desc: "(condition)" },
@@ -198,7 +203,9 @@
     "math.ceil": { minArgs: 1, maxArgs: 1, desc: "(number)" },
     "math.sqrt": { minArgs: 1, maxArgs: 1, desc: "(number)" },
     "math.pow": { minArgs: 2, maxArgs: 2, desc: "(base, exp)" },
+    "math.sign": { minArgs: 1, maxArgs: 1, desc: "(number)" },
     "math.log": { minArgs: 1, maxArgs: 1, desc: "(number)" },
+    "math.exp": { minArgs: 1, maxArgs: 1, desc: "(number)" },
 
     // Helpers & Plots
     "nz": { minArgs: 1, maxArgs: 2, desc: "(source, replacement?)" },
@@ -338,6 +345,10 @@
         }
       }
 
+      if (!scriptType) {
+        this.addError("Script must declare either indicator(...) or strategy(...).", { line: 1, col: 1 });
+      }
+
       return {
         type: "Program",
         scriptType,
@@ -367,9 +378,7 @@
           look++;
         }
         if (look < this.tokens.length && this.tokens[look].value === "=>") {
-          this.addError("User-defined functions ('=>') are not supported in this version.", this.tokens[look]);
-          this.skipToNextLine();
-          return null;
+          return this.parseFunctionDeclaration();
         }
       }
 
@@ -493,6 +502,85 @@
       }
 
       return null;
+    }
+
+    parseFunctionDeclaration() {
+      const fnTok = this.advance(); // consume function name
+      const fnCol = fnTok.col;
+      this.advance(); // consume '('
+
+      const params = [];
+      const newlyDeclared = [];
+      while (!this.isAtEnd() && this.current().value !== ")") {
+        const pTok = this.current();
+        if (pTok.type === TOKEN_TYPES.IDENTIFIER) {
+          this.advance();
+          let defaultVal = null;
+          if (this.current().value === "=") {
+            this.advance();
+            defaultVal = this.parseExpression();
+          }
+          params.push({ name: pTok.value, defaultVal });
+          if (!this.declaredVars.has(pTok.value)) {
+            this.declaredVars.add(pTok.value);
+            newlyDeclared.push(pTok.value);
+          }
+        } else if (pTok.value === ",") {
+          this.advance();
+        } else {
+          this.addError(`Unexpected token in function parameters: '${pTok.value}'`, pTok);
+          break;
+        }
+      }
+      this.match(")");
+      this.match("=>");
+      this.declaredVars.add(fnTok.value);
+
+      let fnResult;
+      // Check if body is multi-line indented block or single-line expression
+      if (this.current().type === TOKEN_TYPES.NEWLINE) {
+        this.consumeNewlines();
+
+        const bodyStatements = [];
+        while (!this.isAtEnd() && this.current().type !== TOKEN_TYPES.EOF) {
+          const loopStart = this.pos;
+          if (this.current().type === TOKEN_TYPES.NEWLINE) {
+            this.advance();
+            continue;
+          }
+          if (this.current().col <= fnCol) {
+            break;
+          }
+          const stmt = this.parseStatement();
+          if (stmt) bodyStatements.push(stmt);
+          else this.skipToNextLine();
+
+          if (this.pos === loopStart) this.advance();
+        }
+        fnResult = {
+          type: "FunctionDeclaration",
+          name: fnTok.value,
+          params,
+          body: bodyStatements,
+          isBlock: true,
+          loc: { line: fnTok.line, col: fnTok.col }
+        };
+      } else {
+        const bodyExpr = this.parseExpression();
+        fnResult = {
+          type: "FunctionDeclaration",
+          name: fnTok.value,
+          params,
+          body: bodyExpr,
+          isBlock: false,
+          loc: { line: fnTok.line, col: fnTok.col }
+        };
+      }
+
+      for (const p of newlyDeclared) {
+        this.declaredVars.delete(p);
+      }
+      return fnResult;
     }
 
     parseIfStatement() {
@@ -739,7 +827,7 @@
         this.advance();
         return {
           type: "Literal",
-          value: tok.value === "true" ? true : (tok.value === "false" ? false : null),
+          value: tok.value === "true" ? true : (tok.value === "false" ? false : NaN),
           raw: tok.value,
           loc: { line: tok.line, col: tok.col }
         };
@@ -856,6 +944,10 @@
       const sig = FUNCTION_SIGNATURES[calleeName];
       if (calleeName.startsWith("request.")) {
         this.addError("Multi-timeframe requests ('request.*') are not supported in this version.", idTok);
+      } else if (calleeName.startsWith("array.")) {
+        this.addError("Array operations ('array.*') are not supported in this version.", idTok);
+      } else if (calleeName.startsWith("matrix.")) {
+        this.addError("Matrix operations ('matrix.*') are not supported in this version.", idTok);
       } else if (sig) {
         if (rawArgCount < sig.minArgs) {
           this.addError(`Function '${calleeName}' expects at least ${sig.minArgs} argument(s) ${sig.desc}, but received ${rawArgCount}.`, idTok);
@@ -923,6 +1015,37 @@
     for (let i = length; i < N; i++) {
       windowSum += source[i] - source[i - length];
       out[i] = windowSum / length;
+    }
+    return out;
+  }
+
+  function calcWMA(source, length) {
+    const N = source.length;
+    const out = new Float64Array(N);
+    out.fill(NaN);
+    if (N < length) return out;
+    const norm = (length * (length + 1)) / 2;
+    for (let i = length - 1; i < N; i++) {
+      let sum = 0;
+      for (let j = 0; j < length; j++) {
+        sum += source[i - j] * (length - j);
+      }
+      out[i] = sum / norm;
+    }
+    return out;
+  }
+
+  function calcVWMA(source, volumes, length) {
+    const N = source.length;
+    const out = new Float64Array(N);
+    out.fill(NaN);
+    if (N < length) return out;
+    const pv = new Float64Array(N);
+    for (let i = 0; i < N; i++) pv[i] = source[i] * volumes[i];
+    const num = calcSMA(pv, length);
+    const den = calcSMA(volumes, length);
+    for (let i = length - 1; i < N; i++) {
+      out[i] = den[i] !== 0 ? num[i] / den[i] : NaN;
     }
     return out;
   }
@@ -1017,29 +1140,844 @@
     return out;
   }
 
+  function calcHighestBars(source, length) {
+    const N = source.length;
+    const out = new Float64Array(N);
+    out.fill(NaN);
+    if (N < length) return out;
+    for (let i = length - 1; i < N; i++) {
+      let maxVal = -Infinity;
+      let maxOffset = 0;
+      for (let j = 0; j < length; j++) {
+        const val = source[i - j];
+        if (!isNaN(val) && val > maxVal) {
+          maxVal = val;
+          maxOffset = -j;
+        }
+      }
+      out[i] = maxOffset;
+    }
+    return out;
+  }
+
+  function calcLowestBars(source, length) {
+    const N = source.length;
+    const out = new Float64Array(N);
+    out.fill(NaN);
+    if (N < length) return out;
+    for (let i = length - 1; i < N; i++) {
+      let minVal = Infinity;
+      let minOffset = 0;
+      for (let j = 0; j < length; j++) {
+        const val = source[i - j];
+        if (!isNaN(val) && val < minVal) {
+          minVal = val;
+          minOffset = -j;
+        }
+      }
+      out[i] = minOffset;
+    }
+    return out;
+  }
+
+  function calcStdev(source, length) {
+    const N = source.length;
+    const out = new Float64Array(N);
+    out.fill(NaN);
+    if (N < length) return out;
+    const sma = calcSMA(source, length);
+    for (let i = length - 1; i < N; i++) {
+      let sumSq = 0;
+      const mean = sma[i];
+      for (let k = i - length + 1; k <= i; k++) {
+        const d = source[k] - mean;
+        sumSq += d * d;
+      }
+      out[i] = Math.sqrt(sumSq / length);
+    }
+    return out;
+  }
+
+  function calcBollingerBands(source, length, mult) {
+    const basis = calcSMA(source, length);
+    const dev = calcStdev(source, length);
+    const N = source.length;
+    const upper = new Float64Array(N);
+    const lower = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      if (isNaN(basis[i]) || isNaN(dev[i])) {
+        upper[i] = NaN;
+        lower[i] = NaN;
+      } else {
+        upper[i] = basis[i] + dev[i] * mult;
+        lower[i] = basis[i] - dev[i] * mult;
+      }
+    }
+    return { basis, upper, lower };
+  }
+
+  function calcMACD(source, fastLen, slowLen, sigLen) {
+    const fastEMA = calcEMA(source, fastLen);
+    const slowEMA = calcEMA(source, slowLen);
+    const N = source.length;
+    const macdLine = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      macdLine[i] = fastEMA[i] - slowEMA[i];
+    }
+    const signalLine = calcEMA(macdLine, sigLen);
+    const histLine = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      histLine[i] = macdLine[i] - signalLine[i];
+    }
+    return { macdLine, signalLine, histLine };
+  }
+
   // --------------------------------------------------------------------------
-  // 5. Execution Runtime & Broker Emulator
+  // 5. Execution Runtime & Broker Emulator (AST-Based Clean Room Engine)
   // --------------------------------------------------------------------------
-  function executePineScript(scriptSource, dataset, options = {}) {
-    const val = validateScript(scriptSource);
-    if (!val.isValid) {
-      return {
-        success: false,
-        errors: val.errors,
-        trades: [],
-        metrics: null,
-        plots: {}
-      };
+
+  // Helper to extract argument by positional index or parameter name
+  function getArgValue(args, paramName, positionalIndex = -1, defaultVal = null) {
+    if (!args || !args.length) return defaultVal;
+    if (paramName) {
+      for (const a of args) {
+        if (a && a.type === "NamedArgument" && a.name === paramName) {
+          return a.value;
+        }
+      }
+    }
+    if (typeof positionalIndex === "number" && positionalIndex >= 0 && positionalIndex < args.length) {
+      const a = args[positionalIndex];
+      if (a && a.type === "NamedArgument") {
+        if (!paramName || a.name === paramName) return a.value;
+      } else if (a && a.type !== "NamedArgument") {
+        return a;
+      }
+    }
+    return defaultVal;
+  }
+
+  // Recursive AST Expression Evaluator for a specific bar index with lexical scoping and recursion limits
+  function evaluateExpression(node, i, env, callDepth = 0) {
+    if (!node) return null;
+    if (callDepth > 15) {
+      throw new Error(`Pine Script maximum recursion depth exceeded (limit: 15)`);
     }
 
-    const { times, opens, highs, lows, closes, volumes } = dataset;
+    switch (node.type) {
+      case "Literal":
+        return node.value;
+
+      case "Identifier": {
+        const name = node.name;
+
+        // Function-local variables / parameters shadow outer scope (Lexical Scoping)
+        if (env.localVars && env.localVars.has(name)) {
+          return env.localVars.get(name);
+        }
+
+        if (name === "bar_index") return i;
+        if (name === "time") return env.dataset.times[i];
+        if (name === "open") return env.dataset.opens[i];
+        if (name === "high") return env.dataset.highs[i];
+        if (name === "low") return env.dataset.lows[i];
+        if (name === "close") return env.dataset.closes[i];
+        if (name === "volume") return env.dataset.volumes[i];
+        if (name === "true") return true;
+        if (name === "false") return false;
+        if (name === "na") return NaN;
+
+        // Pine Strategy Built-in Constants & State
+        if (name === "strategy.long") return "LONG";
+        if (name === "strategy.short") return "SHORT";
+        if (name === "strategy.position_size") {
+          if (!env.state.position) return 0;
+          return env.state.position.side === "LONG" ? env.state.position.qty : -env.state.position.qty;
+        }
+        if (name === "strategy.position_avg_price") {
+          return env.state.position ? env.state.position.entryPrice : NaN;
+        }
+        if (name === "strategy.equity") {
+          let eq = env.state.capital;
+          if (env.state.position) {
+            const curP = env.dataset.closes[i];
+            const pnl = env.state.position.side === "LONG"
+              ? (curP - env.state.position.entryPrice) * env.state.position.qty
+              : (env.state.position.entryPrice - curP) * env.state.position.qty;
+            eq += pnl;
+          }
+          return eq;
+        }
+        if (name === "strategy.netprofit") {
+          return env.state.capital - env.state.initialCapital;
+        }
+        if (name === "strategy.openprofit") {
+          if (!env.state.position) return 0;
+          const curP = env.dataset.closes[i];
+          return env.state.position.side === "LONG"
+            ? (curP - env.state.position.entryPrice) * env.state.position.qty
+            : (env.state.position.entryPrice - curP) * env.state.position.qty;
+        }
+
+        // Variables evaluated during runtime
+        if (env.vars.has(name)) {
+          const v = env.vars.get(name);
+          if (v instanceof Float64Array || Array.isArray(v)) {
+            return v[i];
+          }
+          return v;
+        }
+
+        // Pre-computed indicator series
+        if (env.series.has(name)) {
+          return env.series.get(name)[i];
+        }
+
+        // User inputs
+        if (env.inputs[name] !== undefined) {
+          return env.inputs[name];
+        }
+
+        return NaN;
+      }
+
+      case "BinaryExpression": {
+        const left = evaluateExpression(node.left, i, env, callDepth);
+        const right = evaluateExpression(node.right, i, env, callDepth);
+        switch (node.operator) {
+          case "+": return left + right;
+          case "-": return left - right;
+          case "*": return left * right;
+          case "/": return right === 0 ? NaN : left / right;
+          case "%": return right === 0 ? NaN : left % right;
+          case "==": return left === right;
+          case "!=": return left !== right;
+          case "<": return left < right;
+          case "<=": return left <= right;
+          case ">": return left > right;
+          case ">=": return left >= right;
+          case "and": return Boolean(left) && Boolean(right);
+          case "or": return Boolean(left) || Boolean(right);
+          default: return NaN;
+        }
+      }
+
+      case "UnaryExpression": {
+        const val = evaluateExpression(node.argument, i, env, callDepth);
+        switch (node.operator) {
+          case "-": return -val;
+          case "+": return +val;
+          case "!":
+          case "not": return !val;
+          default: return val;
+        }
+      }
+
+      case "TernaryExpression": {
+        const cond = evaluateExpression(node.test, i, env, callDepth);
+        return cond ? evaluateExpression(node.consequent, i, env, callDepth) : evaluateExpression(node.alternate, i, env, callDepth);
+      }
+
+      case "HistoryIndexExpression": {
+        let targetSeries = null;
+        if (node.series && node.series.type === "Identifier") {
+          const sName = node.series.name;
+          if (env.localSeries && env.localSeries.has(sName)) {
+            targetSeries = env.localSeries.get(sName);
+          } else if (env.localVars && env.localVars.has(sName)) {
+            const lv = env.localVars.get(sName);
+            if (lv instanceof Float64Array || Array.isArray(lv)) targetSeries = lv;
+            else return NaN;
+          } else if (sName === "open") targetSeries = env.dataset.opens;
+          else if (sName === "high") targetSeries = env.dataset.highs;
+          else if (sName === "low") targetSeries = env.dataset.lows;
+          else if (sName === "close") targetSeries = env.dataset.closes;
+          else if (sName === "volume") targetSeries = env.dataset.volumes;
+          else if (env.series.has(sName)) targetSeries = env.series.get(sName);
+          else if (env.vars.has(sName)) targetSeries = env.vars.get(sName);
+        } else if (node.series) {
+          targetSeries = evaluateExpression(node.series, i, env, callDepth);
+        }
+
+        const offsetVal = typeof node.index === "number" ? node.index : evaluateExpression(node.index, i, env, callDepth);
+        const k = Math.round(Number(offsetVal) || 0);
+        const targetIdx = i - k;
+
+        if (targetSeries && (targetSeries instanceof Float64Array || Array.isArray(targetSeries))) {
+          if (targetIdx >= 0 && targetIdx < targetSeries.length) {
+            return targetSeries[targetIdx];
+          }
+          return NaN;
+        }
+        return NaN;
+      }
+
+      case "CallExpression": {
+        // Pre-computed vector indicator lookup
+        if (node._seriesKey && env.series.has(node._seriesKey)) {
+          return env.series.get(node._seriesKey)[i];
+        }
+
+        const callee = node.callee ? node.callee.name : "";
+
+        // User-Defined Function Call
+        if (env.functions && env.functions.has(callee)) {
+          if (callDepth >= 15) {
+            throw new Error(`Pine Script maximum recursion depth exceeded (limit: 15) in function '${callee}'`);
+          }
+          const fnNode = env.functions.get(callee);
+          const localScope = new Map();
+          const localSeries = new Map();
+
+          // Parameter binding with default value fallback and named argument resolution
+          for (let pIdx = 0; pIdx < fnNode.params.length; pIdx++) {
+            const param = fnNode.params[pIdx];
+            let argVal = undefined;
+            let passedArgNode = null;
+
+            // 1. First check if a NamedArgument was passed matching this param name
+            const matchNamed = node.args ? node.args.find(a => a && a.type === "NamedArgument" && a.name === param.name) : null;
+            if (matchNamed) {
+              passedArgNode = matchNamed.value;
+              argVal = evaluateExpression(matchNamed.value, i, env, callDepth + 1);
+            } else if (node.args && pIdx < node.args.length && node.args[pIdx] && node.args[pIdx].type !== "NamedArgument") {
+              passedArgNode = node.args[pIdx];
+              argVal = evaluateExpression(node.args[pIdx], i, env, callDepth + 1);
+            } else if (param.defaultVal) {
+              passedArgNode = param.defaultVal;
+              argVal = evaluateExpression(param.defaultVal, i, env, callDepth + 1);
+            }
+            localScope.set(param.name, argVal !== undefined ? argVal : NaN);
+
+            // If argument references a known series vector, bind it to localSeries for history indexing
+            if (passedArgNode && passedArgNode.type === "Identifier") {
+              const aName = passedArgNode.name;
+              let sRef = null;
+              if (aName === "open") sRef = env.dataset.opens;
+              else if (aName === "high") sRef = env.dataset.highs;
+              else if (aName === "low") sRef = env.dataset.lows;
+              else if (aName === "close") sRef = env.dataset.closes;
+              else if (aName === "volume") sRef = env.dataset.volumes;
+              else if (env.localSeries && env.localSeries.has(aName)) sRef = env.localSeries.get(aName);
+              else if (env.series && env.series.has(aName)) sRef = env.series.get(aName);
+              else if (env.vars && env.vars.has(aName)) sRef = env.vars.get(aName);
+
+              if (sRef) {
+                localSeries.set(param.name, sRef);
+              }
+            }
+          }
+
+          const localEnv = Object.assign({}, env, {
+            localVars: localScope,
+            localSeries: localSeries,
+            parentEnv: env
+          });
+
+          if (fnNode.isBlock) {
+            let result = NaN;
+            for (const stmt of fnNode.body) {
+              if (!stmt) continue;
+              if (stmt.type === "Declaration") {
+                const val = evaluateExpression(stmt.init, i, localEnv, callDepth + 1);
+                localScope.set(stmt.name, val);
+                result = val;
+              } else if (stmt.type === "Reassignment") {
+                const val = evaluateExpression(stmt.value, i, localEnv, callDepth + 1);
+                let cur = localScope.has(stmt.name) ? localScope.get(stmt.name) : 0;
+                if (stmt.operator === ":=") cur = val;
+                else if (stmt.operator === "+=") cur += val;
+                else if (stmt.operator === "-=") cur -= val;
+                else if (stmt.operator === "*=") cur *= val;
+                else if (stmt.operator === "/=") cur /= val;
+                localScope.set(stmt.name, cur);
+                result = cur;
+              } else if (stmt.type === "ExpressionStatement") {
+                result = evaluateExpression(stmt.expression, i, localEnv, callDepth + 1);
+              } else if (stmt.type === "IfStatement") {
+                const cond = evaluateExpression(stmt.condition, i, localEnv, callDepth + 1);
+                const branch = cond ? stmt.consequent : stmt.alternate;
+                if (branch) {
+                  for (const s of branch) {
+                    if (s.type === "ExpressionStatement") {
+                      result = evaluateExpression(s.expression, i, localEnv, callDepth + 1);
+                    } else if (s.type === "Declaration") {
+                      const v = evaluateExpression(s.init, i, localEnv, callDepth + 1);
+                      localScope.set(s.name, v);
+                      result = v;
+                    } else if (s.type === "Reassignment") {
+                      const v = evaluateExpression(s.value, i, localEnv, callDepth + 1);
+                      let cur = localScope.has(s.name) ? localScope.get(s.name) : 0;
+                      if (s.operator === ":=") cur = v;
+                      else if (s.operator === "+=") cur += v;
+                      else if (s.operator === "-=") cur -= v;
+                      else if (s.operator === "*=") cur *= v;
+                      else if (s.operator === "/=") cur /= v;
+                      localScope.set(s.name, cur);
+                      result = cur;
+                    }
+                  }
+                }
+              }
+            }
+            return result;
+          } else {
+            return evaluateExpression(fnNode.body, i, localEnv, callDepth + 1);
+          }
+        }
+
+        if (callee === "ta.crossover") {
+          const aCur = evaluateExpression(node.args[0], i, env, callDepth);
+          const bCur = evaluateExpression(node.args[1], i, env, callDepth);
+          const aPrev = i > 0 ? evaluateExpression(node.args[0], i - 1, env, callDepth) : NaN;
+          const bPrev = i > 0 ? evaluateExpression(node.args[1], i - 1, env, callDepth) : NaN;
+          return (!isNaN(aCur) && !isNaN(bCur) && !isNaN(aPrev) && !isNaN(bPrev)) && (aCur > bCur && aPrev <= bPrev);
+        }
+        if (callee === "ta.crossunder") {
+          const aCur = evaluateExpression(node.args[0], i, env, callDepth);
+          const bCur = evaluateExpression(node.args[1], i, env, callDepth);
+          const aPrev = i > 0 ? evaluateExpression(node.args[0], i - 1, env, callDepth) : NaN;
+          const bPrev = i > 0 ? evaluateExpression(node.args[1], i - 1, env, callDepth) : NaN;
+          return (!isNaN(aCur) && !isNaN(bCur) && !isNaN(aPrev) && !isNaN(bPrev)) && (aCur < bCur && aPrev >= bPrev);
+        }
+        if (callee === "ta.change") {
+          const aCur = evaluateExpression(node.args[0], i, env, callDepth);
+          const aPrev = i > 0 ? evaluateExpression(node.args[0], i - 1, env, callDepth) : NaN;
+          return aCur - aPrev;
+        }
+        if (callee === "ta.highestbars") {
+          const srcArg = node.args[0];
+          const lenArg = node.args[1];
+          const len = lenArg ? Math.round(Number(evaluateExpression(lenArg, i, env, callDepth)) || 14) : 14;
+          if (i < len - 1) return NaN;
+          let maxVal = -Infinity;
+          let maxOffset = 0;
+          for (let j = 0; j < len; j++) {
+            const val = evaluateExpression(srcArg, i - j, env, callDepth);
+            if (!isNaN(val) && val > maxVal) {
+              maxVal = val;
+              maxOffset = -j;
+            }
+          }
+          return maxOffset;
+        }
+        if (callee === "ta.lowestbars") {
+          const srcArg = node.args[0];
+          const lenArg = node.args[1];
+          const len = lenArg ? Math.round(Number(evaluateExpression(lenArg, i, env, callDepth)) || 14) : 14;
+          if (i < len - 1) return NaN;
+          let minVal = Infinity;
+          let minOffset = 0;
+          for (let j = 0; j < len; j++) {
+            const val = evaluateExpression(srcArg, i - j, env, callDepth);
+            if (!isNaN(val) && val < minVal) {
+              minVal = val;
+              minOffset = -j;
+            }
+          }
+          return minOffset;
+        }
+        if (callee === "ta.valuewhen") {
+          const condArg = node.args[0];
+          const srcArg = node.args[1];
+          const occArg = node.args[2];
+          const targetOcc = occArg ? Math.round(Number(evaluateExpression(occArg, i, env, callDepth)) || 0) : 0;
+          if (targetOcc < 0) return NaN;
+          let foundCount = 0;
+          for (let bar = i; bar >= 0; bar--) {
+            const isCondTrue = Boolean(evaluateExpression(condArg, bar, env, callDepth));
+            if (isCondTrue) {
+              if (foundCount === targetOcc) {
+                return evaluateExpression(srcArg, bar, env, callDepth);
+              }
+              foundCount++;
+            }
+          }
+          return NaN;
+        }
+        if (callee === "math.abs") return Math.abs(evaluateExpression(node.args[0], i, env, callDepth));
+        if (callee === "math.max") return Math.max(evaluateExpression(node.args[0], i, env, callDepth), evaluateExpression(node.args[1], i, env, callDepth));
+        if (callee === "math.min") return Math.min(evaluateExpression(node.args[0], i, env, callDepth), evaluateExpression(node.args[1], i, env, callDepth));
+        if (callee === "math.round") return Math.round(evaluateExpression(node.args[0], i, env, callDepth));
+        if (callee === "math.floor") return Math.floor(evaluateExpression(node.args[0], i, env, callDepth));
+        if (callee === "math.ceil") return Math.ceil(evaluateExpression(node.args[0], i, env, callDepth));
+        if (callee === "math.sqrt") return Math.sqrt(evaluateExpression(node.args[0], i, env, callDepth));
+        if (callee === "math.pow") return Math.pow(evaluateExpression(node.args[0], i, env, callDepth), evaluateExpression(node.args[1], i, env, callDepth));
+        if (callee === "math.sign") return Math.sign(evaluateExpression(node.args[0], i, env, callDepth));
+        if (callee === "math.log") return Math.log(evaluateExpression(node.args[0], i, env, callDepth));
+        if (callee === "math.exp") return Math.exp(evaluateExpression(node.args[0], i, env, callDepth));
+        if (callee === "na") {
+          const v = evaluateExpression(node.args[0], i, env, callDepth);
+          return isNaN(v) || v === null || v === undefined;
+        }
+        if (callee === "nz") {
+          const v = evaluateExpression(node.args[0], i, env, callDepth);
+          const def = node.args[1] ? evaluateExpression(node.args[1], i, env, callDepth) : 0;
+          return (isNaN(v) || v === null || v === undefined) ? def : v;
+        }
+
+        return NaN;
+      }
+
+      default:
+        return NaN;
+    }
+  }
+
+  // Pre-Scan and Vectorize AST Declarations, Inputs, and Indicators
+  function preScanAndVectorize(ast, dataset, callerOptions, env) {
+    const { opens, highs, lows, closes, volumes } = dataset;
     const N = closes.length;
+
+    // Built-in standard series
+    env.series.set("open", opens);
+    env.series.set("high", highs);
+    env.series.set("low", lows);
+    env.series.set("close", closes);
+    env.series.set("volume", volumes);
+
+    const hl2 = new Float64Array(N);
+    const hlc3 = new Float64Array(N);
+    const ohlc4 = new Float64Array(N);
+    for (let i = 0; i < N; i++) {
+      hl2[i] = (highs[i] + lows[i]) * 0.5;
+      hlc3[i] = (highs[i] + lows[i] + closes[i]) / 3.0;
+      ohlc4[i] = (opens[i] + highs[i] + lows[i] + closes[i]) * 0.25;
+    }
+    env.series.set("hl2", hl2);
+    env.series.set("hlc3", hlc3);
+    env.series.set("ohlc4", ohlc4);
+
+    let anonId = 1;
+
+    // Helper to evaluate a call node into a full series vector
+    function computeCallSeries(callNode) {
+      const callee = callNode.callee ? callNode.callee.name : "";
+      const rawArgs = callNode.args || [];
+
+      // Resolve source series argument (default to closes)
+      let srcSeries = closes;
+      let lenArgIndex = 1;
+      if (callee === "ta.atr") {
+        lenArgIndex = 0;
+      }
+
+      if (rawArgs.length > 0 && lenArgIndex === 1) {
+        const firstArg = rawArgs[0];
+        if (firstArg.type === "Identifier") {
+          srcSeries = env.series.get(firstArg.name) || (firstArg.name === "high" ? highs : (firstArg.name === "low" ? lows : closes));
+        }
+      }
+
+      // Resolve length argument
+      let length = 14;
+      const lenArg = rawArgs[lenArgIndex];
+      if (lenArg) {
+        if (lenArg.type === "Literal" && typeof lenArg.value === "number") {
+          length = lenArg.value;
+        } else if (lenArg.type === "Identifier") {
+          length = env.inputs[lenArg.name] !== undefined ? env.inputs[lenArg.name] : 14;
+        }
+      }
+
+      if (callee === "ta.ema") return calcEMA(srcSeries, length);
+      if (callee === "ta.sma") return calcSMA(srcSeries, length);
+      if (callee === "ta.wma") return calcWMA(srcSeries, length);
+      if (callee === "ta.vwma") return calcVWMA(srcSeries, volumes, length);
+      if (callee === "ta.rsi") return calcRSI(srcSeries, length);
+      if (callee === "ta.atr") return calcATR(highs, lows, closes, length);
+      if (callee === "ta.highest") return calcHighest(srcSeries, length);
+      if (callee === "ta.lowest") return calcLowest(srcSeries, length);
+      if (callee === "ta.highestbars") return calcHighestBars(srcSeries, length);
+      if (callee === "ta.lowestbars") return calcLowestBars(srcSeries, length);
+      if (callee === "ta.stdev") return calcStdev(srcSeries, length);
+      if (callee === "ta.bb") {
+        const multArg = rawArgs[2];
+        const mult = (multArg && multArg.type === "Literal") ? multArg.value : 2.0;
+        return calcBollingerBands(srcSeries, length, mult);
+      }
+      if (callee === "ta.macd") {
+        const fast = (rawArgs[1] && rawArgs[1].type === "Literal") ? rawArgs[1].value : 12;
+        const slow = (rawArgs[2] && rawArgs[2].type === "Literal") ? rawArgs[2].value : 26;
+        const sig = (rawArgs[3] && rawArgs[3].type === "Literal") ? rawArgs[3].value : 9;
+        return calcMACD(srcSeries, fast, slow, sig);
+      }
+      return null;
+    }
+
+    // First Pass: Extract strategy/indicator declarations, inputs, and indicators
+    for (const node of ast.body) {
+      if (!node) continue;
+
+      // Extract script/strategy declarations
+      if (node.type === "ExpressionStatement" && node.expression && node.expression.type === "CallExpression") {
+        const call = node.expression;
+        const callee = call.callee ? call.callee.name : "";
+        if (callee === "strategy") {
+          const initCap = getArgValue(call.args, "initial_capital");
+          if (initCap && initCap.type === "Literal" && typeof initCap.value === "number") {
+            env.strategyConfig.initialCapital = initCap.value;
+          }
+          const pyr = getArgValue(call.args, "pyramiding");
+          if (pyr && pyr.type === "Literal" && typeof pyr.value === "number") {
+            env.strategyConfig.pyramiding = pyr.value;
+          }
+        }
+      }
+
+      // Extract User Inputs & Declarations
+      if (node.type === "Declaration") {
+        const init = node.init;
+        if (init && init.type === "CallExpression") {
+          const callee = init.callee ? init.callee.name : "";
+          if (callee.startsWith("input")) {
+            const defValNode = getArgValue(init.args, "defval", 0);
+            let defVal = defValNode && defValNode.type === "Literal" ? defValNode.value : 0;
+            const titleNode = getArgValue(init.args, "title", 1);
+            const title = titleNode && titleNode.type === "Literal" ? titleNode.value : node.name;
+
+            // Caller option override
+            if (callerOptions.inputs) {
+              if (callerOptions.inputs[node.name] !== undefined) {
+                defVal = callerOptions.inputs[node.name];
+              } else if (callerOptions.inputs[title] !== undefined) {
+                defVal = callerOptions.inputs[title];
+              } else {
+                const lowerName = node.name.toLowerCase();
+                const lowerTitle = title.toLowerCase();
+                for (const k of Object.keys(callerOptions.inputs)) {
+                  const lk = k.toLowerCase();
+                  if (lk === lowerName || lk === lowerTitle) {
+                    defVal = callerOptions.inputs[k];
+                    break;
+                  }
+                }
+              }
+            }
+            env.inputs[node.name] = defVal;
+            env.inputs[title] = defVal;
+          } else if (callee.startsWith("ta.")) {
+            const seriesVec = computeCallSeries(init);
+            if (seriesVec) {
+              env.series.set(node.name, seriesVec);
+              init._seriesKey = node.name;
+            }
+          }
+        }
+      } else if (node.type === "TupleDeclaration") {
+        const init = node.init;
+        if (init && init.type === "CallExpression" && init.callee && init.callee.name.startsWith("ta.")) {
+          const resObj = computeCallSeries(init);
+          if (resObj && node.names && node.names.length >= 3) {
+            if (resObj.macdLine) {
+              env.series.set(node.names[0], resObj.macdLine);
+              env.series.set(node.names[1], resObj.signalLine);
+              env.series.set(node.names[2], resObj.histLine);
+            } else if (resObj.basis) {
+              env.series.set(node.names[0], resObj.basis);
+              env.series.set(node.names[1], resObj.upper);
+              env.series.set(node.names[2], resObj.lower);
+            }
+          }
+        }
+      }
+    }
+
+    // Second Pass: Pre-compute any nested technical indicators in expressions
+    function walkAndPrecompute(n) {
+      if (!n || typeof n !== "object") return;
+      if (n.type === "CallExpression" && n.callee && n.callee.name && n.callee.name.startsWith("ta.")) {
+        const sVec = computeCallSeries(n);
+        if (sVec && sVec instanceof Float64Array) {
+          const anonKey = `_ta_anon_${anonId++}`;
+          env.series.set(anonKey, sVec);
+          n._seriesKey = anonKey;
+        }
+      }
+      for (const k of Object.keys(n)) {
+        if (k === "loc") continue;
+        const child = n[k];
+        if (Array.isArray(child)) {
+          for (const item of child) walkAndPrecompute(item);
+        } else if (child && typeof child === "object") {
+          walkAndPrecompute(child);
+        }
+      }
+    }
+    for (const stmt of ast.body) {
+      walkAndPrecompute(stmt);
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Performance Analytics & Metrics Engine
+  // --------------------------------------------------------------------------
+  function computeBacktestMetrics(trades, initialCapital, finalCapital, equityCurve, options = {}) {
+    const initCap = (typeof initialCapital === "number" && !isNaN(initialCapital) && initialCapital > 0) ? initialCapital : (initialCapital === 0 ? 0 : 10000);
+    const finCap = (typeof finalCapital === "number" && !isNaN(finalCapital)) ? finalCapital : initCap;
+    const tList = Array.isArray(trades) ? trades : [];
+
+    const totalTrades = tList.length;
+    const wins = tList.filter(t => t.netPnl > 0);
+    const losses = tList.filter(t => t.netPnl < 0);
+    const breakevens = tList.filter(t => t.netPnl === 0);
+
+    const grossProfit = wins.reduce((s, t) => s + (t.grossPnl != null ? t.grossPnl : t.netPnl), 0);
+    const grossLoss = Math.abs(losses.reduce((s, t) => s + (t.grossPnl != null ? t.grossPnl : t.netPnl), 0));
+    const realizedPnl = tList.reduce((s, t) => s + (t.netPnl || 0), 0);
+    const totalFees = tList.reduce((s, t) => s + (t.fees || 0), 0);
+    const bankruptcyDeficit = tList.reduce((s, t) => s + (t.bankruptcyDeficit || 0), 0);
+
+    // Account Net Profit and Return
+    const netProfit = finCap - initCap;
+    const netProfitPct = initCap > 0 ? (netProfit / initCap) * 100 : 0;
+
+    const winRate = totalTrades > 0 ? (wins.length / totalTrades) * 100 : 0;
+    const lossRate = totalTrades > 0 ? (losses.length / totalTrades) * 100 : 0;
+    const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss) : (grossProfit > 0 ? Infinity : 0);
+
+    const avgWin = wins.length > 0 ? grossProfit / wins.length : 0;
+    const avgLoss = losses.length > 0 ? grossLoss / losses.length : 0;
+    const winLossRatio = avgLoss > 0 ? (avgWin / avgLoss) : (avgWin > 0 ? Infinity : null);
+    const avgTrade = totalTrades > 0 ? realizedPnl / totalTrades : 0;
+    const expectancy = totalTrades > 0 ? realizedPnl / totalTrades : 0;
+
+    // Consecutive winning and losing streaks
+    let curWinStreak = 0, curLossStreak = 0;
+    let maxConsecWins = 0, maxConsecLosses = 0;
+    let winStreaks = [], lossStreaks = [];
+    tList.forEach(t => {
+      if (t.netPnl > 0) {
+        curWinStreak++;
+        if (curLossStreak > 0) { lossStreaks.push(curLossStreak); curLossStreak = 0; }
+        if (curWinStreak > maxConsecWins) maxConsecWins = curWinStreak;
+      } else if (t.netPnl < 0) {
+        curLossStreak++;
+        if (curWinStreak > 0) { winStreaks.push(curWinStreak); curWinStreak = 0; }
+        if (curLossStreak > maxConsecLosses) maxConsecLosses = curLossStreak;
+      }
+    });
+    if (curWinStreak > 0) winStreaks.push(curWinStreak);
+    if (curLossStreak > 0) lossStreaks.push(curLossStreak);
+    const avgConsecWins = winStreaks.length ? winStreaks.reduce((a, b) => a + b, 0) / winStreaks.length : 0;
+    const avgConsecLosses = lossStreaks.length ? lossStreaks.reduce((a, b) => a + b, 0) / lossStreaks.length : 0;
+
+    // Drawdown Calculation:
+    // Tracks maximum peak-to-trough equity drop
+    let maxDrawdownUsd = 0;
+    let maxDrawdownPct = 0;
+    let peak = initCap;
+
+    if (Array.isArray(equityCurve) && equityCurve.length > 0) {
+      for (const pt of equityCurve) {
+        if (pt && typeof pt.value === "number" && !isNaN(pt.value)) {
+          if (pt.value > peak) peak = pt.value;
+          const dd = peak - pt.value;
+          if (dd > maxDrawdownUsd) maxDrawdownUsd = dd;
+          const ddPct = peak > 0 ? (dd / peak) * 100 : 0;
+          if (ddPct > maxDrawdownPct) maxDrawdownPct = ddPct;
+        }
+      }
+    }
+    // Also verify against closed-trades running equity to capture every trade close
+    let runningEq = initCap;
+    let trPeak = initCap;
+    for (const t of tList) {
+      runningEq = Math.max(0, runningEq + (t.netPnl || 0));
+      if (runningEq > trPeak) trPeak = runningEq;
+      const dd = trPeak - runningEq;
+      if (dd > maxDrawdownUsd) maxDrawdownUsd = dd;
+      const ddPct = trPeak > 0 ? (dd / trPeak) * 100 : 0;
+      if (ddPct > maxDrawdownPct) maxDrawdownPct = ddPct;
+    }
+
+    const recoveryFactor = maxDrawdownUsd > 0 ? (netProfit / maxDrawdownUsd) : (netProfit > 0 ? Infinity : 0);
+
+    // Sharpe & Sortino (annualized based on equityCurve returns or trade returns)
+    let rets = [];
+    let negRets = [];
+    const eq = Array.isArray(equityCurve) && equityCurve.length > 1 ? equityCurve : null;
+    if (eq) {
+      for (let k = 1; k < eq.length; k++) {
+        const prev = eq[k - 1].value;
+        const curr = eq[k].value;
+        if (prev > 0) {
+          const r = (curr - prev) / prev;
+          rets.push(r);
+          if (r < 0) negRets.push(r);
+        }
+      }
+    } else if (tList.length > 1) {
+      let prevEq = initCap;
+      for (const t of tList) {
+        const nextEq = Math.max(0, prevEq + (t.netPnl || 0));
+        if (prevEq > 0) {
+          const r = (nextEq - prevEq) / prevEq;
+          rets.push(r);
+          if (r < 0) negRets.push(r);
+        }
+        prevEq = nextEq;
+      }
+    }
+
+    const meanRet = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : 0;
+    const variance = rets.length > 1 ? rets.reduce((a, b) => a + Math.pow(b - meanRet, 2), 0) / (rets.length - 1) : 0;
+    const stdDev = Math.sqrt(variance);
+    const sharpe = stdDev > 0 ? (meanRet / stdDev) * Math.sqrt(365 * 24) : 0;
+    const downsideVar = negRets.length > 1 ? negRets.reduce((a, b) => a + Math.pow(b, 2), 0) / negRets.length : 0;
+    const downsideDev = Math.sqrt(downsideVar);
+    const sortino = downsideDev > 0 ? (meanRet / downsideDev) * Math.sqrt(365 * 24) : (sharpe > 0 ? sharpe * 1.3 : 0);
+
+    return {
+      initialCapital: initCap,
+      finalCapital: finCap,
+      netProfit,
+      netProfitPct,
+      realizedPnl,
+      grossProfit,
+      grossLoss,
+      totalTrades,
+      wins: wins.length,
+      winningTrades: wins.length,
+      losses: losses.length,
+      losingTrades: losses.length,
+      breakevens: breakevens.length,
+      winRate,
+      lossRate,
+      profitFactor,
+      avgWin,
+      avgLoss,
+      winLossRatio,
+      avgTrade,
+      expectancy,
+      maxConsecWins,
+      maxConsecLosses,
+      avgConsecWins,
+      avgConsecLosses,
+      maxDrawdownUsd,
+      maxDrawdown: maxDrawdownUsd,
+      maxDrawdownPct,
+      recoveryFactor,
+      sharpe,
+      sortino,
+      totalFees,
+      bankruptcyDeficit,
+      equityReconciled: Math.abs(finCap - (initCap + realizedPnl + bankruptcyDeficit)) < 1e-6
+    };
+  }
+
+  // Pure AST Program Executor & Broker Emulator
+  function executeASTProgram(ast, dataset, options = {}) {
+    const { times, opens, highs, lows, closes, volumes } = dataset;
+    const N = closes ? closes.length : 0;
     if (N === 0) {
+      const initCap = options.initialCapital || 10000;
       return {
-        success: false,
-        errors: [{ line: 1, column: 1, message: "Empty candle dataset." }],
+        success: true,
         trades: [],
-        metrics: null,
+        metrics: computeBacktestMetrics([], initCap, initCap, []),
+        equityCurve: [],
+        signals: [],
         plots: {}
       };
     }
@@ -1051,155 +1989,307 @@
     const slippageBps = options.slippageBps !== undefined ? options.slippageBps : 2;
     const slippageFactor = slippageBps / 10000;
 
-    // Series Cache for dynamic indicator evaluation
-    const seriesCache = new Map();
-    seriesCache.set("open", opens);
-    seriesCache.set("high", highs);
-    seriesCache.set("low", lows);
-    seriesCache.set("close", closes);
-    seriesCache.set("volume", volumes);
+    // Runtime Environment
+    const env = {
+      dataset,
+      series: new Map(),
+      vars: new Map(),
+      functions: new Map(),
+      inputs: Object.assign({}, options.inputs || {}),
+      strategyConfig: {
+        initialCapital,
+        pyramiding: 1
+      },
+      state: {
+        capital: initialCapital,
+        initialCapital,
+        position: null
+      }
+    };
 
-    // Dynamic hl2, hlc3, ohlc4
-    const hl2 = new Float64Array(N);
-    const hlc3 = new Float64Array(N);
-    const ohlc4 = new Float64Array(N);
-    for (let i = 0; i < N; i++) {
-      hl2[i] = (highs[i] + lows[i]) * 0.5;
-      hlc3[i] = (highs[i] + lows[i] + closes[i]) / 3.0;
-      ohlc4[i] = (opens[i] + highs[i] + lows[i] + closes[i]) * 0.25;
+    // Register User-Defined Functions
+    for (const node of ast.body) {
+      if (node && node.type === "FunctionDeclaration") {
+        env.functions.set(node.name, node);
+      }
     }
-    seriesCache.set("hl2", hl2);
-    seriesCache.set("hlc3", hlc3);
-    seriesCache.set("ohlc4", ohlc4);
 
-    // Extract User Inputs & Constants
-    const inputs = Object.assign({}, options.inputs || {});
+    // Pre-Scan and pre-compute indicator vectors
+    preScanAndVectorize(ast, dataset, options, env);
+    const maxPyramiding = Math.max(1, env.strategyConfig.pyramiding || 1);
 
-    // Parse plot() statements
+    // Pre-allocate runtime variable series for all variables declared in script
+    for (const node of ast.body) {
+      if (node && node.type === "Declaration") {
+        if (!env.vars.has(node.name) && !env.series.has(node.name)) {
+          env.vars.set(node.name, new Float64Array(N));
+        }
+      }
+    }
+
+    // Extract plot statements
     const plots = {};
-    const plotMatches = scriptSource.matchAll(/plot\s*\(([^,)]+)(?:,\s*["']([^"']+)["'])?(?:,\s*color\s*=\s*([^,)]+))?/g);
-    for (const pm of plotMatches) {
-      const expr = pm[1].trim();
-      const title = pm[2] || expr;
-      const colStr = pm[3] || "#2962ff";
-      plots[title] = { expr, title, color: colStr, data: [] };
-    }
-
-    // Parse indicator declarations (e.g. fast = ta.ema(close, 9))
-    const indMatches = scriptSource.matchAll(/([a-zA-Z_]\w*)\s*=\s*(ta\.[a-zA-Z_]\w*)\s*\(([^)]+)\)/g);
-    for (const m of indMatches) {
-      const varName = m[1];
-      const fn = m[2];
-      const rawArgs = m[3].split(',').map(s => s.trim());
-
-      let computed = null;
-      if (fn === "ta.ema") {
-        const src = seriesCache.get(rawArgs[0]) || closes;
-        const len = inputs[rawArgs[1]] || parseInt(rawArgs[1], 10) || 14;
-        computed = calcEMA(src, len);
-      } else if (fn === "ta.sma") {
-        const src = seriesCache.get(rawArgs[0]) || closes;
-        const len = inputs[rawArgs[1]] || parseInt(rawArgs[1], 10) || 20;
-        computed = calcSMA(src, len);
-      } else if (fn === "ta.rsi") {
-        const src = seriesCache.get(rawArgs[0]) || closes;
-        const len = inputs[rawArgs[1]] || parseInt(rawArgs[1], 10) || 14;
-        computed = calcRSI(src, len);
-      } else if (fn === "ta.atr") {
-        const len = inputs[rawArgs[0]] || parseInt(rawArgs[0], 10) || 14;
-        computed = calcATR(highs, lows, closes, len);
-      } else if (fn === "ta.highest") {
-        const src = seriesCache.get(rawArgs[0]) || highs;
-        const len = inputs[rawArgs[1]] || parseInt(rawArgs[1], 10) || 14;
-        computed = calcHighest(src, len);
-      } else if (fn === "ta.lowest") {
-        const src = seriesCache.get(rawArgs[0]) || lows;
-        const len = inputs[rawArgs[1]] || parseInt(rawArgs[1], 10) || 14;
-        computed = calcLowest(src, len);
-      }
-
-      if (computed) {
-        seriesCache.set(varName, computed);
-      }
-    }
-
-    // Populate plot series data with intelligent downsampling (max 5,000 points for chart)
-    const MAX_CHART_POINTS = 5000;
-    const plotStep = N > MAX_CHART_POINTS ? Math.ceil(N / MAX_CHART_POINTS) : 1;
-
-    for (const [title, pObj] of Object.entries(plots)) {
-      const series = seriesCache.get(pObj.expr) || seriesCache.get(title);
-      if (series) {
-        const outLen = Math.ceil(N / plotStep);
-        pObj.data = new Array(outLen);
-        let outIdx = 0;
-        for (let i = 0; i < N; i += plotStep) {
-          pObj.data[outIdx++] = {
-            time: times[i],
-            value: isNaN(series[i]) ? null : series[i]
-          };
-        }
-        // Ensure last bar is always included
-        if ((N - 1) % plotStep !== 0) {
-          pObj.data.push({
-            time: times[N - 1],
-            value: isNaN(series[N - 1]) ? null : series[N - 1]
-          });
+    for (const node of ast.body) {
+      if (node && node.type === "ExpressionStatement" && node.expression && node.expression.type === "CallExpression") {
+        const call = node.expression;
+        if (call.callee && call.callee.name === "plot") {
+          const exprNode = call.args[0];
+          const titleArg = getArgValue(call.args, "title", 1);
+          const colorArg = getArgValue(call.args, "color", 2);
+          const title = (titleArg && titleArg.type === "Literal") ? titleArg.value : (exprNode && exprNode.name ? exprNode.name : `Plot_${Object.keys(plots).length + 1}`);
+          const color = (colorArg && colorArg.type === "Literal") ? colorArg.value : "#2962ff";
+          plots[title] = { exprNode, title, color, data: [] };
         }
       }
     }
 
-    // Broker Emulator: Chronological Bar-by-Bar Order Execution
+    // Broker Emulator State
     let capital = initialCapital;
-    let position = null; // { id, side: "LONG"|"SHORT", qty, entryPrice, entryTime, entryBar, fees, stop, limit }
+    let position = null; // { id, side: "LONG"|"SHORT", qty, entryPrice, entryTime, entryBar, fees, stop, limit, trail_points, trail_offset, trail_price, highWaterMark, lowWaterMark, lots }
+    let pendingEntry = null; // Order placed for next bar Open
+    const defaultBrackets = new Map(); // Store exit bracket settings per entry ID
     const trades = [];
     const signals = [];
     const equityCurve = [{ time: times[0], value: capital }];
-    let pendingEntry = null; // Next-bar open entry order
-
-    // Equity curve sampling rate (max 2,000 points)
     const eqStep = N > 2000 ? Math.ceil(N / 2000) : 1;
 
-    // Look for crossover / crossunder conditions in script
-    const hasLongEntry = /strategy\.entry\s*\(\s*["']([^"']+)["']\s*,\s*strategy\.long/i.test(scriptSource);
-    const hasShortEntry = /strategy\.entry\s*\(\s*["']([^"']+)["']\s*,\s*strategy\.short/i.test(scriptSource);
-    const hasClose = /strategy\.close\s*\(/i.test(scriptSource);
-    const hasExit = /strategy\.exit\s*\(/i.test(scriptSource);
+    // Helper to evaluate and execute statements inside an AST block
+    function executeBlock(statements, barIndex) {
+      for (const stmt of statements) {
+        if (!stmt) continue;
+        if (stmt.type === "FunctionDeclaration") continue;
 
-    // Parse strategy.exit stop and limit levels if declared in script
-    let exitStopVal = null;
-    let exitLimitVal = null;
-    const exitMatch = scriptSource.match(/strategy\.exit\s*\(([^)]+)\)/i);
-    if (exitMatch) {
-      const exitArgs = exitMatch[1];
-      const stopM = exitArgs.match(/stop\s*=\s*([^,)]+)/i);
-      const limitM = exitArgs.match(/limit\s*=\s*([^,)]+)/i);
-      if (stopM) {
-        const val = parseFloat(stopM[1].trim());
-        if (!isNaN(val)) exitStopVal = val;
-      }
-      if (limitM) {
-        const val = parseFloat(limitM[1].trim());
-        if (!isNaN(val)) exitLimitVal = val;
+        if (stmt.type === "Declaration") {
+          const val = evaluateExpression(stmt.init, barIndex, env);
+          if (env.vars.has(stmt.name)) {
+            env.vars.get(stmt.name)[barIndex] = (val === null || val === undefined) ? NaN : val;
+          }
+        } else if (stmt.type === "Reassignment") {
+          const val = evaluateExpression(stmt.value, barIndex, env);
+          if (env.vars.has(stmt.name)) {
+            const arr = env.vars.get(stmt.name);
+            const numVal = (val === null || val === undefined) ? NaN : val;
+            if (stmt.operator === ":=") arr[barIndex] = numVal;
+            else if (stmt.operator === "+=") arr[barIndex] += numVal;
+            else if (stmt.operator === "-=") arr[barIndex] -= numVal;
+            else if (stmt.operator === "*=") arr[barIndex] *= numVal;
+            else if (stmt.operator === "/=") arr[barIndex] /= numVal;
+          }
+        } else if (stmt.type === "IfStatement") {
+          const cond = evaluateExpression(stmt.condition, barIndex, env);
+          if (cond) {
+            if (stmt.consequent) executeBlock(stmt.consequent, barIndex);
+          } else if (stmt.alternate) {
+            executeBlock(stmt.alternate, barIndex);
+          }
+        } else if (stmt.type === "ExpressionStatement") {
+          const expr = stmt.expression;
+          if (expr && expr.type === "CallExpression") {
+            const callee = expr.callee ? expr.callee.name : "";
+
+            if (callee === "strategy.entry") {
+              const idArg = getArgValue(expr.args, "id", 0);
+              const id = (idArg && idArg.type === "Literal") ? idArg.value : (idArg && idArg.name ? idArg.name : "Buy");
+              const dirArg = getArgValue(expr.args, "direction", 1);
+              const dirVal = evaluateExpression(dirArg, barIndex, env);
+              const side = (dirVal === "SHORT" || dirVal === -1) ? "SHORT" : "LONG";
+
+              const whenArg = getArgValue(expr.args, "when");
+              const whenVal = whenArg ? evaluateExpression(whenArg, barIndex, env) : true;
+
+              if (whenVal) {
+                // Read default bracket if configured
+                const bracket = defaultBrackets.get(id) || {};
+                const qtyArg = getArgValue(expr.args, "qty");
+                const explicitQty = qtyArg ? evaluateExpression(qtyArg, barIndex, env) : null;
+                const entryLimitArg = getArgValue(expr.args, "limit");
+                const entryLimit = entryLimitArg ? evaluateExpression(entryLimitArg, barIndex, env) : null;
+                const entryStopArg = getArgValue(expr.args, "stop");
+                const entryStop = entryStopArg ? evaluateExpression(entryStopArg, barIndex, env) : null;
+
+                pendingEntry = {
+                  id,
+                  side,
+                  qty: (explicitQty !== null && !isNaN(explicitQty) && explicitQty > 0) ? explicitQty : null,
+                  entryLimit: (entryLimit !== null && !isNaN(entryLimit)) ? entryLimit : null,
+                  entryStop: (entryStop !== null && !isNaN(entryStop)) ? entryStop : null,
+                  stop: bracket.stop !== undefined ? bracket.stop : null,
+                  limit: bracket.limit !== undefined ? bracket.limit : null,
+                  trail_points: bracket.trail_points || null,
+                  trail_offset: bracket.trail_offset || null,
+                  trail_price: bracket.trail_price || null
+                };
+                signals.push({
+                  barIndex,
+                  time: times[barIndex],
+                  action: "entry",
+                  id,
+                  direction: side,
+                  price: closes[barIndex]
+                });
+              }
+            } else if (callee === "strategy.close") {
+              const idArg = getArgValue(expr.args, "id", 0);
+              const id = (idArg && idArg.type === "Literal") ? idArg.value : (idArg && idArg.name ? idArg.name : null);
+              const whenArg = getArgValue(expr.args, "when");
+              const whenVal = whenArg ? evaluateExpression(whenArg, barIndex, env) : true;
+
+              if (whenVal && position && (!id || position.id === id)) {
+                // Execute Strategy Close at bar Close
+                const barClose = closes[barIndex];
+                const slippedExit = position.side === "LONG"
+                  ? barClose * (1 - slippageFactor)
+                  : barClose * (1 + slippageFactor);
+                const grossPnl = position.side === "LONG"
+                  ? (slippedExit - position.entryPrice) * position.qty
+                  : (position.entryPrice - slippedExit) * position.qty;
+                const exitFee = slippedExit * position.qty * feeRate;
+                const totalFees = position.fees + exitFee;
+                const netPnl = grossPnl - totalFees;
+                capital += netPnl;
+
+                signals.push({
+                  barIndex,
+                  time: times[barIndex],
+                  action: "close",
+                  id: position.id,
+                  price: barClose
+                });
+
+                trades.push({
+                  id: trades.length + 1,
+                  symbol: options.symbol || "BTCUSDT",
+                  side: position.side,
+                  qty: position.qty,
+                  entryPrice: position.entryPrice,
+                  entryTime: position.entryTime,
+                  entryBar: position.entryBar,
+                  exitPrice: slippedExit,
+                  exitTime: times[barIndex],
+                  exitBar: barIndex,
+                  grossPnl,
+                  fees: totalFees,
+                  netPnl,
+                  returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
+                  reason: "Strategy Close"
+                });
+                position = null;
+              }
+            } else if (callee === "strategy.close_all") {
+              const whenArg = getArgValue(expr.args, "when");
+              const whenVal = whenArg ? evaluateExpression(whenArg, barIndex, env) : true;
+              if (whenVal && position) {
+                const barClose = closes[barIndex];
+                const slippedExit = position.side === "LONG"
+                  ? barClose * (1 - slippageFactor)
+                  : barClose * (1 + slippageFactor);
+                const grossPnl = position.side === "LONG"
+                  ? (slippedExit - position.entryPrice) * position.qty
+                  : (position.entryPrice - slippedExit) * position.qty;
+                const exitFee = slippedExit * position.qty * feeRate;
+                const totalFees = position.fees + exitFee;
+                const netPnl = grossPnl - totalFees;
+                capital += netPnl;
+
+                signals.push({
+                  barIndex,
+                  time: times[barIndex],
+                  action: "close",
+                  id: position.id,
+                  price: barClose
+                });
+
+                trades.push({
+                  id: trades.length + 1,
+                  symbol: options.symbol || "BTCUSDT",
+                  side: position.side,
+                  qty: position.qty,
+                  entryPrice: position.entryPrice,
+                  entryTime: position.entryTime,
+                  entryBar: position.entryBar,
+                  exitPrice: slippedExit,
+                  exitTime: times[barIndex],
+                  exitBar: barIndex,
+                  grossPnl,
+                  fees: totalFees,
+                  netPnl,
+                  returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
+                  reason: "Strategy Close All"
+                });
+                position = null;
+              }
+            } else if (callee === "strategy.exit") {
+              const idArg = getArgValue(expr.args, "id", 0);
+              const fromEntryArg = getArgValue(expr.args, "from_entry", 1);
+              const fromEntry = (fromEntryArg && fromEntryArg.type === "Literal") ? fromEntryArg.value : (fromEntryArg && fromEntryArg.name ? fromEntryArg.name : null);
+
+              const whenArg = getArgValue(expr.args, "when");
+              const whenVal = whenArg ? evaluateExpression(whenArg, barIndex, env) : true;
+
+              if (whenVal) {
+                // Dynamic stop & limit evaluation from series buffers or expressions (Resolves GAP-01)
+                const stopArg = getArgValue(expr.args, "stop");
+                const limitArg = getArgValue(expr.args, "limit");
+                const profitArg = getArgValue(expr.args, "profit");
+                const lossArg = getArgValue(expr.args, "loss");
+                const trailPriceArg = getArgValue(expr.args, "trail_price");
+                const trailOffsetArg = getArgValue(expr.args, "trail_offset");
+                const trailPointsArg = getArgValue(expr.args, "trail_points");
+
+                let stopVal = stopArg ? evaluateExpression(stopArg, barIndex, env) : null;
+                let limitVal = limitArg ? evaluateExpression(limitArg, barIndex, env) : null;
+                const trailPriceVal = trailPriceArg ? evaluateExpression(trailPriceArg, barIndex, env) : null;
+                const trailOffsetVal = trailOffsetArg ? evaluateExpression(trailOffsetArg, barIndex, env) : null;
+                const trailPointsVal = trailPointsArg ? evaluateExpression(trailPointsArg, barIndex, env) : null;
+
+                // Profit / Loss tick offsets relative to position entry price
+                if (position) {
+                  if (profitArg) {
+                    const pVal = evaluateExpression(profitArg, barIndex, env);
+                    limitVal = position.side === "LONG" ? position.entryPrice + pVal : position.entryPrice - pVal;
+                  }
+                  if (lossArg) {
+                    const lVal = evaluateExpression(lossArg, barIndex, env);
+                    stopVal = position.side === "LONG" ? position.entryPrice - lVal : position.entryPrice + lVal;
+                  }
+                }
+
+                const bracketObj = {
+                  stop: (stopVal !== null && !isNaN(stopVal)) ? stopVal : null,
+                  limit: (limitVal !== null && !isNaN(limitVal)) ? limitVal : null,
+                  trail_price: trailPriceVal,
+                  trail_offset: trailOffsetVal,
+                  trail_points: trailPointsVal
+                };
+
+                // Store in default brackets map for future entries
+                if (fromEntry) defaultBrackets.set(fromEntry, bracketObj);
+                if (idArg && idArg.value) defaultBrackets.set(idArg.value, bracketObj);
+
+                // Update active position bracket immediately
+                if (position && (!fromEntry || position.id === fromEntry)) {
+                  if (bracketObj.stop !== null) position.stop = bracketObj.stop;
+                  if (bracketObj.limit !== null) position.limit = bracketObj.limit;
+                  if (bracketObj.trail_price !== null) position.trail_price = bracketObj.trail_price;
+                  if (bracketObj.trail_offset !== null) position.trail_offset = bracketObj.trail_offset;
+                  if (bracketObj.trail_points !== null) position.trail_points = bracketObj.trail_points;
+                }
+                if (pendingEntry && (!fromEntry || pendingEntry.id === fromEntry)) {
+                  if (bracketObj.stop !== null) pendingEntry.stop = bracketObj.stop;
+                  if (bracketObj.limit !== null) pendingEntry.limit = bracketObj.limit;
+                  if (bracketObj.trail_price !== null) pendingEntry.trail_price = bracketObj.trail_price;
+                  if (bracketObj.trail_offset !== null) pendingEntry.trail_offset = bracketObj.trail_offset;
+                  if (bracketObj.trail_points !== null) pendingEntry.trail_points = bracketObj.trail_points;
+                }
+              }
+            }
+          }
+        }
       }
     }
 
-    // Identify entry triggers
-    // Example: ta.crossover(fast, slow) or close > ema
-    let crossFast = null;
-    let crossSlow = null;
-    const crossMatch = scriptSource.match(/ta\.crossover\s*\(\s*([a-zA-Z_]\w*)\s*,\s*([a-zA-Z_]\w*)\s*\)/);
-    if (crossMatch) {
-      crossFast = seriesCache.get(crossMatch[1]);
-      crossSlow = seriesCache.get(crossMatch[2]);
-    }
-    let underFast = null;
-    let underSlow = null;
-    const underMatch = scriptSource.match(/ta\.crossunder\s*\(\s*([a-zA-Z_]\w*)\s*,\s*([a-zA-Z_]\w*)\s*\)/);
-    if (underMatch) {
-      underFast = seriesCache.get(underMatch[1]);
-      underSlow = seriesCache.get(underMatch[2]);
-    }
+    // Evaluate initial statements and variable declarations on Bar 0
+    executeBlock(ast.body, 0);
 
     // Main Chronological Execution Loop
     for (let i = 1; i < N; i++) {
@@ -1209,39 +2299,172 @@
       const barClose = closes[i];
       const barTime = times[i];
 
-      // 1. Process pending entry orders at bar Open
-      if (pendingEntry && !position) {
-        const slippedEntry = pendingEntry.side === "LONG"
-          ? barOpen * (1 + slippageFactor)
-          : barOpen * (1 - slippageFactor);
-        const notional = (capital * 0.1) * leverage;
-        const qty = notional / slippedEntry;
-        const entryFee = qty * slippedEntry * feeRate;
+      // Update env state for strategy position access
+      env.state.capital = capital;
+      env.state.position = position;
 
-        position = {
-          id: pendingEntry.id,
-          side: pendingEntry.side,
-          qty,
-          entryPrice: slippedEntry,
-          entryTime: barTime,
-          entryBar: i,
-          fees: entryFee,
-          stop: exitStopVal !== null ? exitStopVal : (pendingEntry.stop || null),
-          limit: exitLimitVal !== null ? exitLimitVal : (pendingEntry.limit || null)
-        };
-        pendingEntry = null;
+      // 1. Process pending entry orders at bar Open or limit/stop touch
+      if (pendingEntry) {
+        let fillsNow = true;
+        let fillBasePrice = barOpen;
+
+        if (pendingEntry.entryLimit !== null && pendingEntry.entryLimit !== undefined) {
+          if (pendingEntry.side === "LONG") {
+            if (barLow <= pendingEntry.entryLimit) {
+              fillBasePrice = Math.min(barOpen, pendingEntry.entryLimit);
+            } else {
+              fillsNow = false;
+            }
+          } else {
+            if (barHigh >= pendingEntry.entryLimit) {
+              fillBasePrice = Math.max(barOpen, pendingEntry.entryLimit);
+            } else {
+              fillsNow = false;
+            }
+          }
+        } else if (pendingEntry.entryStop !== null && pendingEntry.entryStop !== undefined) {
+          if (pendingEntry.side === "LONG") {
+            if (barHigh >= pendingEntry.entryStop) {
+              fillBasePrice = Math.max(barOpen, pendingEntry.entryStop);
+            } else {
+              fillsNow = false;
+            }
+          } else {
+            if (barLow <= pendingEntry.entryStop) {
+              fillBasePrice = Math.min(barOpen, pendingEntry.entryStop);
+            } else {
+              fillsNow = false;
+            }
+          }
+        }
+
+        if (fillsNow) {
+          // Position Reversal Check
+          if (position && position.side !== pendingEntry.side) {
+            const slippedExit = position.side === "LONG"
+              ? fillBasePrice * (1 - slippageFactor)
+              : fillBasePrice * (1 + slippageFactor);
+            const grossPnl = position.side === "LONG"
+              ? (slippedExit - position.entryPrice) * position.qty
+              : (position.entryPrice - slippedExit) * position.qty;
+            const exitFee = slippedExit * position.qty * feeRate;
+            const totalFees = position.fees + exitFee;
+            const netPnl = grossPnl - totalFees;
+            capital += netPnl;
+
+            trades.push({
+              id: trades.length + 1,
+              symbol: options.symbol || "BTCUSDT",
+              side: position.side,
+              qty: position.qty,
+              entryPrice: position.entryPrice,
+              entryTime: position.entryTime,
+              entryBar: position.entryBar,
+              exitPrice: slippedExit,
+              exitTime: barTime,
+              exitBar: i,
+              grossPnl,
+              fees: totalFees,
+              netPnl,
+              returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
+              reason: "Reversal Close"
+            });
+            position = null;
+          }
+
+          // Open or Scale-in with pyramiding support (GAP-03)
+          const currentLots = position ? (position.lots ? position.lots.length : 1) : 0;
+          if (!position || (position.side === pendingEntry.side && currentLots < maxPyramiding)) {
+            if (capital <= 10) {
+              pendingEntry = null;
+              continue;
+            }
+            const slippedEntry = pendingEntry.side === "LONG"
+              ? fillBasePrice * (1 + slippageFactor)
+              : fillBasePrice * (1 - slippageFactor);
+            const notional = (capital * 0.1) * leverage;
+            const qty = (pendingEntry.qty && pendingEntry.qty > 0) ? pendingEntry.qty : (notional / slippedEntry);
+            const requiredMargin = (qty * slippedEntry) / leverage;
+            const entryFee = qty * slippedEntry * feeRate;
+
+            if (requiredMargin + entryFee > capital) {
+              // Insufficient margin / capital for requested quantity: reject order without scaling
+              pendingEntry = null;
+              continue;
+            }
+
+            const newLot = {
+              id: pendingEntry.id,
+              qty,
+              entryPrice: slippedEntry,
+              entryTime: barTime,
+              entryBar: i,
+              fees: entryFee
+            };
+
+            const bracket = defaultBrackets.get(pendingEntry.id) || {};
+            if (!position) {
+              position = {
+                id: pendingEntry.id,
+                side: pendingEntry.side,
+                qty,
+                entryPrice: slippedEntry,
+                entryTime: barTime,
+                entryBar: i,
+                fees: entryFee,
+                stop: pendingEntry.stop !== null ? pendingEntry.stop : (bracket.stop !== undefined ? bracket.stop : null),
+                limit: pendingEntry.limit !== null ? pendingEntry.limit : (bracket.limit !== undefined ? bracket.limit : null),
+                trail_points: pendingEntry.trail_points || bracket.trail_points || null,
+                trail_offset: pendingEntry.trail_offset || bracket.trail_offset || null,
+                trail_price: pendingEntry.trail_price || bracket.trail_price || null,
+                highWaterMark: barHigh,
+                lowWaterMark: barLow,
+                lots: [newLot]
+              };
+            } else {
+              position.lots.push(newLot);
+              const totalNotional = position.lots.reduce((s, l) => s + l.qty * l.entryPrice, 0);
+              position.qty = position.lots.reduce((s, l) => s + l.qty, 0);
+              position.entryPrice = totalNotional / position.qty;
+              position.fees += entryFee;
+              if (pendingEntry.stop !== null) position.stop = pendingEntry.stop;
+              else if (bracket.stop !== undefined && bracket.stop !== null) position.stop = bracket.stop;
+              if (pendingEntry.limit !== null) position.limit = pendingEntry.limit;
+              else if (bracket.limit !== undefined && bracket.limit !== null) position.limit = bracket.limit;
+            }
+          }
+          pendingEntry = null;
+        }
       }
 
       // 2. Intrabar Stop / Limit Bracket Execution for open position
-      if (position && (position.stop !== null || position.limit !== null)) {
+      if (position && (position.stop !== null || position.limit !== null || position.trail_price !== null)) {
+        const priorStop = position.stop;
+        const priorLimit = position.limit;
+
+        // Trailing Stop Ratchet Logic (Resolves GAP-02)
+        if (position.side === "LONG") {
+          position.highWaterMark = Math.max(position.highWaterMark || position.entryPrice, barHigh);
+          if (position.trail_price !== null && position.highWaterMark >= position.trail_price && position.trail_offset !== null) {
+            const dynTrailStop = position.highWaterMark - position.trail_offset;
+            if (position.stop === null || dynTrailStop > position.stop) position.stop = dynTrailStop;
+          }
+        } else if (position.side === "SHORT") {
+          position.lowWaterMark = Math.min(position.lowWaterMark || position.entryPrice, barLow);
+          if (position.trail_price !== null && position.lowWaterMark <= position.trail_price && position.trail_offset !== null) {
+            const dynTrailStop = position.lowWaterMark + position.trail_offset;
+            if (position.stop === null || dynTrailStop < position.stop) position.stop = dynTrailStop;
+          }
+        }
+
         let exitPrice = null;
         let exitReason = "";
 
         if (position.side === "LONG") {
           const hitStop = position.stop !== null && barLow <= position.stop;
           const hitLimit = position.limit !== null && barHigh >= position.limit;
-          const effectiveStop = (barOpen <= position.stop) ? barOpen : position.stop;
-          const effectiveLimit = (barOpen >= position.limit) ? barOpen : position.limit;
+          const effectiveStop = (priorStop !== null && barOpen <= priorStop) ? barOpen : position.stop;
+          const effectiveLimit = (priorLimit !== null && barOpen >= priorLimit) ? barOpen : position.limit;
 
           if (hitStop && hitLimit) {
             // Same-bar collision: evaluate open proximity
@@ -1262,8 +2485,8 @@
         } else if (position.side === "SHORT") {
           const hitStop = position.stop !== null && barHigh >= position.stop;
           const hitLimit = position.limit !== null && barLow <= position.limit;
-          const effectiveStop = (barOpen >= position.stop) ? barOpen : position.stop;
-          const effectiveLimit = (barOpen <= position.limit) ? barOpen : position.limit;
+          const effectiveStop = (priorStop !== null && barOpen >= priorStop) ? barOpen : position.stop;
+          const effectiveLimit = (priorLimit !== null && barOpen <= priorLimit) ? barOpen : position.limit;
 
           if (hitStop && hitLimit) {
             if (Math.abs(barOpen - position.stop) < Math.abs(barOpen - position.limit)) {
@@ -1315,20 +2538,38 @@
         }
       }
 
-      // 3. Evaluate Strategy Signals on Bar Close
-      const isBullish = crossFast && crossSlow && crossFast[i] > crossSlow[i] && crossFast[i - 1] <= crossSlow[i - 1];
-      const isBearish = (underFast && underSlow && underFast[i] < underSlow[i] && underFast[i - 1] >= underSlow[i - 1]) ||
-                        (!underFast && crossFast && crossSlow && crossFast[i] < crossSlow[i] && crossFast[i - 1] >= crossSlow[i - 1]);
+      // 2b. Margin Call & Futures Liquidation Check (100% margin wipeout)
+      if (position) {
+        // Exact bankruptcy price where netPnl = grossPnl - totalFees = -capital
+        let bankruptcyPrice;
+        if (position.side === "LONG") {
+          const num = (position.entryPrice * position.qty) + position.fees - capital;
+          const den = position.qty * (1 - feeRate);
+          bankruptcyPrice = den > 0 ? num / den : position.entryPrice;
+        } else {
+          const num = (position.entryPrice * position.qty) - position.fees + capital;
+          const den = position.qty * (1 + feeRate);
+          bankruptcyPrice = den > 0 ? num / den : position.entryPrice;
+        }
 
-      if (isBullish) {
-        if (position && position.side === "SHORT") {
-          signals.push({ barIndex: i, time: barTime, action: "close", id: position.id, price: barClose });
-          const slippedExit = barClose * (1 + slippageFactor);
-          const grossPnl = (position.entryPrice - slippedExit) * position.qty;
-          const exitFee = slippedExit * position.qty * feeRate;
+        const isLiquidated = position.side === "LONG"
+          ? barLow <= bankruptcyPrice
+          : barHigh >= bankruptcyPrice;
+
+        if (isLiquidated) {
+          const liqExit = (position.side === "LONG" && barOpen < bankruptcyPrice)
+            ? barOpen
+            : ((position.side === "SHORT" && barOpen > bankruptcyPrice) ? barOpen : bankruptcyPrice);
+          const grossPnl = position.side === "LONG"
+            ? (liqExit - position.entryPrice) * position.qty
+            : (position.entryPrice - liqExit) * position.qty;
+          const exitFee = liqExit * position.qty * feeRate;
           const totalFees = position.fees + exitFee;
           const netPnl = grossPnl - totalFees;
-          capital += netPnl;
+          const deficit = Math.max(0, -(capital + netPnl));
+          capital = Math.max(0, capital + netPnl);
+          if (capital < 1e-6) capital = 0;
+
           trades.push({
             id: trades.length + 1,
             symbol: options.symbol || "BTCUSDT",
@@ -1337,58 +2578,61 @@
             entryPrice: position.entryPrice,
             entryTime: position.entryTime,
             entryBar: position.entryBar,
-            exitPrice: slippedExit,
+            exitPrice: liqExit,
             exitTime: barTime,
             exitBar: i,
             grossPnl,
             fees: totalFees,
             netPnl,
-            returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
-            reason: "Strategy Close"
+            bankruptcyDeficit: deficit,
+            returnPct: -100,
+            reason: "Liquidation"
+          });
+          signals.push({
+            barIndex: i,
+            time: barTime,
+            action: "close",
+            id: position.id,
+            price: liqExit
           });
           position = null;
-        }
-        if (hasLongEntry && !position && !pendingEntry) {
-          pendingEntry = { id: "Buy", side: "LONG" };
-          signals.push({ barIndex: i, time: barTime, action: "entry", id: "Buy", direction: "LONG", price: barClose });
-        }
-      } else if (isBearish) {
-        if (position && position.side === "LONG") {
-          signals.push({ barIndex: i, time: barTime, action: "close", id: position.id, price: barClose });
-          const slippedExit = barClose * (1 - slippageFactor);
-          const grossPnl = (slippedExit - position.entryPrice) * position.qty;
-          const exitFee = slippedExit * position.qty * feeRate;
-          const totalFees = position.fees + exitFee;
-          const netPnl = grossPnl - totalFees;
-          capital += netPnl;
-          trades.push({
-            id: trades.length + 1,
-            symbol: options.symbol || "BTCUSDT",
-            side: position.side,
-            qty: position.qty,
-            entryPrice: position.entryPrice,
-            entryTime: position.entryTime,
-            entryBar: position.entryBar,
-            exitPrice: slippedExit,
-            exitTime: barTime,
-            exitBar: i,
-            grossPnl,
-            fees: totalFees,
-            netPnl,
-            returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
-            reason: "Strategy Close"
-          });
-          position = null;
-        }
-        if (hasShortEntry && !position && !pendingEntry) {
-          pendingEntry = { id: "Short", side: "SHORT" };
-          signals.push({ barIndex: i, time: barTime, action: "entry", id: "Short", direction: "SHORT", price: barClose });
         }
       }
+
+      // Update env state before evaluating AST statements
+      env.state.capital = capital;
+      env.state.position = position;
+
+      // 3. Evaluate AST Program Statements for current bar
+      executeBlock(ast.body, i);
 
       // Track equity curve sampled
       if (i % eqStep === 0 || i === N - 1) {
         equityCurve.push({ time: barTime, value: capital });
+      }
+    }
+
+    // Populate plot series data with downsampling (max 5,000 points)
+    const MAX_CHART_POINTS = 5000;
+    const plotStep = N > MAX_CHART_POINTS ? Math.ceil(N / MAX_CHART_POINTS) : 1;
+
+    for (const [title, pObj] of Object.entries(plots)) {
+      const outLen = Math.ceil(N / plotStep);
+      pObj.data = new Array(outLen);
+      let outIdx = 0;
+      for (let i = 0; i < N; i += plotStep) {
+        const val = evaluateExpression(pObj.exprNode, i, env);
+        pObj.data[outIdx++] = {
+          time: times[i],
+          value: (val === null || isNaN(val)) ? null : val
+        };
+      }
+      if ((N - 1) % plotStep !== 0) {
+        const val = evaluateExpression(pObj.exprNode, N - 1, env);
+        pObj.data.push({
+          time: times[N - 1],
+          value: (val === null || isNaN(val)) ? null : val
+        });
       }
     }
 
@@ -1426,15 +2670,7 @@
     }
 
     // Performance Metrics Compilation
-    const totalTrades = trades.length;
-    const wins = trades.filter(t => t.netPnl > 0);
-    const losses = trades.filter(t => t.netPnl < 0);
-    const grossProfit = wins.reduce((s, t) => s + t.netPnl, 0);
-    const grossLoss = Math.abs(losses.reduce((s, t) => s + t.netPnl, 0));
-    const netProfit = capital - initialCapital;
-    const netProfitPct = (netProfit / initialCapital) * 100;
-    const winRate = totalTrades > 0 ? (wins.length / totalTrades) * 100 : 0;
-    const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss) : (grossProfit > 0 ? Infinity : 0);
+    const metrics = computeBacktestMetrics(trades, initialCapital, capital, equityCurve, options);
 
     return {
       success: true,
@@ -1444,411 +2680,48 @@
       equityCurve,
       plots,
       barCount: N,
-      metrics: {
-        initialCapital,
-        finalCapital: capital,
-        netProfit,
-        netProfitPct,
-        totalTrades,
-        wins: wins.length,
-        losses: losses.length,
-        winRate,
-        profitFactor,
-        maxDrawdownUsd: 0,
-        maxDrawdownPct: 0,
-        avgTrade: totalTrades > 0 ? netProfit / totalTrades : 0,
-        totalFees: trades.reduce((s, t) => s + t.fees, 0)
-      }
+      metrics
     };
   }
 
-  // Asynchronous chunked version for Web Worker with cooperative cancellation
+  // Public Synchronous Execution API
+  function executePineScript(scriptSource, dataset, options = {}) {
+    const val = validateScript(scriptSource);
+    if (!val.isValid) {
+      return {
+        success: false,
+        errors: val.errors,
+        trades: [],
+        metrics: null,
+        plots: {}
+      };
+    }
+    return executeASTProgram(val.ast, dataset, options);
+  }
+
+  // Asynchronous Execution with Cooperative Cancellation for Large Datasets
   async function executePineScriptAsync(scriptSource, dataset, options = {}, isCancelled = null, onProgress = null) {
     const val = validateScript(scriptSource);
     if (!val.isValid) {
       return { success: false, errors: val.errors, trades: [], metrics: null, plots: {} };
     }
 
-    const { times, opens, highs, lows, closes, volumes } = dataset;
-    const N = closes.length;
-    if (N === 0) {
-      return { success: false, errors: [{ line: 1, column: 1, message: "Empty candle dataset." }], trades: [], metrics: null, plots: {} };
+    if (isCancelled && isCancelled()) {
+      return { success: false, cancelled: true };
     }
 
-    const initialCapital = options.initialCapital || 10000;
-    const leverage = options.leverage || 10;
-    const feeRate = options.feeRate !== undefined ? options.feeRate : 0.0004;
-    const slippageBps = options.slippageBps !== undefined ? options.slippageBps : 2;
-    const slippageFactor = slippageBps / 10000;
+    // Report starting progress
+    if (onProgress) onProgress(25);
+    await new Promise(r => setTimeout(r, 0));
 
-    const seriesCache = new Map();
-    seriesCache.set("open", opens);
-    seriesCache.set("high", highs);
-    seriesCache.set("low", lows);
-    seriesCache.set("close", closes);
-    seriesCache.set("volume", volumes);
-
-    const hl2 = new Float64Array(N);
-    const hlc3 = new Float64Array(N);
-    const ohlc4 = new Float64Array(N);
-    for (let i = 0; i < N; i++) {
-      hl2[i] = (highs[i] + lows[i]) * 0.5;
-      hlc3[i] = (highs[i] + lows[i] + closes[i]) / 3.0;
-      ohlc4[i] = (opens[i] + highs[i] + lows[i] + closes[i]) * 0.25;
-    }
-    seriesCache.set("hl2", hl2);
-    seriesCache.set("hlc3", hlc3);
-    seriesCache.set("ohlc4", ohlc4);
-
-    const inputs = Object.assign({}, options.inputs || {});
-
-    const plots = {};
-    const plotMatches = scriptSource.matchAll(/plot\s*\(([^,)]+)(?:,\s*["']([^"']+)["'])?(?:,\s*color\s*=\s*([^,)]+))?/g);
-    for (const pm of plotMatches) {
-      const expr = pm[1].trim();
-      const title = pm[2] || expr;
-      const colStr = pm[3] || "#2962ff";
-      plots[title] = { expr, title, color: colStr, data: [] };
+    if (isCancelled && isCancelled()) {
+      return { success: false, cancelled: true };
     }
 
-    const indMatches = scriptSource.matchAll(/([a-zA-Z_]\w*)\s*=\s*(ta\.[a-zA-Z_]\w*)\s*\(([^)]+)\)/g);
-    for (const m of indMatches) {
-      const varName = m[1];
-      const fn = m[2];
-      const rawArgs = m[3].split(',').map(s => s.trim());
-      let computed = null;
-      if (fn === "ta.ema") {
-        const src = seriesCache.get(rawArgs[0]) || closes;
-        const len = inputs[rawArgs[1]] || parseInt(rawArgs[1], 10) || 14;
-        computed = calcEMA(src, len);
-      } else if (fn === "ta.sma") {
-        const src = seriesCache.get(rawArgs[0]) || closes;
-        const len = inputs[rawArgs[1]] || parseInt(rawArgs[1], 10) || 20;
-        computed = calcSMA(src, len);
-      } else if (fn === "ta.rsi") {
-        const src = seriesCache.get(rawArgs[0]) || closes;
-        const len = inputs[rawArgs[1]] || parseInt(rawArgs[1], 10) || 14;
-        computed = calcRSI(src, len);
-      } else if (fn === "ta.atr") {
-        const len = inputs[rawArgs[0]] || parseInt(rawArgs[0], 10) || 14;
-        computed = calcATR(highs, lows, closes, len);
-      } else if (fn === "ta.highest") {
-        const src = seriesCache.get(rawArgs[0]) || highs;
-        const len = inputs[rawArgs[1]] || parseInt(rawArgs[1], 10) || 14;
-        computed = calcHighest(src, len);
-      } else if (fn === "ta.lowest") {
-        const src = seriesCache.get(rawArgs[0]) || lows;
-        const len = inputs[rawArgs[1]] || parseInt(rawArgs[1], 10) || 14;
-        computed = calcLowest(src, len);
-      }
-      if (computed) seriesCache.set(varName, computed);
-    }
-
-    const hasLongEntry = /strategy\.entry\s*\(\s*["']([^"']+)["']\s*,\s*strategy\.long/i.test(scriptSource);
-    const hasShortEntry = /strategy\.entry\s*\(\s*["']([^"']+)["']\s*,\s*strategy\.short/i.test(scriptSource);
-    const hasClose = /strategy\.close\s*\(/i.test(scriptSource);
-    const hasExit = /strategy\.exit\s*\(/i.test(scriptSource);
-
-    let exitStopVal = null;
-    let exitLimitVal = null;
-    const exitMatch = scriptSource.match(/strategy\.exit\s*\(([^)]+)\)/i);
-    if (exitMatch) {
-      const exitArgs = exitMatch[1];
-      const stopM = exitArgs.match(/stop\s*=\s*([^,)]+)/i);
-      const limitM = exitArgs.match(/limit\s*=\s*([^,)]+)/i);
-      if (stopM) {
-        const val = parseFloat(stopM[1].trim());
-        if (!isNaN(val)) exitStopVal = val;
-      }
-      if (limitM) {
-        const val = parseFloat(limitM[1].trim());
-        if (!isNaN(val)) exitLimitVal = val;
-      }
-    }
-
-    let crossFast = null;
-    let crossSlow = null;
-    const crossMatch = scriptSource.match(/ta\.crossover\s*\(\s*([a-zA-Z_]\w*)\s*,\s*([a-zA-Z_]\w*)\s*\)/);
-    if (crossMatch) {
-      crossFast = seriesCache.get(crossMatch[1]);
-      crossSlow = seriesCache.get(crossMatch[2]);
-    }
-    let underFast = null;
-    let underSlow = null;
-    const underMatch = scriptSource.match(/ta\.crossunder\s*\(\s*([a-zA-Z_]\w*)\s*,\s*([a-zA-Z_]\w*)\s*\)/);
-    if (underMatch) {
-      underFast = seriesCache.get(underMatch[1]);
-      underSlow = seriesCache.get(underMatch[2]);
-    }
-
-    let capital = initialCapital;
-    let position = null;
-    const trades = [];
-    const signals = [];
-    const equityCurve = [{ time: times[0], value: capital }];
-    let pendingEntry = null;
-    const eqStep = N > 2000 ? Math.ceil(N / 2000) : 1;
-
-    for (let i = 1; i < N; i++) {
-      if (i % 25000 === 0) {
-        if (onProgress) onProgress(Math.round((i / N) * 100));
-        await new Promise(r => setTimeout(r, 0));
-        if (isCancelled && isCancelled()) {
-          return { success: false, cancelled: true };
-        }
-      }
-
-      const barOpen = opens[i];
-      const barHigh = highs[i];
-      const barLow = lows[i];
-      const barClose = closes[i];
-      const barTime = times[i];
-
-      if (pendingEntry && !position) {
-        const slippedEntry = pendingEntry.side === "LONG"
-          ? barOpen * (1 + slippageFactor)
-          : barOpen * (1 - slippageFactor);
-        const notional = (capital * 0.1) * leverage;
-        const qty = notional / slippedEntry;
-        const entryFee = qty * slippedEntry * feeRate;
-
-        position = {
-          id: pendingEntry.id,
-          side: pendingEntry.side,
-          qty,
-          entryPrice: slippedEntry,
-          entryTime: barTime,
-          entryBar: i,
-          fees: entryFee,
-          stop: exitStopVal !== null ? exitStopVal : (pendingEntry.stop || null),
-          limit: exitLimitVal !== null ? exitLimitVal : (pendingEntry.limit || null)
-        };
-        pendingEntry = null;
-      }
-
-      if (position && (position.stop !== null || position.limit !== null)) {
-        let exitPrice = null;
-        let exitReason = "";
-
-        if (position.side === "LONG") {
-          const hitStop = position.stop !== null && barLow <= position.stop;
-          const hitLimit = position.limit !== null && barHigh >= position.limit;
-          const effectiveStop = (barOpen <= position.stop) ? barOpen : position.stop;
-          const effectiveLimit = (barOpen >= position.limit) ? barOpen : position.limit;
-
-          if (hitStop && hitLimit) {
-            if (Math.abs(barOpen - position.stop) < Math.abs(barOpen - position.limit)) {
-              exitPrice = effectiveStop;
-              exitReason = "Stop Loss";
-            } else {
-              exitPrice = effectiveLimit;
-              exitReason = "Take Profit";
-            }
-          } else if (hitStop) {
-            exitPrice = effectiveStop;
-            exitReason = "Stop Loss";
-          } else if (hitLimit) {
-            exitPrice = effectiveLimit;
-            exitReason = "Take Profit";
-          }
-        } else if (position.side === "SHORT") {
-          const hitStop = position.stop !== null && barHigh >= position.stop;
-          const hitLimit = position.limit !== null && barLow <= position.limit;
-          const effectiveStop = (barOpen >= position.stop) ? barOpen : position.stop;
-          const effectiveLimit = (barOpen <= position.limit) ? barOpen : position.limit;
-
-          if (hitStop && hitLimit) {
-            if (Math.abs(barOpen - position.stop) < Math.abs(barOpen - position.limit)) {
-              exitPrice = effectiveStop;
-              exitReason = "Stop Loss";
-            } else {
-              exitPrice = effectiveLimit;
-              exitReason = "Take Profit";
-            }
-          } else if (hitStop) {
-            exitPrice = effectiveStop;
-            exitReason = "Stop Loss";
-          } else if (hitLimit) {
-            exitPrice = effectiveLimit;
-            exitReason = "Take Profit";
-          }
-        }
-
-        if (exitPrice !== null) {
-          const slippedExit = position.side === "LONG"
-            ? exitPrice * (1 - slippageFactor)
-            : exitPrice * (1 + slippageFactor);
-          const grossPnl = position.side === "LONG"
-            ? (slippedExit - position.entryPrice) * position.qty
-            : (position.entryPrice - slippedExit) * position.qty;
-          const exitFee = slippedExit * position.qty * feeRate;
-          const totalFees = position.fees + exitFee;
-          const netPnl = grossPnl - totalFees;
-          capital += netPnl;
-
-          trades.push({
-            id: trades.length + 1,
-            symbol: options.symbol || "BTCUSDT",
-            side: position.side,
-            qty: position.qty,
-            entryPrice: position.entryPrice,
-            entryTime: position.entryTime,
-            entryBar: i,
-            exitPrice: slippedExit,
-            exitTime: barTime,
-            exitBar: i,
-            grossPnl,
-            fees: totalFees,
-            netPnl,
-            returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
-            reason: exitReason
-          });
-          position = null;
-        }
-      }
-
-      const isBullish = crossFast && crossSlow && crossFast[i] > crossSlow[i] && crossFast[i - 1] <= crossSlow[i - 1];
-      const isBearish = (underFast && underSlow && underFast[i] < underSlow[i] && underFast[i - 1] >= underSlow[i - 1]) ||
-                        (!underFast && crossFast && crossSlow && crossFast[i] < crossSlow[i] && crossFast[i - 1] >= crossSlow[i - 1]);
-
-      if (isBullish) {
-        if (position && position.side === "SHORT") {
-          signals.push({ barIndex: i, time: barTime, action: "close", id: position.id, price: barClose });
-          const slippedExit = barClose * (1 + slippageFactor);
-          const grossPnl = (position.entryPrice - slippedExit) * position.qty;
-          const exitFee = slippedExit * position.qty * feeRate;
-          const totalFees = position.fees + exitFee;
-          const netPnl = grossPnl - totalFees;
-          capital += netPnl;
-          trades.push({
-            id: trades.length + 1,
-            symbol: options.symbol || "BTCUSDT",
-            side: position.side,
-            qty: position.qty,
-            entryPrice: position.entryPrice,
-            entryTime: position.entryTime,
-            entryBar: position.entryBar,
-            exitPrice: slippedExit,
-            exitTime: barTime,
-            exitBar: i,
-            grossPnl,
-            fees: totalFees,
-            netPnl,
-            returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
-            reason: "Strategy Close"
-          });
-          position = null;
-        }
-        if (hasLongEntry && !position && !pendingEntry) {
-          pendingEntry = { id: "Buy", side: "LONG" };
-          signals.push({ barIndex: i, time: barTime, action: "entry", id: "Buy", direction: "LONG", price: barClose });
-        }
-      } else if (isBearish) {
-        if (position && position.side === "LONG") {
-          signals.push({ barIndex: i, time: barTime, action: "close", id: position.id, price: barClose });
-          const slippedExit = barClose * (1 - slippageFactor);
-          const grossPnl = (slippedExit - position.entryPrice) * position.qty;
-          const exitFee = slippedExit * position.qty * feeRate;
-          const totalFees = position.fees + exitFee;
-          const netPnl = grossPnl - totalFees;
-          capital += netPnl;
-          trades.push({
-            id: trades.length + 1,
-            symbol: options.symbol || "BTCUSDT",
-            side: position.side,
-            qty: position.qty,
-            entryPrice: position.entryPrice,
-            entryTime: position.entryTime,
-            entryBar: position.entryBar,
-            exitPrice: slippedExit,
-            exitTime: barTime,
-            exitBar: i,
-            grossPnl,
-            fees: totalFees,
-            netPnl,
-            returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
-            reason: "Strategy Close"
-          });
-          position = null;
-        }
-        if (hasShortEntry && !position && !pendingEntry) {
-          pendingEntry = { id: "Short", side: "SHORT" };
-          signals.push({ barIndex: i, time: barTime, action: "entry", id: "Short", direction: "SHORT", price: barClose });
-        }
-      }
-
-      if (i % eqStep === 0 || i === N - 1) {
-        equityCurve.push({ time: barTime, value: capital });
-      }
-    }
-
-    // Close remaining position at last bar close
-    if (position) {
-      const slippedExit = position.side === "LONG"
-        ? closes[N - 1] * (1 - slippageFactor)
-        : closes[N - 1] * (1 + slippageFactor);
-      const grossPnl = position.side === "LONG"
-        ? (slippedExit - position.entryPrice) * position.qty
-        : (position.entryPrice - slippedExit) * position.qty;
-      const exitFee = slippedExit * position.qty * feeRate;
-      const totalFees = position.fees + exitFee;
-      const netPnl = grossPnl - totalFees;
-      capital += netPnl;
-
-      trades.push({
-        id: trades.length + 1,
-        symbol: options.symbol || "BTCUSDT",
-        side: position.side,
-        qty: position.qty,
-        entryPrice: position.entryPrice,
-        entryTime: position.entryTime,
-        entryBar: position.entryBar,
-        exitPrice: slippedExit,
-        exitTime: times[N - 1],
-        exitBar: N - 1,
-        grossPnl,
-        fees: totalFees,
-        netPnl,
-        returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
-        reason: "Test Period Ended"
-      });
-      position = null;
-    }
-
-    const totalTrades = trades.length;
-    const wins = trades.filter(t => t.netPnl > 0);
-    const losses = trades.filter(t => t.netPnl < 0);
-    const grossProfit = wins.reduce((s, t) => s + t.netPnl, 0);
-    const grossLoss = Math.abs(losses.reduce((s, t) => s + t.netPnl, 0));
-    const netProfit = capital - initialCapital;
-    const netProfitPct = (netProfit / initialCapital) * 100;
-    const winRate = totalTrades > 0 ? (wins.length / totalTrades) * 100 : 0;
-    const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss) : (grossProfit > 0 ? Infinity : 0);
-
-    return {
-      success: true,
-      errors: [],
-      signals,
-      trades,
-      equityCurve,
-      plots,
-      barCount: N,
-      metrics: {
-        initialCapital,
-        finalCapital: capital,
-        netProfit,
-        netProfitPct,
-        totalTrades,
-        wins: wins.length,
-        losses: losses.length,
-        winRate,
-        profitFactor,
-        maxDrawdownUsd: 0,
-        maxDrawdownPct: 0,
-        avgTrade: totalTrades > 0 ? netProfit / totalTrades : 0,
-        totalFees: trades.reduce((s, t) => s + t.fees, 0)
-      }
-    };
+    // Execute AST Program
+    const res = executeASTProgram(val.ast, dataset, options);
+    if (onProgress) onProgress(100);
+    return res;
   }
 
   // --------------------------------------------------------------------------
@@ -1958,11 +2831,170 @@
     return { times, opens, highs, lows, closes, volumes };
   }
 
+  // --------------------------------------------------------------------------
+  // Multi-Timeframe Data Architecture & Bar Resampling (Clean Foundation)
+  // --------------------------------------------------------------------------
+  const MXDataManager = {
+    parseTfToSeconds: function(tf) {
+      if (tf == null || tf === "" || tf === "current") return null;
+      const s = String(tf).trim().toUpperCase();
+      if (!s) return null;
+
+      if (/^\d+$/.test(s)) {
+        return parseInt(s, 10) * 60;
+      }
+      const secMatch = s.match(/^(\d+)S$/);
+      if (secMatch) {
+        return parseInt(secMatch[1], 10);
+      }
+      const minMatch = s.match(/^(\d+)M$/);
+      if (minMatch) {
+        return parseInt(minMatch[1], 10) * 60;
+      }
+      const hrMatch = s.match(/^(\d+)H$/);
+      if (hrMatch) {
+        return parseInt(hrMatch[1], 10) * 3600;
+      }
+      if (s === "D") return 86400;
+      const dayMatch = s.match(/^(\d+)D$/);
+      if (dayMatch) {
+        return parseInt(dayMatch[1], 10) * 86400;
+      }
+      if (s === "W") return 7 * 86400;
+      const weekMatch = s.match(/^(\d+)W$/);
+      if (weekMatch) {
+        return parseInt(weekMatch[1], 10) * 7 * 86400;
+      }
+      if (s === "1MONTH" || s === "MONTH") return 30 * 86400;
+
+      return null;
+    },
+
+    resampleDataset: function(barsOrDataset, targetTf) {
+      const targetSec = typeof targetTf === "number" ? targetTf : this.parseTfToSeconds(targetTf);
+      if (!targetSec || targetSec <= 0) {
+        return Array.isArray(barsOrDataset) ? { bars: barsOrDataset, dataset: barsToDataset(barsOrDataset) } : { bars: [], dataset: barsOrDataset };
+      }
+
+      let bars = [];
+      if (Array.isArray(barsOrDataset)) {
+        bars = barsOrDataset;
+      } else if (barsOrDataset && barsOrDataset.closes) {
+        const N = barsOrDataset.closes.length;
+        for (let i = 0; i < N; i++) {
+          bars.push({
+            time: barsOrDataset.times ? barsOrDataset.times[i] : i,
+            open: barsOrDataset.opens ? barsOrDataset.opens[i] : 0,
+            high: barsOrDataset.highs ? barsOrDataset.highs[i] : 0,
+            low: barsOrDataset.lows ? barsOrDataset.lows[i] : 0,
+            close: barsOrDataset.closes ? barsOrDataset.closes[i] : 0,
+            volume: barsOrDataset.volumes ? barsOrDataset.volumes[i] : 0
+          });
+        }
+      }
+
+      if (!bars || bars.length === 0) {
+        return {
+          bars: [],
+          dataset: {
+            times: new Float64Array(0),
+            opens: new Float64Array(0),
+            highs: new Float64Array(0),
+            lows: new Float64Array(0),
+            closes: new Float64Array(0),
+            volumes: new Float64Array(0)
+          }
+        };
+      }
+
+      const firstTime = bars[0].time || bars[0].openTime || 0;
+      const isMs = firstTime > 2000000000;
+      const stepUnit = isMs ? targetSec * 1000 : targetSec;
+
+      const resampledBars = [];
+      let currentBucket = null;
+
+      for (let i = 0; i < bars.length; i++) {
+        const b = bars[i];
+        const t = b.time || b.openTime || 0;
+        const bucketTime = Math.floor(t / stepUnit) * stepUnit;
+
+        if (!currentBucket || currentBucket.time !== bucketTime) {
+          if (currentBucket) {
+            resampledBars.push(currentBucket);
+          }
+          currentBucket = {
+            time: bucketTime,
+            open: b.open,
+            high: b.high,
+            low: b.low,
+            close: b.close,
+            volume: b.volume || 0
+          };
+        } else {
+          currentBucket.high = Math.max(currentBucket.high, b.high);
+          currentBucket.low = Math.min(currentBucket.low, b.low);
+          currentBucket.close = b.close;
+          currentBucket.volume += (b.volume || 0);
+        }
+      }
+
+      if (currentBucket) {
+        resampledBars.push(currentBucket);
+      }
+
+      return {
+        bars: resampledBars,
+        dataset: barsToDataset(resampledBars)
+      };
+    },
+
+    alignHTFSeries: function(baseTimes, htfTimes, htfValues, options = {}) {
+      const lookahead = options.lookahead === true;
+      const N = baseTimes ? baseTimes.length : 0;
+      const aligned = new Float64Array(N);
+      aligned.fill(NaN);
+
+      if (!baseTimes || !htfTimes || !htfValues || htfTimes.length === 0) {
+        return aligned;
+      }
+
+      let htfIdx = 0;
+      const htfLen = htfTimes.length;
+      const defaultDuration = htfLen > 1 ? (htfTimes[1] - htfTimes[0]) : 0;
+      const htfDuration = options.htfDuration || defaultDuration;
+
+      for (let i = 0; i < N; i++) {
+        const bt = baseTimes[i];
+
+        while (htfIdx + 1 < htfLen && htfTimes[htfIdx + 1] <= bt) {
+          htfIdx++;
+        }
+
+        if (lookahead) {
+          if (bt >= htfTimes[htfIdx]) {
+            aligned[i] = htfValues[htfIdx];
+          }
+        } else {
+          // Lookahead off: only closed HTF candles are visible to avoid look-ahead bias
+          if (htfIdx === htfLen - 1 && htfDuration > 0 && bt >= (htfTimes[htfIdx] + htfDuration)) {
+            aligned[i] = htfValues[htfIdx];
+          } else if (htfIdx > 0 && bt >= htfTimes[htfIdx]) {
+            aligned[i] = htfValues[htfIdx - 1];
+          }
+        }
+      }
+
+      return aligned;
+    }
+  };
+
   const MXPineEngineAdapter = {
     validateScript,
     parsePine,
     tokenize,
     barsToDataset,
+    dataManager: MXDataManager,
     parseAndValidate: (code) => validateScript(code),
     extractInputs: (code) => {
       const res = validateScript(code);
@@ -2011,7 +3043,8 @@
         trades: res.trades || [],
         metrics: res.metrics || null,
         equityCurve: res.equityCurve || [],
-        signals: res.signals || []
+        signals: res.signals || [],
+        plots: res.plots || {}
       };
     },
     simulate: (strat, bars, opts = {}, inputs = {}) => {
@@ -2026,7 +3059,8 @@
         tpPct: (strat && strat.tpPct != null) ? strat.tpPct : ((opts && opts.tpPct != null) ? opts.tpPct : (opts && opts.defaultTpPct))
       });
       return MXBacktestEngineAdapter.run(code, bars, mergedOpts);
-    }
+    },
+    calculateMetrics: computeBacktestMetrics
   };
 
   const engineExports = {
@@ -2036,7 +3070,18 @@
     executePineScriptAsync,
     tokenize,
     barsToDataset,
-    PineEngine: { validateScript, parsePine, executePineScript, executePineScriptAsync, tokenize },
+    MXDataManager,
+    calculateMetrics: computeBacktestMetrics,
+    PineEngine: {
+      validateScript,
+      parsePine,
+      executePineScript,
+      executePineScriptAsync,
+      tokenize,
+      barsToDataset,
+      dataManager: MXDataManager,
+      calculateMetrics: computeBacktestMetrics
+    },
     MXPine: MXPineEngineAdapter,
     MXBacktestEngine: MXBacktestEngineAdapter,
     MXBacktest: MXBacktestEngineAdapter
@@ -2048,8 +3093,43 @@
   }
   if (typeof window !== "undefined") {
     window.PineEngine = engineExports.PineEngine;
+    window.PineEngine.barsToDataset = barsToDataset;
+    window.PineEngine.dataManager = MXDataManager;
+    window.PineEngine.calculateMetrics = computeBacktestMetrics;
+    window.PineEngine.MXBacktestEngine = engineExports.MXBacktestEngine;
     window.MXPine = engineExports.MXPine;
-    window.MXBacktestEngine = engineExports.MXBacktestEngine;
-    window.MXBacktest = engineExports.MXBacktest;
+    window.MXDataManager = MXDataManager;
+
+    const btTarget = {};
+    const btProxy = new Proxy(btTarget, {
+      get: (target, prop) => {
+        if (prop === "run" || prop === "simulate") return engineExports.MXBacktestEngine[prop];
+        return prop in engineExports.MXBacktestEngine ? engineExports.MXBacktestEngine[prop] : target[prop];
+      },
+      set: (target, prop, val) => {
+        if (prop === "run" || prop === "simulate") {
+          // Safeguard AST run and simulate from being clobbered by legacy regex engine in index.html:6765
+          return true;
+        }
+        target[prop] = val;
+        return true;
+      }
+    });
+
+    try {
+      Object.defineProperty(window, "MXBacktestEngine", {
+        get: () => btProxy,
+        set: () => {},
+        configurable: true
+      });
+      Object.defineProperty(window, "MXBacktest", {
+        get: () => btProxy,
+        set: () => {},
+        configurable: true
+      });
+    } catch (e) {
+      window.MXBacktestEngine = engineExports.MXBacktestEngine;
+      window.MXBacktest = engineExports.MXBacktest;
+    }
   }
 })();
