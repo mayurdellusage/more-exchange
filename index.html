@@ -81,11 +81,8 @@ button{cursor:pointer;transition:background .15s,color .15s,border-color .15s,bo
 #app.sidebar-collapsed .side-col{
   display:none !important;
 }
-#app.sidebar-collapsed header{
-  grid-column:1/2;
-}
 header{
-  grid-column:1/3;
+  grid-column:1 / -1;
   background:var(--bg-1);
   display:flex;
   align-items:center;
@@ -265,7 +262,7 @@ section.panel{background:var(--bg-2);border:1px solid var(--line);border-radius:
 
 /* bottom panel */
 .bottom-col{
-  grid-column:1/3;
+  grid-column:1 / -1;
   background:var(--bg-1);
   border-top:1px solid var(--line);
   display:flex;
@@ -290,7 +287,7 @@ section.panel{background:var(--bg-2);border:1px solid var(--line);border-radius:
 .tab-view{flex:1;overflow:auto;padding:0 10px;}
 table{width:100%;border-collapse:collapse;font-size:12px;}
 thead th{
-  position:sticky;top:0;background:var(--bg-1);
+  position:sticky;top:0;z-index:2;background:var(--bg-1);
   text-align:right;color:var(--text-dim);font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.3px;
   padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;
 }
@@ -386,7 +383,7 @@ tbody tr:hover{background:var(--bg-2);}
   user-select:none;
   pointer-events:auto;
   transform:translateY(-50%);
-  transition:top 0.04s linear;
+  transition:top 0.05s ease-out;
 }
 .tv-pill-rev{
   width:26px;
@@ -526,10 +523,18 @@ tbody tr:hover{background:var(--bg-2);}
   user-select:none;
   pointer-events:auto;
   cursor:ns-resize;
-  transition:top 0.04s linear;
+  transition:top 0.05s ease-out;
 }
 .tv-line-pill.sl, .chart-drag-handle.sl{border:1px solid var(--short);}
 .tv-line-pill.tp, .chart-drag-handle.tp{border:1px solid var(--long);}
+
+.tv-line-pill.dragging, .chart-drag-handle.dragging{
+  transition:none !important;
+  z-index:100 !important;
+  cursor:ns-resize !important;
+  box-shadow:0 6px 22px rgba(0,0,0,0.85);
+  filter:brightness(1.2);
+}
 
 .tv-pill-handle{
   display:flex;
@@ -1631,7 +1636,8 @@ tbody tr:hover{background:var(--bg-2);}
             <button class="sb-btn" id="btDeployLiveBtn" style="background:#22ab94;color:#fff;border-color:#22ab94;font-weight:700;">⚡ Deploy Live Paper</button>
             <button class="sb-btn" id="btOverlayToggle">Show Trades on Chart</button>
             <button class="sb-btn" id="btClearOverlay">Clear Overlay</button>
-            <button class="sb-btn" id="btExportCsvBtn">Export CSV</button>
+            <button class="sb-btn" id="btExportCsvBtn">Export Trades CSV</button>
+            <button class="sb-btn" id="btExportSummaryCsvBtn">Export Summary CSV</button>
             <button class="sb-btn" id="btExportJsonBtn">Export JSON</button>
             <button class="sb-btn" id="btApplyToPaperBtn">Import to Paper Trades</button>
           </div>
@@ -2638,9 +2644,12 @@ const volumeSeries = chart.addHistogramSeries({
   priceScaleId:"vol",
   color:"#2a3547"
 });
+window.chart = chart;
+window.candleSeries = candleSeries;
 chart.priceScale("vol").applyOptions({ scaleMargins:{ top:0.82, bottom:0 } });
 
 let entryLine = null, slLine = null, tpLine = null;
+let activeDrag = null;
 let lastBacktestResult = null;
 let backtestOverlayMarkers = [];
 
@@ -2675,6 +2684,7 @@ new ResizeObserver(()=>{
   const w = chartEl.clientWidth || 300;
   const h = Math.max(chartEl.clientHeight || 0, 320);
   chart.applyOptions({ width: w, height: h });
+  if(typeof renderPositionOverlay === "function") renderPositionOverlay();
 }).observe(chartEl);
 new ResizeObserver(()=>{
   const el = document.getElementById("equity-chart");
@@ -2701,16 +2711,21 @@ async function loadExchangeInfo(){
 function tfToInterval(tf){ return tf; }
 
 async function loadKlines(symbol, tf, extraParams){
-  const url = `${REST_BASE}/fapi/v1/klines?symbol=${symbol}&interval=${tfToInterval(tf)}${extraParams||"&limit=500"}`;
-  const res = await fetch(url);
-  const raw = await res.json();
-  if(!Array.isArray(raw)) return [];
-  return raw.map(k=>({
-    time: Math.floor(k[0]/1000),
-    timeMs: k[0],
-    open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]),
-    volume: parseFloat(k[5])
-  }));
+  try{
+    const url = `${REST_BASE}/fapi/v1/klines?symbol=${symbol}&interval=${tfToInterval(tf)}${extraParams||"&limit=500"}`;
+    const res = await fetch(url);
+    const raw = await res.json();
+    if(!Array.isArray(raw)) return [];
+    return raw.map(k=>({
+      time: Math.floor(k[0]/1000),
+      timeMs: k[0],
+      open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]),
+      volume: parseFloat(k[5])
+    }));
+  }catch(e){
+    console.warn("loadKlines fetch failed:", e);
+    return [];
+  }
 }
 
 async function load24h(symbol){
@@ -2729,6 +2744,7 @@ const PAGE = 1500;
 const TF_LIST = ["1m","5m","15m","1h","4h","1d"];
 const listingStart = {};
 const H = { bars:[], hasOlder:true, hasNewer:false, busy:false, gen:0 };
+window.H = H;
 const noticeEl = document.getElementById("histNotice");
 const liveBtn = document.getElementById("liveBtn");
 let noticeTimer = null;
@@ -2838,12 +2854,30 @@ async function refreshChart(opts){
   if(opts.rangeMs==null) clearRangeActive();
   const g = ++H.gen; H.busy = true; H.hasOlder = true; H.hasNewer = false; updateLiveBtn();
   try{
-    const bars = await loadKlines(ui.symbol, ui.tf, "&limit=1000");
+    let bars = await loadKlines(ui.symbol, ui.tf, "&limit=1000");
     if(g!==H.gen) return;
+    if(!bars.length){
+      const basePrice = (market[ui.symbol] && market[ui.symbol].last > 0) ? market[ui.symbol].last : (ui.symbol.startsWith("ETH") ? 3500 : 65000);
+      const stepSec = (TF_MS[ui.tf] || 300000) / 1000;
+      const nowSec = Math.floor(Date.now() / 1000);
+      bars = [];
+      for(let i = 200; i >= 0; i--){
+        const t = nowSec - i * stepSec;
+        bars.push({
+          time: t,
+          timeMs: t * 1000,
+          open: basePrice,
+          high: roundPrice(ui.symbol, basePrice * 1.002),
+          low: roundPrice(ui.symbol, basePrice * 0.998),
+          close: basePrice,
+          volume: 50
+        });
+      }
+    }
     H.bars = bars;
     lastLoadedBar = bars[bars.length-1] || null;
     liveBar = lastLoadedBar ? {time:lastLoadedBar.time,open:lastLoadedBar.open,high:lastLoadedBar.high,low:lastLoadedBar.low,close:lastLoadedBar.close} : null;
-    if(lastLoadedBar){
+    if(lastLoadedBar && (!market[ui.symbol] || market[ui.symbol].last <= 0)){
       market[ui.symbol].last = market[ui.symbol].bid = market[ui.symbol].ask = lastLoadedBar.close;
     }
     let startMs = null;
@@ -2916,7 +2950,7 @@ async function loadWindow(startMs, endMs, focusMs){
       catch(e){ chart.timeScale().fitContent(); }
     }
   }catch(e){ console.warn("loadWindow failed", e); showNotice("Could not load that range — try again."); }
-  finally{ if(g===H.gen) H.busy=false; updateLiveBtn(); }
+  finally{ if(g===H.gen){ H.busy=false; drawOrderLinesForCurrentSymbol(); updateAll(); } updateLiveBtn(); }
 }
 
 /* ---- bottom bar events ---- */
@@ -3465,6 +3499,62 @@ function updateLivePositionLine(){
   renderPositionOverlay();
 }
 
+function getOrCreateStripDOM(strip){
+  let revBtn = strip.querySelector(".tv-pill-rev");
+  if(!revBtn){
+    strip.className = "chart-position-strip tv-position-pill";
+    strip.innerHTML = `
+      <button class="tv-pill-rev" data-act="reverse" title="Reverse Position (close current & open opposite)">&#8644;</button>
+      <button class="tv-pill-btn tp" data-act="tp">TP</button>
+      <button class="tv-pill-btn sl" data-act="sl">SL</button>
+      <span class="tv-pill-size"></span>
+      <div class="tv-pill-pnl-wrap">
+        <span class="tv-pill-pnl"></span>
+        <button class="tv-pill-close" data-act="close" title="Market Close Position">&times;</button>
+      </div>
+    `;
+    revBtn = strip.querySelector(".tv-pill-rev");
+  }
+  return {
+    revBtn,
+    tpBtn: strip.querySelector(".tv-pill-btn.tp"),
+    slBtn: strip.querySelector(".tv-pill-btn.sl"),
+    sizeSpan: strip.querySelector(".tv-pill-size"),
+    pnlSpan: strip.querySelector(".tv-pill-pnl"),
+    closeBtn: strip.querySelector(".tv-pill-close")
+  };
+}
+
+function getOrCreateHandleDOM(handleEl, type){
+  let handle = handleEl.querySelector(".tv-pill-handle");
+  const isSl = type === "sl";
+  const tagClass = isSl ? "sl" : "tp";
+  const tagText = isSl ? "SL" : "TP";
+  const titleText = isSl ? "Stop Loss" : "Take Profit";
+  const actName = isSl ? "del-sl" : "del-tp";
+
+  if(!handle){
+    handleEl.className = "chart-drag-handle tv-line-pill " + tagClass;
+    handleEl.innerHTML = `
+      <div class="tv-pill-handle" data-target="${type}">
+        <span class="tv-pill-tag ${tagClass}">${tagText}</span>
+        <span class="tv-pill-price"></span>
+        <span class="tv-pill-pnl-sub"></span>
+        <span class="tv-drag-grip" title="Drag to adjust ${titleText}">&#10565;</span>
+        <button class="tv-pill-close" data-act="${actName}" title="Remove ${titleText}">&times;</button>
+      </div>
+    `;
+    handle = handleEl.querySelector(".tv-pill-handle");
+  }
+  return {
+    handle,
+    priceSpan: handleEl.querySelector(".tv-pill-price"),
+    pnlSpan: handleEl.querySelector(".tv-pill-pnl-sub"),
+    grip: handleEl.querySelector(".tv-drag-grip"),
+    closeBtn: handleEl.querySelector(".tv-pill-close")
+  };
+}
+
 function renderPositionOverlay(){
   const pos = account.positions[ui.symbol];
   const strip = document.getElementById("chartPositionStrip");
@@ -3481,17 +3571,16 @@ function renderPositionOverlay(){
   const sign = pos.side === "LONG" ? "+" : "-";
 
   if(strip){
-    strip.className = "chart-position-strip tv-position-pill";
-    strip.innerHTML = `
-      <button class="tv-pill-rev ${sideLower}" data-act="reverse" title="Reverse Position (close current & open opposite)">&#8644;</button>
-      <button class="tv-pill-btn tp ${pos.tp!=null ? 'active' : ''}" data-act="tp" title="${pos.tp!=null ? 'Take Profit: ' + fmtPrice(ui.symbol, pos.tp) + ' (drag green line or click to edit)' : 'Add Take Profit'}">TP</button>
-      <button class="tv-pill-btn sl ${pos.sl!=null ? 'active' : ''}" data-act="sl" title="${pos.sl!=null ? 'Stop Loss: ' + fmtPrice(ui.symbol, pos.sl) + ' (drag red line or click to edit)' : 'Add Stop Loss'}">SL</button>
-      <span class="tv-pill-size ${sideLower}">${sign}${pos.qty}</span>
-      <div class="tv-pill-pnl-wrap">
-        <span class="tv-pill-pnl ${pnl>=0 ? 'up' : 'down'}">${pnl>=0 ? '+' : ''}${fmtUsd(pnl)}</span>
-        <button class="tv-pill-close" data-act="close" title="Market Close Position">&times;</button>
-      </div>
-    `;
+    const dom = getOrCreateStripDOM(strip);
+    dom.revBtn.className = "tv-pill-rev " + sideLower;
+    dom.tpBtn.className = "tv-pill-btn tp " + (pos.tp != null ? "active" : "");
+    dom.tpBtn.title = pos.tp != null ? ("Take Profit: " + fmtPrice(ui.symbol, pos.tp) + " (drag green line or click to edit)") : "Add Take Profit";
+    dom.slBtn.className = "tv-pill-btn sl " + (pos.sl != null ? "active" : "");
+    dom.slBtn.title = pos.sl != null ? ("Stop Loss: " + fmtPrice(ui.symbol, pos.sl) + " (drag red line or click to edit)") : "Add Stop Loss";
+    dom.sizeSpan.className = "tv-pill-size " + sideLower;
+    dom.sizeSpan.textContent = sign + pos.qty;
+    dom.pnlSpan.className = "tv-pill-pnl " + (pnl >= 0 ? "up" : "down");
+    dom.pnlSpan.textContent = (pnl >= 0 ? "+" : "") + fmtUsd(pnl);
 
     const y = candleSeries.priceToCoordinate(pos.entry);
     if(y != null && !isNaN(y)){
@@ -3503,51 +3592,39 @@ function renderPositionOverlay(){
   }
 
   if(slH){
-    if(pos.sl != null && dragTarget !== "sl"){
+    if(pos.sl != null && (!activeDrag || activeDrag.type !== "sl")){
       const slY = candleSeries.priceToCoordinate(pos.sl);
       if(slY != null && !isNaN(slY)){
-        const slEstPnl = pos.side==="LONG" ? (pos.sl - pos.entry) * pos.qty : (pos.entry - pos.sl) * pos.qty;
-        slH.className = "chart-drag-handle tv-line-pill sl";
-        slH.innerHTML = `
-          <div class="tv-pill-handle" data-target="sl">
-            <span class="tv-pill-tag sl">SL</span>
-            <span class="tv-pill-price">${fmtPrice(ui.symbol, pos.sl)}</span>
-            <span class="tv-pill-pnl-sub ${slEstPnl>=0 ? 'up' : 'down'}">${slEstPnl>=0 ? '+' : ''}${fmtUsd(slEstPnl)}</span>
-            <span class="tv-drag-grip" title="Drag to adjust Stop Loss">&#10565;</span>
-            <button class="tv-pill-close" data-act="del-sl" title="Remove Stop Loss">&times;</button>
-          </div>
-        `;
+        const slEstPnl = pos.side === "LONG" ? (pos.sl - pos.entry) * pos.qty : (pos.entry - pos.sl) * pos.qty;
+        const dom = getOrCreateHandleDOM(slH, "sl");
+        dom.priceSpan.textContent = fmtPrice(ui.symbol, pos.sl);
+        dom.pnlSpan.className = "tv-pill-pnl-sub " + (slEstPnl >= 0 ? "up" : "down");
+        dom.pnlSpan.textContent = (slEstPnl >= 0 ? "+" : "") + fmtUsd(slEstPnl);
         slH.style.top = Math.round(slY) + "px";
         slH.style.display = "inline-flex";
       } else {
         slH.style.display = "none";
       }
-    } else if(!dragTarget){
+    } else if(!activeDrag && pos.sl == null){
       slH.style.display = "none";
     }
   }
 
   if(tpH){
-    if(pos.tp != null && dragTarget !== "tp"){
+    if(pos.tp != null && (!activeDrag || activeDrag.type !== "tp")){
       const tpY = candleSeries.priceToCoordinate(pos.tp);
       if(tpY != null && !isNaN(tpY)){
-        const tpEstPnl = pos.side==="LONG" ? (pos.tp - pos.entry) * pos.qty : (pos.entry - pos.tp) * pos.qty;
-        tpH.className = "chart-drag-handle tv-line-pill tp";
-        tpH.innerHTML = `
-          <div class="tv-pill-handle" data-target="tp">
-            <span class="tv-pill-tag tp">TP</span>
-            <span class="tv-pill-price">${fmtPrice(ui.symbol, pos.tp)}</span>
-            <span class="tv-pill-pnl-sub ${tpEstPnl>=0 ? 'up' : 'down'}">${tpEstPnl>=0 ? '+' : ''}${fmtUsd(tpEstPnl)}</span>
-            <span class="tv-drag-grip" title="Drag to adjust Take Profit">&#10565;</span>
-            <button class="tv-pill-close" data-act="del-tp" title="Remove Take Profit">&times;</button>
-          </div>
-        `;
+        const tpEstPnl = pos.side === "LONG" ? (pos.tp - pos.entry) * pos.qty : (pos.entry - pos.tp) * pos.qty;
+        const dom = getOrCreateHandleDOM(tpH, "tp");
+        dom.priceSpan.textContent = fmtPrice(ui.symbol, pos.tp);
+        dom.pnlSpan.className = "tv-pill-pnl-sub " + (tpEstPnl >= 0 ? "up" : "down");
+        dom.pnlSpan.textContent = (tpEstPnl >= 0 ? "+" : "") + fmtUsd(tpEstPnl);
         tpH.style.top = Math.round(tpY) + "px";
         tpH.style.display = "inline-flex";
       } else {
         tpH.style.display = "none";
       }
-    } else if(!dragTarget){
+    } else if(!activeDrag && pos.tp == null){
       tpH.style.display = "none";
     }
   }
@@ -3656,21 +3733,45 @@ document.addEventListener("click",(e)=>{
   }
 });
 
-function startLineDrag(targetType, pointerId){
+function startLineDrag(targetType, pointerId, handleEl){
   const pos = account.positions[ui.symbol];
   if(!pos) return;
   if(targetType === "sl" && pos.sl == null) return;
   if(targetType === "tp" && pos.tp == null) return;
 
-  dragTarget = targetType;
-  dragOriginalPrice = targetType === "sl" ? pos.sl : pos.tp;
+  const handle = handleEl || document.getElementById(targetType === "sl" ? "chartSlHandle" : "chartTpHandle");
+  if(!handle) return;
 
-  // Disable chart panning and zooming while dragging lines
+  const origPrice = targetType === "sl" ? pos.sl : pos.tp;
+  const dom = getOrCreateHandleDOM(handle, targetType);
+
+  let prevOptions = { handleScroll: true, handleScale: true };
+  if(chart && chart.options){
+    try {
+      const opts = chart.options();
+      if(opts){
+        prevOptions.handleScroll = opts.handleScroll !== false;
+        prevOptions.handleScale = opts.handleScale !== false;
+      }
+    } catch(e){}
+  }
+
+  activeDrag = {
+    type: targetType,
+    pointerId,
+    origPrice,
+    currentPrice: origPrice,
+    handleEl: handle,
+    dom,
+    prevOptions,
+    line: targetType === "sl" ? slLine : tpLine
+  };
+
+  handle.classList.add("dragging");
+  try { handle.setPointerCapture(pointerId); } catch(e){}
+
   if(chart && chart.applyOptions){
-    chart.applyOptions({
-      handleScroll: false,
-      handleScale: false
-    });
+    chart.applyOptions({ handleScroll: false, handleScale: false });
   }
   document.body.style.cursor = "ns-resize";
   if(chartEl) chartEl.style.cursor = "ns-resize";
@@ -3679,20 +3780,26 @@ function startLineDrag(targetType, pointerId){
 function initDragHandles(){
   const slH = document.getElementById("chartSlHandle");
   const tpH = document.getElementById("chartTpHandle");
+
   if(slH){
     slH.addEventListener("pointerdown", (e)=>{
-      if(e.target.closest("button")) return;
+      if(e.target.closest("button") || e.target.closest("[data-act]")) return;
       e.preventDefault(); e.stopPropagation();
-      try{ slH.setPointerCapture(e.pointerId); }catch(_){}
-      startLineDrag("sl", e.pointerId);
+      startLineDrag("sl", e.pointerId, slH);
+    });
+    slH.addEventListener("lostpointercapture", ()=> {
+      if(activeDrag && activeDrag.type === "sl") endLineDrag(true);
     });
   }
+
   if(tpH){
     tpH.addEventListener("pointerdown", (e)=>{
-      if(e.target.closest("button")) return;
+      if(e.target.closest("button") || e.target.closest("[data-act]")) return;
       e.preventDefault(); e.stopPropagation();
-      try{ tpH.setPointerCapture(e.pointerId); }catch(_){}
-      startLineDrag("tp", e.pointerId);
+      startLineDrag("tp", e.pointerId, tpH);
+    });
+    tpH.addEventListener("lostpointercapture", ()=> {
+      if(activeDrag && activeDrag.type === "tp") endLineDrag(true);
     });
   }
 }
@@ -3705,74 +3812,57 @@ chartEl.addEventListener("pointerdown", (e)=>{
   const rect = chartEl.getBoundingClientRect();
   const y = e.clientY - rect.top;
   const HIT = 10;
-  if(pos.sl != null){
+  if(pos.sl != null && candleSeries){
     const slY = candleSeries.priceToCoordinate(pos.sl);
     if(slY != null && Math.abs(slY - y) <= HIT){
       e.preventDefault(); e.stopPropagation();
-      startLineDrag("sl", e.pointerId);
+      const slH = document.getElementById("chartSlHandle");
+      startLineDrag("sl", e.pointerId, slH);
       return;
     }
   }
-  if(pos.tp != null){
+  if(pos.tp != null && candleSeries){
     const tpY = candleSeries.priceToCoordinate(pos.tp);
     if(tpY != null && Math.abs(tpY - y) <= HIT){
       e.preventDefault(); e.stopPropagation();
-      startLineDrag("tp", e.pointerId);
+      const tpH = document.getElementById("chartTpHandle");
+      startLineDrag("tp", e.pointerId, tpH);
       return;
     }
   }
 }, true);
 
 window.addEventListener("pointermove", (e)=>{
-  if(dragTarget){
-    const rect = chartEl.getBoundingClientRect();
-    const y = Math.max(10, Math.min(chartEl.clientHeight - 10, e.clientY - rect.top));
-    const price = candleSeries.coordinateToPrice(y);
-    if(price == null || isNaN(price)) return;
+  if(activeDrag){
     const pos = account.positions[ui.symbol];
     if(!pos){ endLineDrag(false); return; }
 
-    const rounded = roundPrice(ui.symbol, price);
-    const slH = document.getElementById("chartSlHandle");
-    const tpH = document.getElementById("chartTpHandle");
+    const rect = chartEl.getBoundingClientRect();
+    const y = Math.max(8, Math.min(chartEl.clientHeight - 8, e.clientY - rect.top));
+    const price = candleSeries.coordinateToPrice(y);
+    if(price == null || isNaN(price)) return;
 
-    if(dragTarget === "sl"){
-      pos.sl = rounded;
-      const estPnl = pos.side === "LONG" ? (rounded - pos.entry) * pos.qty : (pos.entry - rounded) * pos.qty;
-      if(slLine) slLine.applyOptions({ price: rounded, title: `SL: ${fmtPrice(ui.symbol, rounded)} (${fmtUsd(estPnl)})` });
-      if(slH){
-        slH.className = "chart-drag-handle tv-line-pill sl";
-        slH.innerHTML = `
-          <div class="tv-pill-handle" data-target="sl">
-            <span class="tv-pill-tag sl">SL</span>
-            <span class="tv-pill-price">${fmtPrice(ui.symbol, rounded)}</span>
-            <span class="tv-pill-pnl-sub ${estPnl>=0 ? 'up' : 'down'}">${estPnl>=0 ? '+' : ''}${fmtUsd(estPnl)}</span>
-            <span class="tv-drag-grip">&#10565;</span>
-            <button class="tv-pill-close" data-act="del-sl" title="Remove Stop Loss">&times;</button>
-          </div>
-        `;
-        slH.style.top = Math.round(y) + "px";
-        slH.style.display = "inline-flex";
-      }
-    } else if(dragTarget === "tp"){
-      pos.tp = rounded;
-      const estPnl = pos.side === "LONG" ? (rounded - pos.entry) * pos.qty : (pos.entry - rounded) * pos.qty;
-      if(tpLine) tpLine.applyOptions({ price: rounded, title: `TP: ${fmtPrice(ui.symbol, rounded)} (+${fmtUsd(estPnl)})` });
-      if(tpH){
-        tpH.className = "chart-drag-handle tv-line-pill tp";
-        tpH.innerHTML = `
-          <div class="tv-pill-handle" data-target="tp">
-            <span class="tv-pill-tag tp">TP</span>
-            <span class="tv-pill-price">${fmtPrice(ui.symbol, rounded)}</span>
-            <span class="tv-pill-pnl-sub ${estPnl>=0 ? 'up' : 'down'}">${estPnl>=0 ? '+' : ''}${fmtUsd(estPnl)}</span>
-            <span class="tv-drag-grip">&#10565;</span>
-            <button class="tv-pill-close" data-act="del-tp" title="Remove Take Profit">&times;</button>
-          </div>
-        `;
-        tpH.style.top = Math.round(y) + "px";
-        tpH.style.display = "inline-flex";
-      }
+    const rounded = roundPrice(ui.symbol, price);
+    activeDrag.currentPrice = rounded;
+
+    const isSl = activeDrag.type === "sl";
+    const estPnl = pos.side === "LONG" ? (rounded - pos.entry) * pos.qty : (pos.entry - rounded) * pos.qty;
+    const tag = isSl ? "SL" : "TP";
+
+    // 1. Update line on chart
+    if(activeDrag.line){
+      activeDrag.line.applyOptions({
+        price: rounded,
+        title: `${tag}: ${fmtPrice(ui.symbol, rounded)} (${estPnl >= 0 ? '+' : ''}${fmtUsd(estPnl)})`
+      });
     }
+
+    // 2. Update handle element DOM directly (ZERO innerHTML destruction)
+    activeDrag.handleEl.style.top = Math.round(y) + "px";
+    activeDrag.handleEl.style.display = "inline-flex";
+    activeDrag.dom.priceSpan.textContent = fmtPrice(ui.symbol, rounded);
+    activeDrag.dom.pnlSpan.className = "tv-pill-pnl-sub " + (estPnl >= 0 ? "up" : "down");
+    activeDrag.dom.pnlSpan.textContent = (estPnl >= 0 ? "+" : "") + fmtUsd(estPnl);
     return;
   }
 
@@ -3786,11 +3876,11 @@ window.addEventListener("pointermove", (e)=>{
   const y = e.clientY - rect.top;
   const HIT = 8;
   let overLine = false;
-  if(pos.sl != null){
+  if(pos.sl != null && candleSeries){
     const yy = candleSeries.priceToCoordinate(pos.sl);
     if(yy != null && Math.abs(yy - y) <= HIT) overLine = true;
   }
-  if(pos.tp != null){
+  if(pos.tp != null && candleSeries){
     const yy = candleSeries.priceToCoordinate(pos.tp);
     if(yy != null && Math.abs(yy - y) <= HIT) overLine = true;
   }
@@ -3798,72 +3888,99 @@ window.addEventListener("pointermove", (e)=>{
 });
 
 function endLineDrag(commit = true){
-  if(!dragTarget) return;
-  const target = dragTarget;
-  dragTarget = null;
+  if(!activeDrag) return;
+  const drag = activeDrag;
+  activeDrag = null;
+
   document.body.style.cursor = "";
   if(chartEl) chartEl.style.cursor = "";
 
-  // Re-enable chart pan & zoom
+  if(drag.handleEl){
+    drag.handleEl.classList.remove("dragging");
+    try { drag.handleEl.releasePointerCapture(drag.pointerId); } catch(e){}
+  }
+
+  // Restore chart scroll / scale options to their previous state
   if(chart && chart.applyOptions){
-    chart.applyOptions({
-      handleScroll: true,
-      handleScale: true
-    });
+    chart.applyOptions(drag.prevOptions || { handleScroll: true, handleScale: true });
   }
 
   const p = account.positions[ui.symbol];
-  if(!p) return;
-  const meta = symbolMeta[ui.symbol] || { maintMarginRate: 0.005 };
-  const liq = estimateLiquidation(p.side, p.entry, p.leverage, meta.maintMarginRate);
-
-  if(!commit){
-    if(target === "sl") p.sl = dragOriginalPrice;
-    if(target === "tp") p.tp = dragOriginalPrice;
-    dragOriginalPrice = null;
+  if(!p){
     drawOrderLinesForCurrentSymbol();
     return;
   }
+
+  if(!commit){
+    drawOrderLinesForCurrentSymbol();
+    return;
+  }
+
+  const target = drag.type;
+  const proposedPrice = drag.currentPrice;
+  const meta = symbolMeta[ui.symbol] || { maintMarginRate: 0.005 };
+  const liq = estimateLiquidation(p.side, p.entry, p.leverage, meta.maintMarginRate);
 
   if(target === "sl"){
     let valid = true;
     let reason = "";
     if(p.side === "LONG"){
-      if(p.sl >= p.entry){ valid = false; reason = "Stop loss must be below entry price for Long."; }
-      else if(liq != null && p.sl <= liq){ valid = false; reason = `Stop loss sits beyond estimated liquidation ($${fmtPrice(ui.symbol, liq)}).`; }
+      if(proposedPrice >= p.entry){
+        valid = false;
+        reason = "Stop loss must be below entry price for Long.";
+      } else if(liq != null && proposedPrice <= liq){
+        valid = false;
+        reason = `Stop loss sits beyond estimated liquidation ($${fmtPrice(ui.symbol, liq)}).`;
+      }
     } else {
-      if(p.sl <= p.entry){ valid = false; reason = "Stop loss must be above entry price for Short."; }
-      else if(liq != null && p.sl >= liq){ valid = false; reason = `Stop loss sits beyond estimated liquidation ($${fmtPrice(ui.symbol, liq)}).`; }
+      if(proposedPrice <= p.entry){
+        valid = false;
+        reason = "Stop loss must be above entry price for Short.";
+      } else if(liq != null && proposedPrice >= liq){
+        valid = false;
+        reason = `Stop loss sits beyond estimated liquidation ($${fmtPrice(ui.symbol, liq)}).`;
+      }
     }
+
     if(!valid){
       showNotice(reason);
-      p.sl = dragOriginalPrice;
     } else {
-      document.getElementById("slInput").value = p.sl;
-      logEv({type:"edit", symbol:ui.symbol, text:`SL adjusted to ${fmtPrice(ui.symbol, p.sl)}`});
+      p.sl = proposedPrice;
+      const slInp = document.getElementById("slInput");
+      if(slInp) slInp.value = p.sl;
+      logEv({ type: "edit", symbol: ui.symbol, text: `SL adjusted to ${fmtPrice(ui.symbol, p.sl)}` });
       showNotice(`Stop Loss updated to ${fmtPrice(ui.symbol, p.sl)}`);
+      saveState();
+      updateAll();
     }
   } else if(target === "tp"){
     let valid = true;
     let reason = "";
     if(p.side === "LONG"){
-      if(p.tp <= p.entry){ valid = false; reason = "Take profit must be above entry price for Long."; }
+      if(proposedPrice <= p.entry){
+        valid = false;
+        reason = "Take profit must be above entry price for Long.";
+      }
     } else {
-      if(p.tp >= p.entry){ valid = false; reason = "Take profit must be below entry price for Short."; }
+      if(proposedPrice >= p.entry){
+        valid = false;
+        reason = "Take profit must be below entry price for Short.";
+      }
     }
+
     if(!valid){
       showNotice(reason);
-      p.tp = dragOriginalPrice;
     } else {
-      document.getElementById("tpInput").value = p.tp;
-      logEv({type:"edit", symbol:ui.symbol, text:`TP adjusted to ${fmtPrice(ui.symbol, p.tp)}`});
+      p.tp = proposedPrice;
+      const tpInp = document.getElementById("tpInput");
+      if(tpInp) tpInp.value = p.tp;
+      logEv({ type: "edit", symbol: ui.symbol, text: `TP adjusted to ${fmtPrice(ui.symbol, p.tp)}` });
       showNotice(`Take Profit updated to ${fmtPrice(ui.symbol, p.tp)}`);
+      saveState();
+      updateAll();
     }
   }
 
-  dragOriginalPrice = null;
-  saveState();
-  updateAll();
   drawOrderLinesForCurrentSymbol();
 }
 
@@ -4085,6 +4202,19 @@ function updateAll(){
   renderPtActive();
   if(typeof updateStrategyOverlays === "function") updateStrategyOverlays();
 }
+
+try {
+  window.ui = ui;
+  Object.defineProperty(window, 'account', { get: () => account, set: v => { account = v; }, configurable: true });
+  Object.defineProperty(window, 'market', { get: () => market, set: v => { market = v; }, configurable: true });
+  window.saveState = saveState;
+  window.drawOrderLinesForCurrentSymbol = drawOrderLinesForCurrentSymbol;
+  window.updateAll = updateAll;
+  window.roundPrice = roundPrice;
+  window.startLineDrag = startLineDrag;
+  window.endLineDrag = endLineDrag;
+  Object.defineProperty(window, '_activeDrag', { get: () => activeDrag, set: v => { activeDrag = v; }, configurable: true });
+} catch(e) {}
 
 /* ================= EVENTS ================= */
 document.getElementById("symbolTabs").addEventListener("click", async (e)=>{
@@ -4337,28 +4467,45 @@ chartEl.addEventListener("click",(e)=>{
 });
 
 /* ---- draggable floating toolbar ---- */
-const tb = document.getElementById("floatTb"), grip = document.getElementById("tbGrip"), tbHost = tb.parentElement;
+const tb = document.getElementById("floatTb"), grip = document.getElementById("tbGrip"), tbHost = tb ? tb.parentElement : null;
 const TB_KEY = "paperExchange.tbpos.v1";
 function placeTb(x, y){
+  if(!tb || !tbHost) return;
   const hr = tbHost.getBoundingClientRect();
-  x = Math.max(0, Math.min(x, hr.width - tb.offsetWidth));
-  y = Math.max(0, Math.min(y, hr.height - tb.offsetHeight));
-  tb.style.transform = "none"; tb.style.left = x+"px"; tb.style.top = y+"px";
+  if(hr.width < 50 || hr.height < 50) return;
+  const maxX = Math.max(8, hr.width - tb.offsetWidth - 8);
+  const maxY = Math.max(8, hr.height - tb.offsetHeight - 8);
+  x = Math.max(8, Math.min(x, maxX));
+  y = Math.max(8, Math.min(y, maxY));
+  tb.style.transform = "none";
+  tb.style.left = x + "px";
+  tb.style.top = y + "px";
 }
-try{ const p = JSON.parse(localStorage.getItem(TB_KEY)||"null"); if(p) placeTb(p.x, p.y); }catch(e){}
-window.addEventListener("resize", ()=>{ if(tb.style.transform==="none") placeTb(tb.offsetLeft, tb.offsetTop); });
-grip.addEventListener("pointerdown",(e)=>{
-  e.preventDefault();
-  const r = tb.getBoundingClientRect(), hr = tbHost.getBoundingClientRect();
-  const ox = e.clientX - r.left, oy = e.clientY - r.top;
-  grip.setPointerCapture(e.pointerId);
-  const move = (ev)=> placeTb(ev.clientX - hr.left - ox, ev.clientY - hr.top - oy);
-  const up = ()=>{
-    grip.removeEventListener("pointermove", move); grip.removeEventListener("pointerup", up);
-    try{ localStorage.setItem(TB_KEY, JSON.stringify({x:tb.offsetLeft, y:tb.offsetTop})); }catch(e){}
-  };
-  grip.addEventListener("pointermove", move); grip.addEventListener("pointerup", up);
-});
+try{
+  const p = JSON.parse(localStorage.getItem(TB_KEY)||"null");
+  if(p && typeof p.x === "number" && typeof p.y === "number") placeTb(p.x, p.y);
+}catch(e){}
+window.addEventListener("resize", ()=>{ if(tb && tb.style.transform==="none") placeTb(tb.offsetLeft, tb.offsetTop); });
+if(grip && tb && tbHost){
+  grip.addEventListener("pointerdown",(e)=>{
+    e.preventDefault();
+    e.stopPropagation();
+    const r = tb.getBoundingClientRect(), hr = tbHost.getBoundingClientRect();
+    const ox = e.clientX - r.left, oy = e.clientY - r.top;
+    try { grip.setPointerCapture(e.pointerId); } catch(_){}
+    const move = (ev)=> placeTb(ev.clientX - hr.left - ox, ev.clientY - hr.top - oy);
+    const up = ()=>{
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      window.removeEventListener("pointercancel", up);
+      try { grip.releasePointerCapture(e.pointerId); } catch(_){}
+      try{ localStorage.setItem(TB_KEY, JSON.stringify({x:tb.offsetLeft, y:tb.offsetTop})); }catch(e){}
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
+  });
+}
 
 /* ---- clock like TradingView ---- */
 function tickClock(){
@@ -4567,6 +4714,10 @@ function setPtHeight(h){
   ptState.h = h; ptState.min = h <= PT_MIN+4; ptState.max = false;
   appEl.style.setProperty("--bottom-h", h + "px");
   if(typeof tb !== "undefined" && tb && tb.style && tb.style.transform==="none") placeTb(tb.offsetLeft, tb.offsetTop);
+  if(chart && chartEl){
+    chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
+  }
+  if(typeof renderPositionOverlay === "function") renderPositionOverlay();
 }
 
 function savePt(){ try{ localStorage.setItem(PT_KEY, JSON.stringify({h:ptState.h, prev:ptState.prev, max:ptState.max})); }catch(e){} }
@@ -4606,8 +4757,9 @@ function togglePtMax(){
   }
   savePt();
   requestAnimationFrame(()=>{
-    if(window.chart && chartEl) chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
+    if(chart && chartEl) chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
     window.dispatchEvent(new Event("resize"));
+    if(typeof renderPositionOverlay === "function") renderPositionOverlay();
     if(ptTab==="analytics") fitAnalytics();
   });
 }
@@ -4618,18 +4770,48 @@ document.getElementById("ptTitle").addEventListener("dblclick",(e)=>{ if(!e.targ
 
 function startPtDrag(e){
   if(e.target.closest("button") || ptState.max) return;
-  e.preventDefault();
-  const startY = e.clientY, startH = ptState.h, handle = document.getElementById("ptResize");
-  handle.classList.add("drag"); document.body.style.userSelect = "none";
-  const move = (ev)=> setPtHeight(startH + (startY - ev.clientY));
-  const up = ()=>{
-    window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up);
-    handle.classList.remove("drag"); document.body.style.userSelect = "";
-    if(!ptState.min && !ptState.max) ptState.prev = ptState.h;
-    savePt();
-    if(ptTab==="analytics") fitAnalytics();
+  const isResizeBar = e.target.id === "ptResize" || e.target.classList.contains("pt-resize");
+  const startY = e.clientY;
+  const startH = ptState.h;
+  const handle = document.getElementById("ptResize");
+
+  let dragging = isResizeBar;
+  if(isResizeBar){
+    e.preventDefault();
+    if(handle) handle.classList.add("drag");
+    document.body.style.userSelect = "none";
+  }
+
+  const move = (ev)=>{
+    const dy = startY - ev.clientY;
+    if(!dragging){
+      if(Math.abs(dy) > 4){
+        dragging = true;
+        if(handle) handle.classList.add("drag");
+        document.body.style.userSelect = "none";
+      } else {
+        return;
+      }
+    }
+    setPtHeight(startH + dy);
   };
-  window.addEventListener("pointermove", move); window.addEventListener("pointerup", up);
+
+  const up = ()=>{
+    window.removeEventListener("pointermove", move);
+    window.removeEventListener("pointerup", up);
+    window.removeEventListener("pointercancel", up);
+    if(handle) handle.classList.remove("drag");
+    document.body.style.userSelect = "";
+    if(dragging){
+      if(!ptState.min && !ptState.max) ptState.prev = ptState.h;
+      savePt();
+      if(ptTab==="analytics") fitAnalytics();
+    }
+  };
+
+  window.addEventListener("pointermove", move);
+  window.addEventListener("pointerup", up);
+  window.addEventListener("pointercancel", up);
 }
 document.getElementById("ptResize").addEventListener("pointerdown", startPtDrag);
 document.getElementById("ptTitle").addEventListener("pointerdown", startPtDrag);
@@ -4657,7 +4839,8 @@ try{
 function toggleSidebar(forceState){
   const app = document.getElementById("app");
   if(!app) return;
-  const isCollapsed = forceState !== undefined ? !forceState : !app.classList.contains("sidebar-collapsed");
+  if(activeDrag) endLineDrag(false);
+  const isCollapsed = (typeof forceState === "boolean") ? forceState : !app.classList.contains("sidebar-collapsed");
   app.classList.toggle("sidebar-collapsed", isCollapsed);
   const btn = document.getElementById("btnToggleSideNav");
   if(btn){
@@ -4665,13 +4848,18 @@ function toggleSidebar(forceState){
     btn.title = isCollapsed ? "Show Order Ticket & Account Panel (Alt+B)" : "Hide Order Ticket & Account Panel (Alt+B)";
   }
   try { localStorage.setItem("paperExchange.sidebarCollapsed", isCollapsed ? "1" : "0"); }catch(e){}
-  requestAnimationFrame(()=>{
-    if(window.chart && chartEl){
-      chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
+  const resizeChart = ()=>{
+    const col = document.querySelector(".chart-col");
+    const w = col ? col.clientWidth : (chartEl ? chartEl.clientWidth : 0);
+    const h = chartEl ? chartEl.clientHeight : 0;
+    if(chart && w > 0 && h > 0){
+      chart.applyOptions({ width: w, height: h });
     }
     window.dispatchEvent(new Event("resize"));
     if(typeof renderPositionOverlay === "function") renderPositionOverlay();
-  });
+  };
+  requestAnimationFrame(resizeChart);
+  setTimeout(resizeChart, 200);
 }
 
 const btnToggleSide = document.getElementById("btnToggleSideNav");
@@ -4687,7 +4875,7 @@ window.addEventListener("keydown", (e)=>{
 });
 
 if(localStorage.getItem("paperExchange.sidebarCollapsed") === "1"){
-  toggleSidebar(false);
+  toggleSidebar(true);
 }
 
 /* ---- Leverage Controls & Presets (1x up to 200x) ---- */
@@ -6713,16 +6901,19 @@ function renderBacktestResults(res){
   // Render KPIs
   const kpis = [
     { label:"Net Profit", val: fmtUsd(m.netProfit) + ` (${fmtPct(m.netProfitPct)})`, cls: pnlCls },
-    { label:"Win Rate", val: m.winRate.toFixed(2) + "%", cls: m.winRate>=50?"up":"down" },
-    { label:"Profit Factor", val: isFinite(m.profitFactor) ? m.profitFactor.toFixed(3) : "∞", cls: m.profitFactor>=1.2?"up":"" },
-    { label:"Max Drawdown", val: fmtUsd(m.maxDrawdownUsd) + ` (${m.maxDrawdownPct.toFixed(2)}%)`, cls: "down" },
-    { label:"Total Trades", val: `${m.totalTrades} (W:${m.wins} / L:${m.losses})` },
-    { label:"Avg Trade P&L", val: fmtUsd(m.avgTrade), cls: m.avgTrade>=0?"up":"down" },
-    { label:"Avg Win / Loss", val: fmtUsd(m.avgWin) + " / " + fmtUsd(m.avgLoss) },
-    { label:"Sharpe Ratio", val: m.sharpe.toFixed(2), cls: m.sharpe>=1?"up":"" },
-    { label:"Total Fees", val: fmtUsd(m.totalFees), cls:"faint" },
-    { label:"Max Consec. Wins/Loss", val: `${m.maxConsecWins} / ${m.maxConsecLosses}` }
+    { label:"Win Rate", val: (m.winRate != null ? m.winRate.toFixed(2) : "0.00") + "%", cls: (m.winRate||0)>=50?"up":"down" },
+    { label:"Profit Factor", val: isFinite(m.profitFactor) ? m.profitFactor.toFixed(3) : "∞", cls: (m.profitFactor||0)>=1.2?"up":"" },
+    { label:"Max Drawdown", val: fmtUsd(m.maxDrawdownUsd || 0) + ` (${(m.maxDrawdownPct != null ? m.maxDrawdownPct.toFixed(2) : "0.00")}%)`, cls: "down" },
+    { label:"Total Trades", val: `${m.totalTrades || 0} (W:${m.wins || 0} / L:${m.losses || 0}${m.breakevens ? ' / BE:' + m.breakevens : ''})` },
+    { label:"Avg Trade P&L", val: fmtUsd(m.avgTrade || 0), cls: (m.avgTrade||0)>=0?"up":"down" },
+    { label:"Avg Win / Loss", val: fmtUsd(m.avgWin || 0) + " / " + fmtUsd(m.avgLoss || 0) },
+    { label:"Sharpe Ratio", val: (m.sharpe != null ? m.sharpe.toFixed(2) : "0.00"), cls: (m.sharpe||0)>=1?"up":"" },
+    { label:"Total Fees", val: fmtUsd(m.totalFees || 0), cls:"faint" },
+    { label:"Max Consec. Wins/Loss", val: `${m.maxConsecWins || 0} / ${m.maxConsecLosses || 0}` }
   ];
+  if(m.bankruptcyDeficit > 0){
+    kpis.push({ label:"Bankruptcy Deficit", val: fmtUsd(m.bankruptcyDeficit), cls:"down" });
+  }
 
   document.getElementById("btKpiGrid").innerHTML = kpis.map(k=>`
     <div class="bt-kpi">
@@ -6821,23 +7012,76 @@ document.getElementById("btClearOverlay").addEventListener("click", ()=>{
 });
 
 // Export CSV
+// Export Trades CSV
 document.getElementById("btExportCsvBtn").addEventListener("click", ()=>{
   if(!lastBacktestResult || !lastBacktestResult.trades || !lastBacktestResult.trades.length){
     alert("No backtest results to export.");
     return;
   }
-  const header = ["tradeId","symbol","side","qty","entryTime","entryPrice","exitTime","exitPrice","grossPnl","fees","netPnl","returnPct","reason"];
+  const opts = lastBacktestResult.opts || {};
+  const header = ["tradeId","symbol","side","qty","entryTime","entryPrice","exitTime","exitPrice","grossPnl","fees","netPnl","bankruptcyDeficit","returnPct","reason"];
   const rows = [header.join(",")];
   lastBacktestResult.trades.forEach(t=>{
     rows.push([
-      t.id, t.symbol, t.side, t.qty,
-      new Date(t.entryTime*1000).toISOString(), t.entryPrice,
-      new Date(t.exitTime*1000).toISOString(), t.exitPrice,
-      t.grossPnl.toFixed(2), t.fees.toFixed(2), t.netPnl.toFixed(2), t.returnPct.toFixed(2),
+      t.id,
+      `"${(t.symbol||opts.symbol||'').replace(/"/g,'""')}"`,
+      t.side,
+      t.qty != null ? t.qty : "",
+      t.entryTime ? new Date(t.entryTime*1000).toISOString() : "",
+      t.entryPrice != null ? t.entryPrice : "",
+      t.exitTime ? new Date(t.exitTime*1000).toISOString() : "",
+      t.exitPrice != null ? t.exitPrice : "",
+      (t.grossPnl != null ? t.grossPnl : (t.netPnl || 0)).toFixed(2),
+      (t.fees != null ? t.fees : 0).toFixed(2),
+      (t.netPnl != null ? t.netPnl : 0).toFixed(2),
+      (t.bankruptcyDeficit != null ? t.bankruptcyDeficit : 0).toFixed(2),
+      (t.returnPct != null ? t.returnPct : 0).toFixed(2),
       `"${(t.reason||'').replace(/"/g,'""')}"`
     ].join(","));
   });
-  downloadBlob(rows.join("\n"), `backtest-${lastBacktestResult.opts.symbol}-${lastBacktestResult.opts.tf}.csv`, "text/csv");
+  downloadBlob(rows.join("\n"), `backtest-trades-${opts.symbol||'BTCUSDT'}-${opts.tf||'1h'}.csv`, "text/csv");
+});
+
+// Export Performance Summary CSV
+document.getElementById("btExportSummaryCsvBtn").addEventListener("click", ()=>{
+  if(!lastBacktestResult || !lastBacktestResult.metrics){
+    alert("No backtest results to export.");
+    return;
+  }
+  const m = lastBacktestResult.metrics;
+  const opts = lastBacktestResult.opts || {};
+  const summaryRows = [
+    ["Metric", "Value"],
+    ["Strategy", `"${(lastBacktestResult.strategyMeta?.title || 'Backtest Strategy').replace(/"/g, '""')}"`],
+    ["Symbol", `"${opts.symbol || 'BTCUSDT'}"`],
+    ["Timeframe", `"${opts.tf || '1h'}"`],
+    ["Leverage", opts.leverage || 10],
+    ["Initial Capital", m.initialCapital != null ? m.initialCapital.toFixed(2) : "10000.00"],
+    ["Final Capital", m.finalCapital != null ? m.finalCapital.toFixed(2) : "10000.00"],
+    ["Net Profit ($)", m.netProfit != null ? m.netProfit.toFixed(2) : "0.00"],
+    ["Net Profit (%)", m.netProfitPct != null ? m.netProfitPct.toFixed(2) : "0.00"],
+    ["Gross Profit", m.grossProfit != null ? m.grossProfit.toFixed(2) : "0.00"],
+    ["Gross Loss", m.grossLoss != null ? m.grossLoss.toFixed(2) : "0.00"],
+    ["Total Trades", m.totalTrades || 0],
+    ["Winning Trades", m.wins || 0],
+    ["Losing Trades", m.losses || 0],
+    ["Breakeven Trades", m.breakevens || 0],
+    ["Win Rate (%)", m.winRate != null ? m.winRate.toFixed(2) : "0.00"],
+    ["Profit Factor", isFinite(m.profitFactor) ? m.profitFactor.toFixed(3) : "Infinity"],
+    ["Max Drawdown ($)", m.maxDrawdownUsd != null ? m.maxDrawdownUsd.toFixed(2) : "0.00"],
+    ["Max Drawdown (%)", m.maxDrawdownPct != null ? m.maxDrawdownPct.toFixed(2) : "0.00"],
+    ["Average Win ($)", m.avgWin != null ? m.avgWin.toFixed(2) : "0.00"],
+    ["Average Loss ($)", m.avgLoss != null ? m.avgLoss.toFixed(2) : "0.00"],
+    ["Win/Loss Ratio", isFinite(m.winLossRatio) ? m.winLossRatio.toFixed(2) : (m.winLossRatio != null ? "Infinity" : "N/A")],
+    ["Trade Expectancy ($)", m.expectancy != null ? m.expectancy.toFixed(2) : "0.00"],
+    ["Sharpe Ratio", m.sharpe != null ? m.sharpe.toFixed(2) : "0.00"],
+    ["Sortino Ratio", m.sortino != null ? m.sortino.toFixed(2) : "0.00"],
+    ["Max Consecutive Wins", m.maxConsecWins || 0],
+    ["Max Consecutive Losses", m.maxConsecLosses || 0],
+    ["Total Commission Fees ($)", m.totalFees != null ? m.totalFees.toFixed(2) : "0.00"],
+    ["Bankruptcy Deficit ($)", m.bankruptcyDeficit != null ? m.bankruptcyDeficit.toFixed(2) : "0.00"]
+  ];
+  downloadBlob(summaryRows.map(r => r.join(",")).join("\n"), `backtest-summary-${opts.symbol||'BTCUSDT'}-${opts.tf||'1h'}.csv`, "text/csv");
 });
 
 // Export JSON
@@ -7954,29 +8198,35 @@ async function optRunOptimization(){
 
     // Run simulation
     const sim = MXBacktestEngine.simulate(strat, klines, backtestOpts, testInputs);
-    const m = sim.metrics;
-    const finalCap = m.finalCapital;
-    const netPnl = finalCap - capital;
-    const returnPct = (netPnl / capital) * 100;
-    const trades = sim.trades || [];
-    const wins = trades.filter(t => t.netPnl > 0);
-    const losses = trades.filter(t => t.netPnl < 0);
-    const grossProfit = wins.reduce((s,t) => s + (t.grossPnl!=null?t.grossPnl:t.netPnl), 0);
-    const grossLoss = Math.abs(losses.reduce((s,t) => s + (t.grossPnl!=null?t.grossPnl:t.netPnl), 0));
-    const winRate = trades.length ? (wins.length / trades.length) * 100 : 0;
-    const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss) : (grossProfit > 0 ? Infinity : 0);
-    const expectancy = trades.length ? (netPnl / trades.length) : 0;
-
-    // Simple Sharpe
-    const eqCurve = sim.equityCurve || [];
-    let rets = [];
-    for(let k = 1; k < eqCurve.length; k++){
-      const prev = eqCurve[k-1].value;
-      if(prev > 0) rets.push((eqCurve[k].value - prev) / prev);
+    if (!sim || !sim.success || !sim.metrics) {
+      optResults.push({
+        id: i + 1,
+        inputs: combo,
+        netPnl: 0,
+        returnPct: 0,
+        winRate: 0,
+        totalTrades: 0,
+        profitFactor: 0,
+        maxDrawdownPct: 0,
+        sharpe: 0,
+        expectancy: 0,
+        failed: true,
+        error: (sim && sim.errors && sim.errors[0] && sim.errors[0].message) || "Execution failed",
+        simResult: sim
+      });
+      continue;
     }
-    const meanRet = rets.length ? rets.reduce((a,b)=>a+b,0) / rets.length : 0;
-    const variance = rets.length > 1 ? rets.reduce((a,b)=>a + Math.pow(b - meanRet, 2), 0) / (rets.length - 1) : 0;
-    const sharpe = variance > 0 ? (meanRet / Math.sqrt(variance)) * Math.sqrt(365 * 24) : 0;
+
+    const m = sim.metrics;
+    const finalCap = m.finalCapital != null ? m.finalCapital : capital;
+    const netPnl = m.netProfit != null ? m.netProfit : (finalCap - capital);
+    const returnPct = m.netProfitPct != null ? m.netProfitPct : ((netPnl / capital) * 100);
+    const trades = sim.trades || [];
+    const winRate = m.winRate != null ? m.winRate : 0;
+    const profitFactor = m.profitFactor != null ? m.profitFactor : 0;
+    const expectancy = m.expectancy != null ? m.expectancy : 0;
+    const sharpe = m.sharpe != null ? m.sharpe : 0;
+    const maxDrawdownPct = m.maxDrawdownPct != null ? m.maxDrawdownPct : 0;
 
     optResults.push({
       id: i + 1,
@@ -7986,7 +8236,7 @@ async function optRunOptimization(){
       winRate,
       totalTrades: trades.length,
       profitFactor,
-      maxDrawdownPct: m.maxDrawdownPct || 0,
+      maxDrawdownPct,
       sharpe,
       expectancy,
       simResult: sim
@@ -8023,10 +8273,14 @@ function optSortAndRender(){
   if(!optResults.length) return;
 
   optResults.sort((a,b) => {
+    if(a.failed && !b.failed) return 1;
+    if(!a.failed && b.failed) return -1;
     let vA = a[optActiveSort];
     let vB = b[optActiveSort];
     if(vA === Infinity) vA = 999999;
     if(vB === Infinity) vB = 999999;
+    if(isNaN(vA) || vA == null) vA = -999999;
+    if(isNaN(vB) || vB == null) vB = -999999;
     return (vA - vB) * optSortDir;
   });
 
@@ -8534,19 +8788,19 @@ async function robRunSplitAudit(){
   };
 
   const isSim = MXBacktestEngine.simulate(strat, isKlines, opts, strat.inputs || {});
-  const isFinalCap = isSim.metrics.finalCapital || 10000;
+  const isFinalCap = (isSim && isSim.metrics && isSim.metrics.finalCapital != null) ? isSim.metrics.finalCapital : 10000;
   const isNet = isFinalCap - 10000;
   const isPct = (isNet / 10000) * 100;
-  const isTrades = isSim.trades || [];
+  const isTrades = (isSim && isSim.trades) || [];
   const isWins = isTrades.filter(t=>t.netPnl>0);
   const isWr = isTrades.length ? (isWins.length/isTrades.length)*100 : 0;
-  const isPf = isSim.metrics.profitFactor || 0;
-  const isDd = isSim.metrics.maxDrawdownPct || 0;
+  const isPf = (isSim && isSim.metrics && isSim.metrics.profitFactor != null) ? isSim.metrics.profitFactor : 0;
+  const isDd = (isSim && isSim.metrics && isSim.metrics.maxDrawdownPct != null) ? isSim.metrics.maxDrawdownPct : 0;
 
   // Out of Sample simulation starting with IS final equity
   const oosOpts = Object.assign({}, opts, { initialCapital: isFinalCap });
   const oosSim = MXBacktestEngine.simulate(strat, oosKlines, oosOpts, strat.inputs || {});
-  const oosFinalCap = oosSim.metrics.finalCapital || isFinalCap;
+  const oosFinalCap = (oosSim && oosSim.metrics && oosSim.metrics.finalCapital != null) ? oosSim.metrics.finalCapital : isFinalCap;
   const oosNet = oosFinalCap - isFinalCap;
   const oosPct = (oosNet / isFinalCap) * 100;
   const oosTrades = oosSim.trades || [];
@@ -8637,11 +8891,11 @@ async function robRunWfaAudit(){
     const testSlice = klines.slice(endTrain, endTest);
 
     const isSim = MXBacktestEngine.simulate(strat, trainSlice, opts, strat.inputs || {});
-    const isPnl = (isSim.metrics.finalCapital || 10000) - 10000;
+    const isPnl = ((isSim && isSim.metrics && isSim.metrics.finalCapital != null) ? isSim.metrics.finalCapital : 10000) - 10000;
     const isRet = (isPnl / 10000) * 100;
 
     const oosSim = MXBacktestEngine.simulate(strat, testSlice, opts, strat.inputs || {});
-    const oosPnl = (oosSim.metrics.finalCapital || 10000) - 10000;
+    const oosPnl = ((oosSim && oosSim.metrics && oosSim.metrics.finalCapital != null) ? oosSim.metrics.finalCapital : 10000) - 10000;
     const oosRet = (oosPnl / 10000) * 100;
 
     const wfe = isRet > 0 ? (oosRet / (isRet * (testSlice.length / trainSlice.length))) * 100 : (oosRet >= 0 ? 100 : 0);
