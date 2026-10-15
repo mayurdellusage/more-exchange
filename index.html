@@ -4918,7 +4918,8 @@ if(levValEl){
 const MXPine = (function(){
   const SUPPORTED_INDICATORS = [
     "ta.ema", "ta.sma", "ta.rsi", "ta.atr", "ta.macd",
-    "ta.highest", "ta.lowest", "ta.crossover", "ta.crossunder"
+    "ta.highest", "ta.lowest", "ta.crossover", "ta.crossunder",
+    "ta.bb", "ta.dmi", "ta.highestbars", "ta.lowestbars", "ta.valuewhen"
   ];
   const SUPPORTED_MATH = [
     "math.abs", "math.max", "math.min", "math.round",
@@ -4930,7 +4931,7 @@ const MXPine = (function(){
   const SUPPORTED_INPUTS = [
     "input", "input.int", "input.float", "input.bool", "input.string", "input.source", "input.color"
   ];
-  const SUPPORTED_HELPERS = ["nz", "na", "plot"];
+  const SUPPORTED_HELPERS = ["nz", "na", "plot", "color.new"];
   const ALL_SUPPORTED_CALLS = new Set([
     ...SUPPORTED_INDICATORS, ...SUPPORTED_MATH, ...SUPPORTED_STRATEGY, ...SUPPORTED_INPUTS, ...SUPPORTED_HELPERS
   ]);
