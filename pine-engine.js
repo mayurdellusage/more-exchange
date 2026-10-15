@@ -193,6 +193,8 @@
     "ta.change": { minArgs: 1, maxArgs: 2, desc: "(source, length?)" },
     "ta.cum": { minArgs: 1, maxArgs: 1, desc: "(source)" },
     "ta.barssince": { minArgs: 1, maxArgs: 1, desc: "(condition)" },
+    "ta.bb": { minArgs: 2, maxArgs: 3, desc: "(source, length, mult?)" },
+    "ta.dmi": { minArgs: 2, maxArgs: 2, desc: "(diLength, adxSmoothing)" },
 
     // Math
     "math.abs": { minArgs: 1, maxArgs: 1, desc: "(number)" },
@@ -211,6 +213,7 @@
     "nz": { minArgs: 1, maxArgs: 2, desc: "(source, replacement?)" },
     "na": { minArgs: 1, maxArgs: 1, desc: "(source)" },
     "plot": { minArgs: 1, maxArgs: 8, desc: "(series, title?, color?, linewidth?, style?)" },
+    "color.new": { minArgs: 2, maxArgs: 2, desc: "(color, transp)" },
 
     // Inputs
     "input": { minArgs: 1, maxArgs: 5, desc: "(defval, title?)" },
@@ -230,14 +233,21 @@
     "strategy.close_all": { minArgs: 0, maxArgs: 2, desc: "(when?, comment?)" }
   };
 
+  const PINE_TYPES = new Set(["float", "int", "bool", "string", "color"]);
+
   const BUILTIN_SERIES = new Set([
-    "open", "high", "low", "close", "volume", "time", "bar_index", "hl2", "hlc3", "ohlc4"
+    "open", "high", "low", "close", "volume", "time", "bar_index", "hl2", "hlc3", "ohlc4",
+    "strategy.position_size", "strategy.position_avg_price", "strategy.closedtrades",
+    "strategy.opentrades", "strategy.netprofit", "strategy.equity", "strategy.openprofit",
+    "strategy.initial_capital"
   ]);
 
   const BUILTIN_CONSTANTS = new Set([
     "true", "false", "na", "strategy.long", "strategy.short",
     "strategy.percent_of_equity", "strategy.fixed", "strategy.cash",
-    "color.blue", "color.red", "color.green", "color.white", "color.yellow", "color.purple", "color.orange", "color.gray"
+    "strategy.commission.percent", "strategy.commission.cash_per_contract", "strategy.commission.cash_per_order",
+    "color.blue", "color.red", "color.green", "color.white", "color.yellow", "color.purple", "color.orange", "color.gray",
+    "color.black", "color.teal", "color.navy", "color.maroon", "color.olive", "color.silver", "color.lime", "color.aqua", "color.fuchsia"
   ]);
 
   // --------------------------------------------------------------------------
@@ -389,13 +399,17 @@
         return null;
       }
 
-      // 1. Variable declaration: var / varip name = expr
+      // 1. Variable declaration: var / varip [type] name = expr
       if (tok.value === "var" || tok.value === "varip") {
         const isVarip = tok.value === "varip";
         const varTok = this.advance();
+        let varType = null;
+        if (this.current().type === TOKEN_TYPES.IDENTIFIER && PINE_TYPES.has(this.current().value)) {
+          varType = this.advance().value;
+        }
         const idTok = this.current();
         if (idTok.type !== TOKEN_TYPES.IDENTIFIER) {
-          this.addError(`Expected variable identifier after '${varTok.value}', got '${idTok.value}'`, idTok);
+          this.addError(`Expected variable identifier after '${varTok.value}${varType ? ' ' + varType : ''}', got '${idTok.value}'`, idTok);
           this.skipToNextLine();
           return null;
         }
@@ -412,10 +426,33 @@
         return {
           type: "Declaration",
           name: idTok.value,
+          varType,
           isVar: true,
           isVarip,
           init,
           loc: { line: varTok.line, col: varTok.col }
+        };
+      }
+
+      // Non-var typed declaration: float x = expr, int y = expr, bool b = expr, string s = expr
+      if (tok.type === TOKEN_TYPES.IDENTIFIER && PINE_TYPES.has(tok.value) && this.peek(1).type === TOKEN_TYPES.IDENTIFIER) {
+        const typeTok = this.advance();
+        const idTok = this.advance();
+        this.declaredVars.add(idTok.value);
+        if (!this.match("=")) {
+          this.addError(`Expected '=' in variable declaration for '${idTok.value}'`, this.current());
+          this.skipToNextLine();
+          return null;
+        }
+        const init = this.parseExpression();
+        return {
+          type: "Declaration",
+          name: idTok.value,
+          varType: typeTok.value,
+          isVar: false,
+          isVarip: false,
+          init,
+          loc: { line: typeTok.line, col: typeTok.col }
         };
       }
 
@@ -822,8 +859,9 @@
         };
       }
 
-      // Literals: Booleans & na
-      if (tok.value === "true" || tok.value === "false" || tok.value === "na") {
+      // Literals: Booleans & na (only when not followed by '(' call syntax)
+      const nextTok = this.tokens[this.pos + 1];
+      if (tok.value === "true" || tok.value === "false" || (tok.value === "na" && (!nextTok || nextTok.value !== "("))) {
         this.advance();
         return {
           type: "Literal",
@@ -1232,6 +1270,73 @@
     return { macdLine, signalLine, histLine };
   }
 
+  function calcDMI(highs, lows, closes, diLength, adxSmoothing) {
+    const N = closes.length;
+    const diPlus = new Float64Array(N);
+    const diMinus = new Float64Array(N);
+    const adx = new Float64Array(N);
+    diPlus.fill(NaN);
+    diMinus.fill(NaN);
+    adx.fill(NaN);
+
+    if (N < diLength) return { diPlus, diMinus, adx };
+
+    const tr = new Float64Array(N);
+    const plusDM = new Float64Array(N);
+    const minusDM = new Float64Array(N);
+
+    tr[0] = highs[0] - lows[0];
+    plusDM[0] = 0;
+    minusDM[0] = 0;
+
+    for (let i = 1; i < N; i++) {
+      const h = highs[i];
+      const l = lows[i];
+      const prevC = closes[i - 1];
+      const prevH = highs[i - 1];
+      const prevL = lows[i - 1];
+
+      tr[i] = Math.max(h - l, Math.abs(h - prevC), Math.abs(l - prevC));
+
+      const up = h - prevH;
+      const down = prevL - l;
+
+      plusDM[i] = (up > down && up > 0) ? up : 0;
+      minusDM[i] = (down > up && down > 0) ? down : 0;
+    }
+
+    const sTR = calcRMA(tr, diLength);
+    const sPlusDM = calcRMA(plusDM, diLength);
+    const sMinusDM = calcRMA(minusDM, diLength);
+
+    const dx = new Float64Array(N);
+    dx.fill(NaN);
+
+    for (let i = 0; i < N; i++) {
+      if (isNaN(sTR[i]) || sTR[i] === 0) {
+        diPlus[i] = NaN;
+        diMinus[i] = NaN;
+      } else {
+        const dp = 100.0 * (sPlusDM[i] / sTR[i]);
+        const dm = 100.0 * (sMinusDM[i] / sTR[i]);
+        diPlus[i] = dp;
+        diMinus[i] = dm;
+        const sum = dp + dm;
+        dx[i] = sum === 0 ? 0 : 100.0 * (Math.abs(dp - dm) / sum);
+      }
+    }
+
+    const validStart = diLength - 1;
+    if (N >= validStart + adxSmoothing) {
+      const adxRaw = calcRMA(dx.subarray(validStart), adxSmoothing);
+      for (let j = 0; j < adxRaw.length; j++) {
+        adx[validStart + j] = adxRaw[j];
+      }
+    }
+
+    return { diPlus, diMinus, adx };
+  }
+
   // --------------------------------------------------------------------------
   // 5. Execution Runtime & Broker Emulator (AST-Based Clean Room Engine)
   // --------------------------------------------------------------------------
@@ -1290,6 +1395,31 @@
         // Pine Strategy Built-in Constants & State
         if (name === "strategy.long") return "LONG";
         if (name === "strategy.short") return "SHORT";
+        if (name === "strategy.percent_of_equity") return "percent_of_equity";
+        if (name === "strategy.fixed") return "fixed";
+        if (name === "strategy.cash") return "cash";
+        if (name === "strategy.commission.percent") return "percent";
+        if (name === "strategy.commission.cash_per_contract") return "cash_per_contract";
+        if (name === "strategy.commission.cash_per_order") return "cash_per_order";
+        if (name === "strategy.closedtrades") {
+          return env.state.closedtrades != null ? env.state.closedtrades : (env.strategySeries && env.strategySeries["strategy.closedtrades"] ? env.strategySeries["strategy.closedtrades"][i] : 0);
+        }
+        if (name === "strategy.opentrades") {
+          return env.state.position ? 1 : 0;
+        }
+        if (name === "strategy.initial_capital") {
+          return env.strategyConfig ? env.strategyConfig.initialCapital : env.state.initialCapital;
+        }
+        if (name === "color.blue") return "#2962ff";
+        if (name === "color.red") return "#f23645";
+        if (name === "color.green") return "#089981";
+        if (name === "color.white") return "#ffffff";
+        if (name === "color.yellow") return "#fbc02d";
+        if (name === "color.purple") return "#9c27b0";
+        if (name === "color.orange") return "#ff9800";
+        if (name === "color.gray") return "#787b86";
+        if (name === "color.black") return "#000000";
+
         if (name === "strategy.position_size") {
           if (!env.state.position) return 0;
           return env.state.position.side === "LONG" ? env.state.position.qty : -env.state.position.qty;
@@ -1319,6 +1449,11 @@
             : (env.state.position.entryPrice - curP) * env.state.position.qty;
         }
 
+        // User inputs
+        if (env.inputs && env.inputs[name] !== undefined) {
+          return env.inputs[name];
+        }
+
         // Variables evaluated during runtime
         if (env.vars.has(name)) {
           const v = env.vars.get(name);
@@ -1331,11 +1466,6 @@
         // Pre-computed indicator series
         if (env.series.has(name)) {
           return env.series.get(name)[i];
-        }
-
-        // User inputs
-        if (env.inputs[name] !== undefined) {
-          return env.inputs[name];
         }
 
         return NaN;
@@ -1382,7 +1512,9 @@
         let targetSeries = null;
         if (node.series && node.series.type === "Identifier") {
           const sName = node.series.name;
-          if (env.localSeries && env.localSeries.has(sName)) {
+          if (env.strategySeries && env.strategySeries[sName]) {
+            targetSeries = env.strategySeries[sName];
+          } else if (env.localSeries && env.localSeries.has(sName)) {
             targetSeries = env.localSeries.get(sName);
           } else if (env.localVars && env.localVars.has(sName)) {
             const lv = env.localVars.get(sName);
@@ -1407,6 +1539,9 @@
           if (targetIdx >= 0 && targetIdx < targetSeries.length) {
             return targetSeries[targetIdx];
           }
+          if (node.series && (node.series.name === "strategy.closedtrades" || node.series.name === "strategy.opentrades")) {
+            return 0;
+          }
           return NaN;
         }
         return NaN;
@@ -1419,6 +1554,11 @@
         }
 
         const callee = node.callee ? node.callee.name : "";
+
+        if (callee === "color.new") {
+          const c = evaluateExpression(node.args[0], i, env, callDepth);
+          return typeof c === "string" ? c : "#787b86";
+        }
 
         // User-Defined Function Call
         if (env.functions && env.functions.has(callee)) {
@@ -1669,16 +1809,36 @@
         }
       }
 
-      // Resolve length argument
-      let length = 14;
-      const lenArg = rawArgs[lenArgIndex];
-      if (lenArg) {
-        if (lenArg.type === "Literal" && typeof lenArg.value === "number") {
-          length = lenArg.value;
-        } else if (lenArg.type === "Identifier") {
-          length = env.inputs[lenArg.name] !== undefined ? env.inputs[lenArg.name] : 14;
+      function resolveArg(paramName, posIndex, fallback) {
+        if (paramName) {
+          for (const a of rawArgs) {
+            if (a && a.type === "NamedArgument" && a.name === paramName) {
+              const vNode = a.value;
+              if (vNode) {
+                if (vNode.type === "Literal") return vNode.value;
+                if (vNode.type === "Identifier") {
+                  if (env.inputs[vNode.name] !== undefined) return env.inputs[vNode.name];
+                  if (env.vars.has(vNode.name)) return env.vars.get(vNode.name);
+                }
+              }
+            }
+          }
         }
+        if (typeof posIndex === "number" && posIndex >= 0 && posIndex < rawArgs.length) {
+          const a = rawArgs[posIndex];
+          if (a && a.type !== "NamedArgument") {
+            if (a.type === "Literal") return a.value;
+            if (a.type === "Identifier") {
+              if (env.inputs[a.name] !== undefined) return env.inputs[a.name];
+              if (env.vars.has(a.name)) return env.vars.get(a.name);
+            }
+          }
+        }
+        return fallback;
       }
+
+      // Resolve length argument
+      let length = Number(resolveArg("length", lenArgIndex, 14)) || 14;
 
       if (callee === "ta.ema") return calcEMA(srcSeries, length);
       if (callee === "ta.sma") return calcSMA(srcSeries, length);
@@ -1692,14 +1852,19 @@
       if (callee === "ta.lowestbars") return calcLowestBars(srcSeries, length);
       if (callee === "ta.stdev") return calcStdev(srcSeries, length);
       if (callee === "ta.bb") {
-        const multArg = rawArgs[2];
-        const mult = (multArg && multArg.type === "Literal") ? multArg.value : 2.0;
-        return calcBollingerBands(srcSeries, length, mult);
+        const bbLen = Number(resolveArg("length", 1, 20)) || 20;
+        const bbMult = Number(resolveArg("mult", 2, 2.0)) || 2.0;
+        return calcBollingerBands(srcSeries, bbLen, bbMult);
+      }
+      if (callee === "ta.dmi") {
+        const diLen = Number(resolveArg("diLength", 0, 14)) || 14;
+        const adxSmooth = Number(resolveArg("adxSmoothing", 1, 14)) || 14;
+        return calcDMI(highs, lows, closes, diLen, adxSmooth);
       }
       if (callee === "ta.macd") {
-        const fast = (rawArgs[1] && rawArgs[1].type === "Literal") ? rawArgs[1].value : 12;
-        const slow = (rawArgs[2] && rawArgs[2].type === "Literal") ? rawArgs[2].value : 26;
-        const sig = (rawArgs[3] && rawArgs[3].type === "Literal") ? rawArgs[3].value : 9;
+        const fast = Number(resolveArg("fastlen", 1, 12)) || 12;
+        const slow = Number(resolveArg("slowlen", 2, 26)) || 26;
+        const sig = Number(resolveArg("siglen", 3, 9)) || 9;
         return calcMACD(srcSeries, fast, slow, sig);
       }
       return null;
@@ -1721,6 +1886,26 @@
           const pyr = getArgValue(call.args, "pyramiding");
           if (pyr && pyr.type === "Literal" && typeof pyr.value === "number") {
             env.strategyConfig.pyramiding = pyr.value;
+          }
+          const dQtyType = getArgValue(call.args, "default_qty_type");
+          if (dQtyType) {
+            env.strategyConfig.default_qty_type = (dQtyType.type === "Identifier" || dQtyType.type === "Literal") ? (dQtyType.value || dQtyType.name) : "strategy.percent_of_equity";
+          }
+          const dQtyVal = getArgValue(call.args, "default_qty_value");
+          if (dQtyVal && dQtyVal.type === "Literal" && typeof dQtyVal.value === "number") {
+            env.strategyConfig.default_qty_value = dQtyVal.value;
+          }
+          const commType = getArgValue(call.args, "commission_type");
+          if (commType) {
+            env.strategyConfig.commission_type = (commType.type === "Identifier" || commType.type === "Literal") ? (commType.value || commType.name) : "strategy.commission.percent";
+          }
+          const commVal = getArgValue(call.args, "commission_value");
+          if (commVal && commVal.type === "Literal" && typeof commVal.value === "number") {
+            env.strategyConfig.commission_value = commVal.value;
+          }
+          const slip = getArgValue(call.args, "slippage");
+          if (slip && slip.type === "Literal" && typeof slip.value === "number") {
+            env.strategyConfig.slippage = slip.value;
           }
         }
       }
@@ -1777,6 +1962,10 @@
               env.series.set(node.names[0], resObj.basis);
               env.series.set(node.names[1], resObj.upper);
               env.series.set(node.names[2], resObj.lower);
+            } else if (resObj.diPlus) {
+              env.series.set(node.names[0], resObj.diPlus);
+              env.series.set(node.names[1], resObj.diMinus);
+              env.series.set(node.names[2], resObj.adx);
             }
           }
         }
@@ -1982,13 +2171,6 @@
       };
     }
 
-    // Default strategy options
-    const initialCapital = options.initialCapital || 10000;
-    const leverage = options.leverage || 10;
-    const feeRate = options.feeRate !== undefined ? options.feeRate : 0.0004;
-    const slippageBps = options.slippageBps !== undefined ? options.slippageBps : 2;
-    const slippageFactor = slippageBps / 10000;
-
     // Runtime Environment
     const env = {
       dataset,
@@ -1997,13 +2179,28 @@
       functions: new Map(),
       inputs: Object.assign({}, options.inputs || {}),
       strategyConfig: {
-        initialCapital,
-        pyramiding: 1
+        initialCapital: options.initialCapital || 10000,
+        pyramiding: 1,
+        default_qty_type: "strategy.percent_of_equity",
+        default_qty_value: 10,
+        commission_type: "strategy.commission.percent",
+        commission_value: 0.04,
+        slippage: 0
+      },
+      strategySeries: {
+        "strategy.closedtrades": new Float64Array(N),
+        "strategy.opentrades": new Float64Array(N),
+        "strategy.position_size": new Float64Array(N),
+        "strategy.position_avg_price": new Float64Array(N),
+        "strategy.equity": new Float64Array(N),
+        "strategy.netprofit": new Float64Array(N)
       },
       state: {
-        capital: initialCapital,
-        initialCapital,
-        position: null
+        capital: options.initialCapital || 10000,
+        initialCapital: options.initialCapital || 10000,
+        position: null,
+        closedtrades: 0,
+        opentrades: 0
       }
     };
 
@@ -2016,13 +2213,38 @@
 
     // Pre-Scan and pre-compute indicator vectors
     preScanAndVectorize(ast, dataset, options, env);
+
+    // Derived strategy options from script configuration and caller overrides
+    const initialCapital = (typeof options.initialCapital === "number") ? options.initialCapital : (env.strategyConfig.initialCapital || 10000);
+    const leverage = options.leverage || 10;
     const maxPyramiding = Math.max(1, env.strategyConfig.pyramiding || 1);
 
+    const commType = env.strategyConfig.commission_type || "strategy.commission.percent";
+    const commVal = (typeof env.strategyConfig.commission_value === "number") ? env.strategyConfig.commission_value : null;
+    let feeRate = (typeof options.feeRate === "number") ? options.feeRate : 0.0004;
+    if (commVal !== null && (commType.includes("percent") || commType === "percent")) {
+      feeRate = commVal / 100.0;
+    }
+
+    const slippageTicks = (typeof env.strategyConfig.slippage === "number") ? env.strategyConfig.slippage : 0;
+    const slippageBps = (typeof options.slippageBps === "number") ? options.slippageBps : (slippageTicks > 0 ? slippageTicks : 2);
+    const slippageFactor = slippageBps / 10000;
+
+    env.state.capital = initialCapital;
+    env.state.initialCapital = initialCapital;
+
     // Pre-allocate runtime variable series for all variables declared in script
+    const varDecls = new Map();
     for (const node of ast.body) {
       if (node && node.type === "Declaration") {
+        if (node.init && node.init.type === "CallExpression" && node.init.callee && node.init.callee.name && node.init.callee.name.startsWith("input")) {
+          continue;
+        }
         if (!env.vars.has(node.name) && !env.series.has(node.name)) {
           env.vars.set(node.name, new Float64Array(N));
+        }
+        if (node.isVar) {
+          varDecls.set(node.name, node);
         }
       }
     }
@@ -2060,9 +2282,14 @@
         if (stmt.type === "FunctionDeclaration") continue;
 
         if (stmt.type === "Declaration") {
-          const val = evaluateExpression(stmt.init, barIndex, env);
-          if (env.vars.has(stmt.name)) {
-            env.vars.get(stmt.name)[barIndex] = (val === null || val === undefined) ? NaN : val;
+          if (stmt.init && stmt.init.type === "CallExpression" && stmt.init.callee && stmt.init.callee.name && stmt.init.callee.name.startsWith("input")) {
+            continue;
+          }
+          if (!stmt.isVar || barIndex === 0) {
+            const val = evaluateExpression(stmt.init, barIndex, env);
+            if (env.vars.has(stmt.name)) {
+              env.vars.get(stmt.name)[barIndex] = (val === null || val === undefined) ? NaN : val;
+            }
           }
         } else if (stmt.type === "Reassignment") {
           const val = evaluateExpression(stmt.value, barIndex, env);
@@ -2291,8 +2518,24 @@
     // Evaluate initial statements and variable declarations on Bar 0
     executeBlock(ast.body, 0);
 
+    env.strategySeries["strategy.closedtrades"][0] = trades.length;
+    env.strategySeries["strategy.opentrades"][0] = position ? 1 : 0;
+    env.strategySeries["strategy.position_size"][0] = position ? (position.side === "LONG" ? position.qty : -position.qty) : 0;
+    env.strategySeries["strategy.position_avg_price"][0] = position ? position.entryPrice : NaN;
+    env.strategySeries["strategy.equity"][0] = capital;
+    env.strategySeries["strategy.netprofit"][0] = 0;
+    env.state.closedtrades = trades.length;
+    env.state.opentrades = position ? 1 : 0;
+
     // Main Chronological Execution Loop
     for (let i = 1; i < N; i++) {
+      // Carry forward persistent var variables
+      for (const [vName] of varDecls) {
+        if (env.vars.has(vName)) {
+          env.vars.get(vName)[i] = env.vars.get(vName)[i - 1];
+        }
+      }
+
       const barOpen = opens[i];
       const barHigh = highs[i];
       const barLow = lows[i];
@@ -2382,8 +2625,24 @@
             const slippedEntry = pendingEntry.side === "LONG"
               ? fillBasePrice * (1 + slippageFactor)
               : fillBasePrice * (1 - slippageFactor);
-            const notional = (capital * 0.1) * leverage;
-            const qty = (pendingEntry.qty && pendingEntry.qty > 0) ? pendingEntry.qty : (notional / slippedEntry);
+
+            let qty = (pendingEntry.qty && pendingEntry.qty > 0) ? pendingEntry.qty : null;
+            if (!qty) {
+              const qType = env.strategyConfig.default_qty_type || "strategy.percent_of_equity";
+              const qVal = (typeof env.strategyConfig.default_qty_value === "number") ? env.strategyConfig.default_qty_value : 10;
+              if (qType.includes("percent_of_equity") || qType === "percent_of_equity") {
+                const curEquity = capital + (position ? ((position.side === "LONG" ? fillBasePrice - position.entryPrice : position.entryPrice - fillBasePrice) * position.qty) : 0);
+                const alloc = Math.max(0, curEquity * (qVal / 100.0));
+                qty = (alloc * leverage) / slippedEntry;
+              } else if (qType.includes("fixed") || qType === "fixed") {
+                qty = qVal;
+              } else if (qType.includes("cash") || qType === "cash") {
+                qty = (qVal * leverage) / slippedEntry;
+              } else {
+                qty = ((capital * 0.1) * leverage) / slippedEntry;
+              }
+            }
+
             const requiredMargin = (qty * slippedEntry) / leverage;
             const entryFee = qty * slippedEntry * feeRate;
 
@@ -2606,6 +2865,17 @@
       // 3. Evaluate AST Program Statements for current bar
       executeBlock(ast.body, i);
 
+      // Record per-bar strategy state for historical series indexing [n]
+      const curEquity = capital + (position ? ((position.side === "LONG" ? barClose - position.entryPrice : position.entryPrice - barClose) * position.qty) : 0);
+      env.strategySeries["strategy.closedtrades"][i] = trades.length;
+      env.strategySeries["strategy.opentrades"][i] = position ? 1 : 0;
+      env.strategySeries["strategy.position_size"][i] = position ? (position.side === "LONG" ? position.qty : -position.qty) : 0;
+      env.strategySeries["strategy.position_avg_price"][i] = position ? position.entryPrice : NaN;
+      env.strategySeries["strategy.equity"][i] = curEquity;
+      env.strategySeries["strategy.netprofit"][i] = capital - initialCapital;
+      env.state.closedtrades = trades.length;
+      env.state.opentrades = position ? 1 : 0;
+
       // Track equity curve sampled
       if (i % eqStep === 0 || i === N - 1) {
         equityCurve.push({ time: barTime, value: capital });
@@ -2680,12 +2950,14 @@
       equityCurve,
       plots,
       barCount: N,
-      metrics
+      metrics,
+      vars: Object.fromEntries(env.vars)
     };
   }
 
   // Public Synchronous Execution API
   function executePineScript(scriptSource, dataset, options = {}) {
+    if (Array.isArray(dataset)) dataset = barsToDataset(dataset);
     const val = validateScript(scriptSource);
     if (!val.isValid) {
       return {
@@ -2701,6 +2973,7 @@
 
   // Asynchronous Execution with Cooperative Cancellation for Large Datasets
   async function executePineScriptAsync(scriptSource, dataset, options = {}, isCancelled = null, onProgress = null) {
+    if (Array.isArray(dataset)) dataset = barsToDataset(dataset);
     const val = validateScript(scriptSource);
     if (!val.isValid) {
       return { success: false, errors: val.errors, trades: [], metrics: null, plots: {} };
@@ -3021,7 +3294,8 @@
       const dataset = barsToDataset(bars);
       const mergedOpts = Object.assign({}, opts, { inputs: inputs || {} });
       return executePineScriptAsync(code, dataset, mergedOpts, () => false, onProgress);
-    }
+    },
+    getCapabilities: () => getCapabilities()
   };
 
   const MXBacktestEngineAdapter = {
@@ -3044,7 +3318,8 @@
         metrics: res.metrics || null,
         equityCurve: res.equityCurve || [],
         signals: res.signals || [],
-        plots: res.plots || {}
+        plots: res.plots || {},
+        vars: res.vars || {}
       };
     },
     simulate: (strat, bars, opts = {}, inputs = {}) => {
@@ -3060,8 +3335,57 @@
       });
       return MXBacktestEngineAdapter.run(code, bars, mergedOpts);
     },
-    calculateMetrics: computeBacktestMetrics
+    calculateMetrics: computeBacktestMetrics,
+    getCapabilities: () => getCapabilities()
   };
+
+  function getCapabilities() {
+    return {
+      version: "5.0-compatible",
+      engine: "Pine v5/v6 Clean-Room AST Engine",
+      supportedCalls: Array.from(new Set([
+        ...Object.keys(FUNCTION_SIGNATURES),
+        "indicator", "strategy"
+      ])),
+      indicators: [
+        "ta.ema", "ta.sma", "ta.wma", "ta.vwma", "ta.rsi", "ta.atr",
+        "ta.macd", "ta.bb", "ta.dmi", "ta.highest", "ta.lowest",
+        "ta.highestbars", "ta.lowestbars", "ta.valuewhen", "ta.crossover", "ta.crossunder",
+        "ta.stdev", "ta.change", "ta.cum", "ta.barssince"
+      ],
+      math: [
+        "math.abs", "math.max", "math.min", "math.round",
+        "math.floor", "math.ceil", "math.sqrt", "math.pow",
+        "math.sign", "math.log", "math.exp"
+      ],
+      strategy: [
+        "strategy", "strategy.entry", "strategy.exit", "strategy.close", "strategy.close_all",
+        "strategy.cancel", "strategy.cancel_all"
+      ],
+      stateVariables: [
+        "strategy.position_size", "strategy.position_avg_price", "strategy.closedtrades",
+        "strategy.opentrades", "strategy.netprofit", "strategy.equity", "strategy.openprofit",
+        "strategy.initial_capital"
+      ],
+      constants: [
+        "strategy.long", "strategy.short", "strategy.percent_of_equity", "strategy.fixed", "strategy.cash",
+        "strategy.commission.percent", "strategy.commission.cash_per_contract", "strategy.commission.cash_per_order"
+      ],
+      types: Array.from(PINE_TYPES),
+      features: {
+        userDefinedFunctions: true,
+        tupleDestructuring: true,
+        varPersistence: true,
+        trailingStops: true,
+        pyramiding: true,
+        gapFills: true,
+        dynamicStops: true,
+        historyIndexing: true,
+        deficitAccounting: true,
+        feeInclusiveLiquidation: true
+      }
+    };
+  }
 
   const engineExports = {
     validateScript,
@@ -3072,6 +3396,7 @@
     barsToDataset,
     MXDataManager,
     calculateMetrics: computeBacktestMetrics,
+    getCapabilities,
     PineEngine: {
       validateScript,
       parsePine,
@@ -3080,7 +3405,8 @@
       tokenize,
       barsToDataset,
       dataManager: MXDataManager,
-      calculateMetrics: computeBacktestMetrics
+      calculateMetrics: computeBacktestMetrics,
+      getCapabilities
     },
     MXPine: MXPineEngineAdapter,
     MXBacktestEngine: MXBacktestEngineAdapter,
