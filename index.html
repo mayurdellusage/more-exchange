@@ -337,12 +337,302 @@ tbody tr:hover{background:var(--bg-2);}
   display:block;
 }
 
+/* ---- NEW FEATURE: Wide Chart Mode (Desktop & Mobile) ---- */
+#app.wide-chart-mode{
+  grid-template-rows:46px 1fr 0px !important;
+  grid-template-columns:1fr 0px !important;
+}
+#app.wide-chart-mode .bottom-col{
+  display:none !important;
+}
+#app.wide-chart-mode .side-col:not(.mobile-open){
+  display:none !important;
+}
+.chart-expand-btn{
+  background:rgba(41,98,255,0.12) !important;
+  border:1px solid rgba(41,98,255,0.4) !important;
+  color:#ffffff !important;
+  font-weight:700 !important;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}
+.chart-expand-btn:hover, .chart-expand-btn.active{
+  background:var(--blue) !important;
+  color:#ffffff !important;
+}
+.wide-chart-restore-pill{
+  position:absolute;
+  bottom:38px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:15;
+  background:rgba(19,23,34,0.92);
+  border:1px solid var(--blue);
+  box-shadow:0 6px 20px rgba(0,0,0,0.65);
+  border-radius:20px;
+  padding:5px 12px;
+  display:none;
+  align-items:center;
+  gap:8px;
+  user-select:none;
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  animation:fadeSlideUp 0.2s ease-out;
+}
+.wide-chart-restore-pill .pill-badge{
+  font-size:11.5px;
+  font-weight:700;
+  color:var(--text);
+}
+.wide-chart-restore-pill .pill-restore-btn{
+  background:var(--blue);
+  color:#ffffff;
+  border:none;
+  border-radius:12px;
+  padding:3px 9px;
+  font-size:11px;
+  font-weight:700;
+  cursor:pointer;
+}
+.wide-chart-restore-pill .pill-restore-btn:hover{
+  background:#1a4cd2;
+}
+#app.wide-chart-mode .wide-chart-restore-pill{
+  display:flex !important;
+}
+
+/* ---- Collapsible Drawing Toolbar ---- */
+.float-tb .tb-collapse-btn{
+  background:transparent;
+  border:none;
+  color:var(--text-dim);
+  width:22px;
+  height:26px;
+  font-size:11px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+  cursor:pointer;
+  border-radius:2px;
+}
+.float-tb .tb-collapse-btn:hover{
+  background:var(--bg-3);
+  color:#ffffff;
+}
+.float-tb.tb-collapsed button[data-tool],
+.float-tb.tb-collapsed #tbClear{
+  display:none !important;
+}
+.float-tb.tb-collapsed{
+  padding:3px 4px;
+}
+
+/* ---- Stepper inputs for SL/TP ---- */
+.stepper-wrap{
+  display:flex;
+  align-items:center;
+  background:var(--bg-0);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  overflow:hidden;
+}
+.stepper-wrap input{
+  border:none !important;
+  background:transparent !important;
+  text-align:center;
+  flex:1;
+  min-width:0;
+  padding:6px 4px;
+}
+.step-btn{
+  background:var(--bg-2);
+  border:none;
+  color:var(--text-dim);
+  width:28px;
+  height:28px;
+  font-size:14px;
+  font-weight:800;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  user-select:none;
+  cursor:pointer;
+}
+.step-btn:hover{
+  background:var(--bg-3);
+  color:#ffffff;
+}
+
+/* ---- Mobile Side Menu Drawer (Screen 4) ---- */
+.side-menu-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(10,14,20,0.65);
+  backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);
+  z-index:95;
+  display:none;
+}
+.side-menu-backdrop.active{
+  display:block;
+}
+.mobile-side-menu{
+  position:fixed;
+  top:0;
+  right:0;
+  bottom:0;
+  width:min(320px, 86vw);
+  background:var(--bg-1);
+  border-left:1px solid var(--line);
+  box-shadow:-10px 0 40px rgba(0,0,0,0.8);
+  z-index:96;
+  display:flex;
+  flex-direction:column;
+  transform:translateX(102%);
+  transition:transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.mobile-side-menu.open{
+  transform:translateX(0);
+}
+.side-menu-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:14px 16px;
+  border-bottom:1px solid var(--line);
+  background:var(--bg-2);
+}
+.side-menu-head .brand{
+  font-size:13px;
+  font-weight:800;
+  color:#ffffff;
+}
+.side-menu-close{
+  background:transparent;
+  border:none;
+  color:var(--text-dim);
+  font-size:22px;
+  line-height:1;
+  padding:2px 6px;
+  cursor:pointer;
+}
+.side-menu-close:hover{
+  color:#ffffff;
+}
+.side-menu-list{
+  display:flex;
+  flex-direction:column;
+  padding:6px 0;
+}
+.sm-item{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:11px 16px;
+  background:transparent;
+  border:none;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+  color:var(--text);
+  font-size:12.5px;
+  font-weight:600;
+  text-align:left;
+  cursor:pointer;
+  width:100%;
+}
+.sm-item:hover, .sm-item:active{
+  background:rgba(255,255,255,0.05);
+  color:#ffffff;
+}
+.sm-item .sm-icon{
+  width:20px;
+  text-align:center;
+  font-size:15px;
+  color:var(--text-dim);
+}
+.sm-item .sm-title{
+  flex:1;
+}
+.sm-item .sm-arr{
+  color:var(--text-faint);
+  font-size:16px;
+}
+.header-menu-btn{
+  background:transparent;
+  border:1px solid var(--line);
+  color:var(--text);
+  font-size:16px;
+  padding:4px 9px;
+  border-radius:var(--radius);
+  cursor:pointer;
+  min-height:30px;
+}
+.header-menu-btn:hover{
+  background:var(--bg-3);
+}
+
+/* ---- Mobile Bottom Navigation (Screens <= 880px) ---- */
+.mobile-bottom-nav{
+  display:none;
+}
+
 @media (max-width:880px){
   #app{
     grid-template-columns:1fr !important;
     grid-template-rows:auto 1fr var(--bottom-h,210px) !important;
     height:100%;
     height:100dvh;
+    padding-bottom:calc(48px + var(--sab, 0px));
+  }
+  #app.wide-chart-mode{
+    grid-template-rows:auto 1fr 0px !important;
+    grid-template-columns:1fr !important;
+  }
+  .mobile-bottom-nav{
+    display:flex;
+    position:fixed;
+    bottom:0;
+    left:0;
+    right:0;
+    height:calc(48px + var(--sab, 0px));
+    padding-bottom:var(--sab, 0px);
+    background:var(--bg-1);
+    border-top:1px solid var(--line);
+    z-index:80;
+    align-items:center;
+    justify-content:space-around;
+  }
+  .nav-item{
+    background:transparent;
+    border:none;
+    color:var(--text-dim);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:2px;
+    padding:4px 8px;
+    flex:1;
+    height:100%;
+    cursor:pointer;
+  }
+  .nav-item .nav-icon{
+    font-size:15px;
+    line-height:1;
+  }
+  .nav-item .nav-label{
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:0.1px;
+  }
+  .nav-item.active{
+    color:var(--blue);
+  }
+  .nav-item.active .nav-icon{
+    color:var(--blue);
   }
   
   /* Header in clean, controlled 2-row layout */
@@ -1464,6 +1754,8 @@ tbody tr:hover{background:var(--bg-2);}
     </div>
     <div class="status offline" id="wsStatus"><span class="dot"></span><span id="wsStatusText">OFFLINE</span><span class="fresh" id="wsFresh"></span></div>
     <button id="btnToggleSideNav" class="header-btn" title="Toggle Order Ticket &amp; Account Panel (Alt+B)" aria-label="Toggle Order Ticket"><span style="font-size:13px;line-height:1;">&#9697;</span> Order Panel</button>
+    <button id="btnHeaderWideChart" class="header-btn chart-expand-btn" title="Toggle Wide Chart Mode (Maximize Chart) [Alt+W]" aria-label="Toggle Wide Chart Mode"><span style="font-size:13px;line-height:1;">&#x26F6;</span> Wide</button>
+    <button id="btnMobileMenu" class="header-btn header-menu-btn" title="Open All Features Menu" aria-label="Open Menu">&#9776;</button>
   </header>
 
   <div class="chart-col">
@@ -1477,14 +1769,20 @@ tbody tr:hover{background:var(--bg-2);}
         <div class="layers-pop" id="layersPop"></div>
     <div class="float-tb" id="floatTb">
       <span class="grip" id="tbGrip" title="Drag to move">&#8942;&#8942;</span>
+      <button class="tb-collapse-btn" id="tbCollapseBtn" title="Collapse / Expand Tools" aria-label="Collapse Tools">&#9664;</button>
       <button data-tool="h" title="Horizontal line (click a price)">&#9472;</button>
       <button data-tool="long" title="Long: click your stop-loss price">L</button>
       <button data-tool="short" title="Short: click your stop-loss price">S</button>
       <button id="tbClear" title="Clear drawn lines on this symbol">&#128465;</button>
     </div>
+    <div class="wide-chart-restore-pill" id="wideChartRestorePill" title="Exit Wide Chart Mode">
+      <span class="pill-badge">&#x26F6; Wide Chart Mode Active</span>
+      <button id="btnExitWideChart" class="pill-restore-btn">&#10557; Restore</button>
+    </div>
     <div class="hist-notice" id="histNotice" title="Click to dismiss"></div>
     <div id="price-chart"></div>
     <div class="range-bar">
+      <button id="btnWideChart" class="chart-expand-btn" title="Toggle Wide Chart Mode (Maximize Chart) [Alt+W]">&#x26F6; Wide Chart</button>
       <div class="range-btns" id="rangeBtns">
         <button data-r="1D">1D</button><button data-r="5D">5D</button><button data-r="1M">1M</button>
         <button data-r="3M">3M</button><button data-r="6M">6M</button><button data-r="YTD">YTD</button>
@@ -1559,11 +1857,19 @@ tbody tr:hover{background:var(--bg-2);}
         <div class="row2">
           <div class="field">
             <label>Stop Loss <span class="hint" id="pickSlBtn" title="Click a price on the chart">pick on chart</span></label>
-            <input type="number" id="slInput" step="0.01" placeholder="optional">
+            <div class="stepper-wrap">
+              <button type="button" class="step-btn" id="btnSlMinus" title="Decrease Stop Loss">-</button>
+              <input type="number" id="slInput" step="0.01" placeholder="optional">
+              <button type="button" class="step-btn" id="btnSlPlus" title="Increase Stop Loss">+</button>
+            </div>
           </div>
           <div class="field">
             <label>Take Profit <span class="hint" id="pickTpBtn" title="Click a price on the chart">pick on chart</span></label>
-            <input type="number" id="tpInput" step="0.01" placeholder="optional">
+            <div class="stepper-wrap">
+              <button type="button" class="step-btn" id="btnTpMinus" title="Decrease Take Profit">-</button>
+              <input type="number" id="tpInput" step="0.01" placeholder="optional">
+              <button type="button" class="step-btn" id="btnTpPlus" title="Increase Take Profit">+</button>
+            </div>
           </div>
         </div>
         <div class="warn" id="dragHint" style="color:var(--text-faint);"></div>
@@ -1862,7 +2168,60 @@ tbody tr:hover{background:var(--bg-2);}
       <button class="submit-btn LONG" id="deployStratSubmit">🚀 Deploy &amp; Run</button>
     </div>
   </div>
+
+  <!-- Mobile Bottom Navigation Bar (Screens <= 880px) -->
+  <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Mobile Navigation">
+    <button class="nav-item active" id="navItemChart" data-tab="chart">
+      <span class="nav-icon">&#128200;</span>
+      <span class="nav-label">Chart</span>
+    </button>
+    <button class="nav-item" id="navItemTrade" data-tab="trade">
+      <span class="nav-icon">&#8644;</span>
+      <span class="nav-label">Trade</span>
+    </button>
+    <button class="nav-item" id="navItemPositions" data-tab="positions">
+      <span class="nav-icon">&#128203;</span>
+      <span class="nav-label">Positions</span>
+    </button>
+    <button class="nav-item" id="navItemStrategies" data-tab="strategies">
+      <span class="nav-icon">&#402;x</span>
+      <span class="nav-label">Strategies</span>
+    </button>
+    <button class="nav-item" id="navItemMore" data-tab="more">
+      <span class="nav-icon">&#9776;</span>
+      <span class="nav-label">More</span>
+    </button>
+  </nav>
+
 </div>
+
+<!-- Mobile Side Menu Drawer (All Features - Screen 4) -->
+<div class="side-menu-backdrop" id="sideMenuBackdrop"></div>
+<aside class="mobile-side-menu" id="mobileSideMenu" aria-label="Main Menu Drawer">
+  <div class="side-menu-head">
+    <div class="brand"><span class="mark">&#9670;</span> MORE EXCHANGE</div>
+    <button class="side-menu-close" id="sideMenuClose" title="Close Menu" aria-label="Close Menu">&times;</button>
+  </div>
+  <div class="side-menu-list">
+    <button class="sm-item" id="smChart"><span class="sm-icon">&#128200;</span> <span class="sm-title">Chart</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smTrade"><span class="sm-icon">&#8644;</span> <span class="sm-title">Trade</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smPositions"><span class="sm-icon">&#128203;</span> <span class="sm-title">Positions</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smOrders"><span class="sm-icon">&#128196;</span> <span class="sm-title">Orders</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smPaperTrading"><span class="sm-icon">&#128209;</span> <span class="sm-title">Paper Trading</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smStrategies"><span class="sm-icon">&#402;x</span> <span class="sm-title">Strategies</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smStrategyBuilder"><span class="sm-icon">&#128295;</span> <span class="sm-title">Strategy Builder</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smPineEditor"><span class="sm-icon">&#128187;</span> <span class="sm-title">Pine Script Editor</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smBacktest"><span class="sm-icon">&#9201;</span> <span class="sm-title">Backtest</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smReplay"><span class="sm-icon">&#128257;</span> <span class="sm-title">Replay</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smHistorical"><span class="sm-icon">&#128197;</span> <span class="sm-title">Historical Data</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smDownload"><span class="sm-icon">&#128229;</span> <span class="sm-title">Download Data</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smDrawingTools"><span class="sm-icon">&#9998;</span> <span class="sm-title">Drawing Tools</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smIndicators"><span class="sm-icon">&#128202;</span> <span class="sm-title">Indicators</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smAccount"><span class="sm-icon">&#128100;</span> <span class="sm-title">Account</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smSettings"><span class="sm-icon">&#9881;</span> <span class="sm-title">Settings</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smHelp"><span class="sm-icon">&#10067;</span> <span class="sm-title">Help &amp; About</span> <span class="sm-arr">&rsaquo;</span></button>
+  </div>
+</aside>
 
 <div class="sb-overlay" id="sbOverlay">
   <div class="sb-win">
@@ -5377,6 +5736,254 @@ window.addEventListener("keydown", (e)=>{
 if(localStorage.getItem("paperExchange.sidebarCollapsed") === "1"){
   toggleSidebar(true);
 }
+
+/* ---- NEW FEATURE: Wide Chart Mode (Desktop, Tablet, Mobile) ---- */
+function toggleWideChart(forceState){
+  const app = document.getElementById("app");
+  if(!app) return;
+  const isWide = (typeof forceState === "boolean") ? forceState : !app.classList.contains("wide-chart-mode");
+  app.classList.toggle("wide-chart-mode", isWide);
+  
+  const wideBtn = document.getElementById("btnWideChart");
+  if(wideBtn){
+    wideBtn.classList.toggle("active", isWide);
+    wideBtn.innerHTML = isWide ? `&#10557; Restore` : `&#x26F6; Wide Chart`;
+    wideBtn.title = isWide ? "Exit Wide Chart Mode (Restore Panels) [Alt+W]" : "Enter Wide Chart Mode (Maximize Chart) [Alt+W]";
+  }
+  const headerWideBtn = document.getElementById("btnHeaderWideChart");
+  if(headerWideBtn){
+    headerWideBtn.classList.toggle("active", isWide);
+    headerWideBtn.innerHTML = isWide ? `<span style="font-size:13px;line-height:1;">&#10557;</span> Restore` : `<span style="font-size:13px;line-height:1;">&#x26F6;</span> Wide`;
+    headerWideBtn.title = isWide ? "Exit Wide Chart Mode [Alt+W]" : "Enter Wide Chart Mode [Alt+W]";
+  }
+
+  const resizeChart = ()=>{
+    const col = document.querySelector(".chart-col");
+    const w = col ? col.clientWidth : (chartEl ? chartEl.clientWidth : 0);
+    const h = chartEl ? chartEl.clientHeight : 0;
+    if(chart && w > 0 && h > 0){
+      chart.applyOptions({ width: w, height: h });
+    }
+    window.dispatchEvent(new Event("resize"));
+    if(typeof renderPositionOverlay === "function") renderPositionOverlay();
+  };
+  requestAnimationFrame(resizeChart);
+  setTimeout(resizeChart, 150);
+  setTimeout(resizeChart, 350);
+}
+
+const btnWide = document.getElementById("btnWideChart");
+if(btnWide) btnWide.addEventListener("click", ()=> toggleWideChart());
+
+const btnHeaderWide = document.getElementById("btnHeaderWideChart");
+if(btnHeaderWide) btnHeaderWide.addEventListener("click", ()=> toggleWideChart());
+
+const btnExitWide = document.getElementById("btnExitWideChart");
+if(btnExitWide) btnExitWide.addEventListener("click", ()=> toggleWideChart(false));
+
+window.addEventListener("keydown", (e)=>{
+  if(e.altKey && (e.key === "w" || e.key === "W")){
+    e.preventDefault();
+    toggleWideChart();
+  }
+});
+
+/* ---- Collapsible Drawing Toolbar ---- */
+function toggleTbCollapsed(force){
+  const floatTb = document.getElementById("floatTb");
+  const btn = document.getElementById("tbCollapseBtn");
+  if(!floatTb) return;
+  const isCollapsed = (typeof force === "boolean") ? force : !floatTb.classList.contains("tb-collapsed");
+  floatTb.classList.toggle("tb-collapsed", isCollapsed);
+  if(btn){
+    btn.innerHTML = isCollapsed ? "&#9654;" : "&#9664;";
+    btn.title = isCollapsed ? "Expand Drawing Tools" : "Collapse Tools";
+  }
+}
+const tbCollapse = document.getElementById("tbCollapseBtn");
+if(tbCollapse) tbCollapse.addEventListener("click", (e)=>{ e.stopPropagation(); toggleTbCollapsed(); });
+
+/* ---- Mobile Side Menu Drawer (Screen 4) ---- */
+function toggleSideMenu(forceOpen){
+  const menu = document.getElementById("mobileSideMenu");
+  const backdrop = document.getElementById("sideMenuBackdrop");
+  if(!menu) return;
+  const isOpen = (typeof forceOpen === "boolean") ? forceOpen : !menu.classList.contains("open");
+  menu.classList.toggle("open", isOpen);
+  if(backdrop) backdrop.classList.toggle("active", isOpen);
+}
+
+const btnMenu = document.getElementById("btnMobileMenu");
+if(btnMenu) btnMenu.addEventListener("click", ()=> toggleSideMenu(true));
+
+const sideMenuClose = document.getElementById("sideMenuClose");
+if(sideMenuClose) sideMenuClose.addEventListener("click", ()=> toggleSideMenu(false));
+
+const sideMenuBackdrop = document.getElementById("sideMenuBackdrop");
+if(sideMenuBackdrop) sideMenuBackdrop.addEventListener("click", ()=> toggleSideMenu(false));
+
+/* ---- Mobile Bottom Navigation (Screens <= 880px) ---- */
+function setBottomNavActive(tabName){
+  document.querySelectorAll(".mobile-bottom-nav .nav-item").forEach(item => {
+    item.classList.toggle("active", item.dataset.tab === tabName);
+  });
+}
+
+const navChart = document.getElementById("navItemChart");
+if(navChart) navChart.addEventListener("click", ()=>{
+  closeMobileDrawer();
+  toggleSideMenu(false);
+  setBottomNavActive("chart");
+});
+
+const navTrade = document.getElementById("navItemTrade");
+if(navTrade) navTrade.addEventListener("click", ()=>{
+  toggleSideMenu(false);
+  toggleSidebar(true);
+  setBottomNavActive("trade");
+});
+
+const navPositions = document.getElementById("navItemPositions");
+if(navPositions) navPositions.addEventListener("click", ()=>{
+  toggleSideMenu(false);
+  closeMobileDrawer();
+  const app = document.getElementById("app");
+  if(app && app.classList.contains("wide-chart-mode")) toggleWideChart(false);
+  const posTab = document.querySelector('.pt-tabs button[data-tab="positions"]');
+  if(posTab) posTab.click();
+  if(ptState.min && typeof togglePtMin === "function") togglePtMin();
+  setBottomNavActive("positions");
+});
+
+const navStrategies = document.getElementById("navItemStrategies");
+if(navStrategies) navStrategies.addEventListener("click", ()=>{
+  toggleSideMenu(false);
+  closeMobileDrawer();
+  const sbBtn = document.getElementById("sbOpenBtn");
+  if(sbBtn) sbBtn.click();
+  setBottomNavActive("strategies");
+});
+
+const navMore = document.getElementById("navItemMore");
+if(navMore) navMore.addEventListener("click", ()=>{
+  closeMobileDrawer();
+  toggleSideMenu(true);
+  setBottomNavActive("more");
+});
+
+/* ---- Side Menu Action Items ---- */
+function setupSideMenuItem(id, action){
+  const el = document.getElementById(id);
+  if(el){
+    el.addEventListener("click", ()=>{
+      toggleSideMenu(false);
+      action();
+    });
+  }
+}
+
+setupSideMenuItem("smChart", ()=>{ closeMobileDrawer(); setBottomNavActive("chart"); });
+setupSideMenuItem("smTrade", ()=>{ toggleSidebar(true); setBottomNavActive("trade"); });
+setupSideMenuItem("smPositions", ()=>{
+  const app = document.getElementById("app");
+  if(app && app.classList.contains("wide-chart-mode")) toggleWideChart(false);
+  const b = document.querySelector('.pt-tabs button[data-tab="positions"]');
+  if(b) b.click();
+  if(ptState.min && typeof togglePtMin === "function") togglePtMin();
+  setBottomNavActive("positions");
+});
+setupSideMenuItem("smOrders", ()=>{
+  const app = document.getElementById("app");
+  if(app && app.classList.contains("wide-chart-mode")) toggleWideChart(false);
+  const b = document.querySelector('.pt-tabs button[data-tab="orders"]');
+  if(b) b.click();
+  if(ptState.min && typeof togglePtMin === "function") togglePtMin();
+});
+setupSideMenuItem("smPaperTrading", ()=>{
+  const app = document.getElementById("app");
+  if(app && app.classList.contains("wide-chart-mode")) toggleWideChart(false);
+  if(ptState.min && typeof togglePtMin === "function") togglePtMin();
+});
+setupSideMenuItem("smStrategies", ()=>{
+  const sbBtn = document.getElementById("sbOpenBtn");
+  if(sbBtn) sbBtn.click();
+  setBottomNavActive("strategies");
+});
+setupSideMenuItem("smStrategyBuilder", ()=>{
+  const sbBtn = document.getElementById("sbOpenBtn");
+  if(sbBtn) sbBtn.click();
+  if(typeof sbNav === "function") sbNav("builder");
+});
+setupSideMenuItem("smPineEditor", ()=>{
+  const sbBtn = document.getElementById("sbOpenBtn");
+  if(sbBtn) sbBtn.click();
+  if(typeof sbNav === "function") sbNav("builder");
+  if(typeof setSbMobileSub === "function") setSbMobileSub("editor");
+});
+setupSideMenuItem("smBacktest", ()=>{
+  const sbBtn = document.getElementById("sbOpenBtn");
+  if(sbBtn) sbBtn.click();
+  if(typeof sbNav === "function") sbNav("tester");
+});
+setupSideMenuItem("smReplay", ()=>{
+  const dateBtn = document.getElementById("goDateBtn");
+  if(dateBtn) dateBtn.click();
+});
+setupSideMenuItem("smHistorical", ()=>{
+  const dateBtn = document.getElementById("goDateBtn");
+  if(dateBtn) dateBtn.click();
+});
+setupSideMenuItem("smDownload", ()=>{
+  const expBtn = document.getElementById("exportCsvBtn");
+  if(expBtn) expBtn.click();
+});
+setupSideMenuItem("smDrawingTools", ()=>{
+  toggleTbCollapsed(false);
+});
+setupSideMenuItem("smIndicators", ()=>{
+  const lBtn = document.getElementById("layersBtn");
+  if(lBtn) lBtn.click();
+});
+setupSideMenuItem("smAccount", ()=>{
+  toggleSidebar(true);
+  const side = document.querySelector(".side-col");
+  if(side) side.scrollTo({ top: 0, behavior: "smooth" });
+});
+setupSideMenuItem("smSettings", ()=>{
+  const chartEl = document.getElementById("price-chart");
+  if(chartEl) chartEl.scrollIntoView({ behavior: "smooth" });
+});
+setupSideMenuItem("smHelp", ()=>{
+  alert("More Exchange Shortcuts:\n• Alt+B: Toggle Order Panel\n• Alt+W: Toggle Wide Chart Mode\n• Esc: Cancel Pick/Tool mode\n• Alt+/: Strategy Builder");
+});
+
+/* ---- SL / TP Stepper Buttons ---- */
+function stepPriceInput(inputId, delta){
+  const input = document.getElementById(inputId);
+  if(!input) return;
+  const sym = (ui && ui.symbol) ? ui.symbol : "BTCUSDT";
+  const step = sym.includes("ETH") ? 0.25 : 1.0;
+  let val = parseFloat(input.value);
+  if(isNaN(val) || val <= 0){
+    const last = (market && market[sym] && market[sym].last) ? market[sym].last : (sym.includes("ETH") ? 2500 : 80000);
+    val = last;
+  }
+  val += (step * delta);
+  input.value = val.toFixed(sym.includes("ETH") ? 2 : 2);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  if(typeof refreshOrderPreview === "function") refreshOrderPreview();
+}
+
+const slMinus = document.getElementById("btnSlMinus");
+if(slMinus) slMinus.addEventListener("click", ()=> stepPriceInput("slInput", -1));
+const slPlus = document.getElementById("btnSlPlus");
+if(slPlus) slPlus.addEventListener("click", ()=> stepPriceInput("slInput", 1));
+
+const tpMinus = document.getElementById("btnTpMinus");
+if(tpMinus) tpMinus.addEventListener("click", ()=> stepPriceInput("tpInput", -1));
+const tpPlus = document.getElementById("btnTpPlus");
+if(tpPlus) tpPlus.addEventListener("click", ()=> stepPriceInput("tpInput", 1));
+
 
 /* ---- Leverage Controls & Presets (1x up to 200x) ---- */
 function setLeverage(lev){
