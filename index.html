@@ -519,7 +519,9 @@ tbody tr:hover{background:var(--bg-2);}
   cursor:pointer;
   display:inline-flex;
   align-items:center;
-  gap:4px;
+  gap:5px;
+  height:30px;
+  box-sizing:border-box;
 }
 .replay-btn:hover, .replay-btn.active{
   background:var(--bg-3);
@@ -530,7 +532,11 @@ tbody tr:hover{background:var(--bg-2);}
   background:transparent;
   border:none;
   color:var(--text-dim);
-  padding:4px 8px;
+  width:30px;
+  height:30px;
+  min-width:30px;
+  min-height:30px;
+  padding:0;
   border-radius:4px;
   font-size:12px;
   font-weight:700;
@@ -538,6 +544,8 @@ tbody tr:hover{background:var(--bg-2);}
   display:inline-flex;
   align-items:center;
   justify-content:center;
+  flex-shrink:0;
+  box-sizing:border-box;
 }
 .replay-icon-btn:hover{
   background:var(--bg-3);
@@ -547,13 +555,18 @@ tbody tr:hover{background:var(--bg-2);}
   background:var(--blue);
   border:none;
   color:#ffffff;
-  width:28px;
-  height:28px;
+  width:30px;
+  height:30px;
+  min-width:30px;
+  min-height:30px;
   border-radius:50%;
   cursor:pointer;
   display:inline-flex;
   align-items:center;
   justify-content:center;
+  flex-shrink:0;
+  box-sizing:border-box;
+  padding:0;
   transition:transform 0.1s, background 0.15s;
 }
 .replay-play-btn:hover{
@@ -570,6 +583,8 @@ tbody tr:hover{background:var(--bg-2);}
   font-weight:700;
   font-family:var(--mono);
   cursor:pointer;
+  height:30px;
+  box-sizing:border-box;
 }
 .replay-speed-wrap select:focus{
   outline:none;
@@ -584,6 +599,11 @@ tbody tr:hover{background:var(--bg-2);}
   background:var(--bg-0);
   border:1px solid var(--line);
   border-radius:4px;
+  height:30px;
+  box-sizing:border-box;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
 }
 .replay-exit-btn{
   background:transparent;
@@ -596,13 +616,21 @@ tbody tr:hover{background:var(--bg-2);}
   cursor:pointer;
   display:inline-flex;
   align-items:center;
-  gap:4px;
+  gap:5px;
   margin-left:4px;
+  height:30px;
+  box-sizing:border-box;
 }
 .replay-exit-btn:hover{
   background:rgba(242,54,69,0.12);
   border-color:rgba(242,54,69,0.3);
   color:#ffffff;
+}
+.replay-exit-long{ display:inline; }
+.replay-exit-short{ display:none; }
+.replay-control-bar svg{
+  display:block;
+  flex-shrink:0;
 }
 
 /* ---- Stepper inputs for SL/TP ---- */
@@ -1189,6 +1217,11 @@ tbody tr:hover{background:var(--bg-2);}
     border-radius:4px;
     padding:3px 8px;
     cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    height:26px;
+    box-sizing:border-box;
   }
   .mob-replay-select-bar .btn-cancel{
     background:rgba(255,255,255,0.1);
@@ -1197,8 +1230,14 @@ tbody tr:hover{background:var(--bg-2);}
     font-size:11px;
     font-weight:700;
     border-radius:4px;
-    padding:3px 8px;
+    padding:0 6px;
     cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    height:26px;
+    min-width:26px;
+    box-sizing:border-box;
   }
   .hist-notice{
     top:88px !important;
@@ -1215,71 +1254,123 @@ tbody tr:hover{background:var(--bg-2);}
     box-sizing:border-box !important;
   }
   .replay-inner{
-    width:100% !important;
-    display:flex !important;
+    width:auto !important;
+    max-width:100% !important;
+    margin:0 auto !important;
+    display:inline-flex !important;
     align-items:center !important;
-    justify-content:space-between !important;
+    justify-content:center !important;
     gap:4px !important;
-    padding:3px 5px !important;
+    padding:3px 6px !important;
     background:var(--bg-2) !important;
     border:1px solid var(--line) !important;
-    border-radius:5px !important;
+    border-radius:6px !important;
+    box-sizing:border-box !important;
     overflow-x:auto !important;
     scrollbar-width:none !important;
-    box-sizing:border-box !important;
   }
   .replay-inner::-webkit-scrollbar{ display:none; }
   .replay-btn{
-    padding:3px 6px !important;
-    font-size:10.5px !important;
-    min-height:28px !important;
-    height:28px !important;
+    padding:2px 7px !important;
+    font-size:11px !important;
+    min-height:30px !important;
+    height:30px !important;
     white-space:nowrap !important;
     flex-shrink:0 !important;
+    border-radius:4px !important;
+    gap:4px !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    box-sizing:border-box !important;
   }
   .replay-icon-btn{
     min-width:30px !important;
     width:30px !important;
-    height:28px !important;
-    font-size:11px !important;
+    max-width:30px !important;
+    min-height:30px !important;
+    height:30px !important;
+    max-height:30px !important;
     padding:0 !important;
     flex-shrink:0 !important;
+    border-radius:4px !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    box-sizing:border-box !important;
   }
   .replay-play-btn{
-    min-width:34px !important;
-    width:34px !important;
-    height:28px !important;
-    font-size:12px !important;
+    min-width:32px !important;
+    width:32px !important;
+    max-width:32px !important;
+    min-height:32px !important;
+    height:32px !important;
+    max-height:32px !important;
+    border-radius:50% !important;
     padding:0 !important;
     flex-shrink:0 !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    box-sizing:border-box !important;
   }
   .replay-speed-wrap{
     flex-shrink:0 !important;
+    display:inline-flex !important;
+    align-items:center !important;
   }
   .replay-speed-wrap select{
     font-size:10px !important;
-    height:28px !important;
-    padding:1px 3px !important;
+    min-height:30px !important;
+    height:30px !important;
+    padding:2px 4px !important;
+    border-radius:4px !important;
+    box-sizing:border-box !important;
   }
   .replay-tf-badge{
-    font-size:9.5px !important;
-    padding:1px 4px !important;
-    height:24px !important;
-    display:flex !important;
+    font-size:10px !important;
+    padding:2px 5px !important;
+    min-height:30px !important;
+    height:30px !important;
+    display:inline-flex !important;
     align-items:center !important;
+    justify-content:center !important;
     flex-shrink:0 !important;
+    border-radius:4px !important;
+    box-sizing:border-box !important;
   }
   .replay-exit-btn{
-    padding:3px 6px !important;
-    font-size:10.5px !important;
-    min-height:28px !important;
-    height:28px !important;
+    padding:2px 6px !important;
+    font-size:11px !important;
+    min-height:30px !important;
+    height:30px !important;
     white-space:nowrap !important;
     flex-shrink:0 !important;
+    margin-left:2px !important;
+    gap:4px !important;
+    border-radius:4px !important;
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    box-sizing:border-box !important;
   }
+  .replay-exit-long{ display:none !important; }
+  .replay-exit-short{ display:inline !important; }
 }
 
 @media (max-width:380px){
+  .replay-inner{
+    gap:3px !important;
+    padding:2px 3px !important;
+  }
+  .replay-btn{
+    padding:2px 5px !important;
+    font-size:10.5px !important;
+  }
+  .replay-exit-btn{
+    padding:2px 5px !important;
+    font-size:10.5px !important;
+  }
   .tf-tabs{
     max-width:calc(100% - 200px) !important;
   }
@@ -2258,7 +2349,7 @@ tbody tr:hover{background:var(--bg-2);}
       <button data-tool="long" title="Long: click your stop-loss price">L</button>
       <button data-tool="short" title="Short: click your stop-loss price">S</button>
       <button id="tbClear" title="Clear drawn lines on this symbol">&#128465;</button>
-      <button id="btnMobileFloatReplay" class="tb-replay-btn" title="Bar Replay Mode">&#10226;</button>
+      <button id="btnMobileFloatReplay" class="tb-replay-btn" title="Bar Replay Mode"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
     </div>
     <div class="wide-chart-restore-pill" id="wideChartRestorePill" title="Exit Wide Chart Mode">
       <span class="pill-badge">&#x26F6; Wide Chart Mode Active</span>
@@ -2266,8 +2357,8 @@ tbody tr:hover{background:var(--bg-2);}
     </div>
     <div class="mob-replay-select-bar" id="mobileReplaySelectBar" style="display:none;">
       <span class="hint-text">Drag or tap bar to replay</span>
-      <button id="btnMobileReplayConfirm" class="btn-confirm">✓ Start</button>
-      <button id="btnMobileReplayCancel" class="btn-cancel">✕</button>
+      <button id="btnMobileReplayConfirm" class="btn-confirm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;"><path d="M20 6L9 17l-5-5"/></svg> <span>Start</span></button>
+      <button id="btnMobileReplayCancel" class="btn-cancel" title="Cancel Selection"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
     </div>
     <div class="hist-notice" id="histNotice" title="Click to dismiss"></div>
     <div id="price-chart"></div>
@@ -2276,10 +2367,19 @@ tbody tr:hover{background:var(--bg-2);}
     <div class="replay-select-badge" id="replaySelectBadge" style="display:none;"></div>
     <div class="replay-control-bar" id="replayControlBar" style="display:none;">
       <div class="replay-inner">
-        <button id="btnReplaySelectBar" class="replay-btn" title="Select starting bar on chart"><span style="font-size:12px;">&#8592;</span> Select Bar</button>
-        <button id="btnReplayJumpStart" class="replay-icon-btn" title="Jump to replay start"><span style="font-size:12px;">|&#9664;</span></button>
-        <button id="btnReplayPlayPause" class="replay-play-btn" title="Play / Pause Replay (Space)"><span id="replayPlayIcon" style="font-size:12px;">&#9654;</span></button>
-        <button id="btnReplayStepForward" class="replay-icon-btn" title="Step forward 1 candle"><span style="font-size:12px;">&#9654;|</span></button>
+        <button id="btnReplaySelectBar" class="replay-btn" title="Select starting bar on chart">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          <span>Select Bar</span>
+        </button>
+        <button id="btnReplayJumpStart" class="replay-icon-btn" title="Jump to replay start">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 6h2.5v12H6zm3.5 6l9 6.5V5.5z"/></svg>
+        </button>
+        <button id="btnReplayPlayPause" class="replay-play-btn" title="Play / Pause Replay (Space)">
+          <span id="replayPlayIcon" style="display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%;"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="margin-left:1px;"><path d="M8 5v14l11-7z"/></svg></span>
+        </button>
+        <button id="btnReplayStepForward" class="replay-icon-btn" title="Step forward 1 candle">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5.5 5.5v13l9-6.5zm10 0.5h2.5v12h-2.5z"/></svg>
+        </button>
         <div class="replay-speed-wrap">
           <select id="replaySpeedSelect" title="Replay Speed">
             <option value="0.5">0.5x</option>
@@ -2291,12 +2391,16 @@ tbody tr:hover{background:var(--bg-2);}
           </select>
         </div>
         <div class="replay-tf-badge" id="replayTfBadge" title="Current chart timeframe">5m</div>
-        <button id="btnReplayExit" class="replay-exit-btn" title="Exit Replay Mode"><span style="font-size:12px;">&#10005;</span> Exit Replay</button>
+        <button id="btnReplayExit" class="replay-exit-btn" title="Exit Replay Mode">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>
+          <span class="replay-exit-long">Exit Replay</span>
+          <span class="replay-exit-short">Exit</span>
+        </button>
       </div>
     </div>
     <div class="range-bar">
       <button id="btnWideChart" class="chart-expand-btn" title="Toggle Wide Chart Mode (Maximize Chart) [Alt+W]">&#x26F6; Wide Chart</button>
-      <button id="btnMobileReplay" class="mob-replay-btn" title="Bar Replay Mode">&#10226; Replay</button>
+      <button id="btnMobileReplay" class="mob-replay-btn" title="Bar Replay Mode"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> <span>Replay</span></button>
       <div class="range-btns" id="rangeBtns">
         <button data-r="1D">1D</button><button data-r="5D">5D</button><button data-r="1M">1M</button>
         <button data-r="3M">3M</button><button data-r="6M">6M</button><button data-r="YTD">YTD</button>
@@ -6727,7 +6831,7 @@ function playReplay(){
   replayState.playing = true;
   const playIcon = document.getElementById("replayPlayIcon");
   const playBtn = document.getElementById("btnReplayPlayPause");
-  if(playIcon) playIcon.innerHTML = "&#10074;&#10074;";
+  if(playIcon) playIcon.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
   if(playBtn){
     playBtn.classList.add("playing");
     playBtn.title = "Pause Replay (Space)";
@@ -6745,7 +6849,7 @@ function pauseReplay(){
   }
   const playIcon = document.getElementById("replayPlayIcon");
   const playBtn = document.getElementById("btnReplayPlayPause");
-  if(playIcon) playIcon.innerHTML = "&#9654;";
+  if(playIcon) playIcon.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style="margin-left:1px;"><path d="M8 5v14l11-7z"/></svg>';
   if(playBtn){
     playBtn.classList.remove("playing");
     playBtn.title = "Play Replay (Space)";
