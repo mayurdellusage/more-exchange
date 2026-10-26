@@ -429,6 +429,182 @@ tbody tr:hover{background:var(--bg-2);}
   padding:3px 4px;
 }
 
+/* ---- Bar Replay Feature (Phase 1: Desktop First) ---- */
+#btnDesktopReplay{
+  background:var(--bg-0);
+  border:1px solid var(--line);
+  color:var(--text-dim);
+  padding:5px 9px;
+  border-radius:var(--radius);
+  font-size:11.5px;
+  font-weight:700;
+  white-space:nowrap;
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  cursor:pointer;
+  transition:background 0.15s, color 0.15s, border-color 0.15s;
+}
+#btnDesktopReplay:hover{
+  color:var(--text);
+  border-color:var(--focus);
+  background:var(--bg-2);
+}
+#btnDesktopReplay.active{
+  background:rgba(41,98,255,0.18) !important;
+  border-color:var(--blue) !important;
+  color:#ffffff !important;
+}
+.replay-dark-overlay{
+  position:absolute;
+  top:0;
+  pointer-events:none;
+  background:rgba(8, 11, 19, 0.52);
+  z-index:26;
+  backdrop-filter:blur(0.4px);
+}
+.replay-select-line{
+  position:absolute;
+  top:0;
+  width:2px;
+  border-left:2px dashed #2962ff;
+  z-index:30;
+  pointer-events:none;
+  box-shadow:0 0 6px rgba(41,98,255,0.4);
+}
+.replay-select-badge{
+  position:absolute;
+  transform:translateX(-50%);
+  background:#2962ff;
+  color:#ffffff;
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:700;
+  padding:4px 10px;
+  border-radius:4px;
+  z-index:31;
+  pointer-events:none;
+  white-space:nowrap;
+  box-shadow:0 4px 14px rgba(0,0,0,0.7);
+  border:1px solid rgba(255,255,255,0.25);
+}
+.replay-control-bar{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--bg-1);
+  border-top:1px solid var(--line);
+  padding:6px 14px;
+  z-index:20;
+  user-select:none;
+}
+.replay-inner{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  background:var(--bg-2);
+  border:1px solid var(--line);
+  border-radius:6px;
+  padding:4px 10px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.4);
+}
+.replay-btn{
+  background:transparent;
+  border:1px solid var(--line);
+  color:var(--text);
+  padding:4px 10px;
+  border-radius:4px;
+  font-size:11.5px;
+  font-weight:700;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+}
+.replay-btn:hover, .replay-btn.active{
+  background:var(--bg-3);
+  border-color:var(--blue);
+  color:#ffffff;
+}
+.replay-icon-btn{
+  background:transparent;
+  border:none;
+  color:var(--text-dim);
+  padding:4px 8px;
+  border-radius:4px;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.replay-icon-btn:hover{
+  background:var(--bg-3);
+  color:#ffffff;
+}
+.replay-play-btn{
+  background:var(--blue);
+  border:none;
+  color:#ffffff;
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  transition:transform 0.1s, background 0.15s;
+}
+.replay-play-btn:hover{
+  background:#1a4cd2;
+  transform:scale(1.05);
+}
+.replay-speed-wrap select{
+  background:var(--bg-0);
+  color:var(--text);
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:3px 6px;
+  font-size:11px;
+  font-weight:700;
+  font-family:var(--mono);
+  cursor:pointer;
+}
+.replay-speed-wrap select:focus{
+  outline:none;
+  border-color:var(--focus);
+}
+.replay-tf-badge{
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:700;
+  color:var(--text-dim);
+  padding:3px 6px;
+  background:var(--bg-0);
+  border:1px solid var(--line);
+  border-radius:4px;
+}
+.replay-exit-btn{
+  background:transparent;
+  border:1px solid transparent;
+  color:var(--short);
+  padding:4px 8px;
+  border-radius:4px;
+  font-size:11.5px;
+  font-weight:700;
+  cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  margin-left:4px;
+}
+.replay-exit-btn:hover{
+  background:rgba(242,54,69,0.12);
+  border-color:rgba(242,54,69,0.3);
+  color:#ffffff;
+}
+
 /* ---- Stepper inputs for SL/TP ---- */
 .stepper-wrap{
   display:flex;
@@ -949,6 +1125,158 @@ tbody tr:hover{background:var(--bg-2);}
     overflow-y:auto;
     padding:16px;
   }
+  #btnDesktopReplay{
+    display:none !important;
+  }
+  .mob-replay-btn{
+    display:inline-flex !important;
+    align-items:center;
+    gap:4px;
+    background:rgba(41,98,255,0.15) !important;
+    border:1px solid rgba(41,98,255,0.45) !important;
+    color:#ffffff !important;
+    font-weight:700 !important;
+    font-size:10.5px !important;
+    border-radius:4px;
+    padding:2px 7px !important;
+    min-height:24px;
+    height:24px;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .mob-replay-btn.active{
+    background:#2962ff !important;
+    border-color:#2962ff !important;
+    color:#ffffff !important;
+    box-shadow:0 0 10px rgba(41,98,255,0.5);
+  }
+  .tb-replay-btn{
+    display:inline-flex !important;
+    align-items:center;
+    justify-content:center;
+    color:var(--text);
+  }
+  .mob-replay-select-bar{
+    position:absolute;
+    top:10px;
+    left:50%;
+    transform:translateX(-50%);
+    z-index:32;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:rgba(18, 24, 38, 0.95);
+    border:1px solid #2962ff;
+    border-radius:6px;
+    padding:4px 10px;
+    box-shadow:0 4px 18px rgba(0,0,0,0.7);
+    white-space:nowrap;
+    user-select:none;
+    max-width:calc(100% - 20px);
+    box-sizing:border-box;
+  }
+  .mob-replay-select-bar .hint-text{
+    font-size:11px;
+    font-weight:600;
+    color:var(--text);
+  }
+  .mob-replay-select-bar .btn-confirm{
+    background:#2962ff;
+    border:none;
+    color:#ffffff;
+    font-size:11px;
+    font-weight:700;
+    border-radius:4px;
+    padding:3px 8px;
+    cursor:pointer;
+  }
+  .mob-replay-select-bar .btn-cancel{
+    background:rgba(255,255,255,0.1);
+    border:1px solid var(--line);
+    color:var(--text-dim);
+    font-size:11px;
+    font-weight:700;
+    border-radius:4px;
+    padding:3px 8px;
+    cursor:pointer;
+  }
+  .hist-notice{
+    top:88px !important;
+    font-size:10.5px !important;
+    padding:4px 10px !important;
+  }
+  .replay-control-bar{
+    padding:3px 6px !important;
+    min-height:38px !important;
+    height:auto !important;
+    background:var(--bg-1) !important;
+    border-top:1px solid var(--line) !important;
+    width:100% !important;
+    box-sizing:border-box !important;
+  }
+  .replay-inner{
+    width:100% !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    gap:4px !important;
+    padding:3px 5px !important;
+    background:var(--bg-2) !important;
+    border:1px solid var(--line) !important;
+    border-radius:5px !important;
+    overflow-x:auto !important;
+    scrollbar-width:none !important;
+    box-sizing:border-box !important;
+  }
+  .replay-inner::-webkit-scrollbar{ display:none; }
+  .replay-btn{
+    padding:3px 6px !important;
+    font-size:10.5px !important;
+    min-height:28px !important;
+    height:28px !important;
+    white-space:nowrap !important;
+    flex-shrink:0 !important;
+  }
+  .replay-icon-btn{
+    min-width:30px !important;
+    width:30px !important;
+    height:28px !important;
+    font-size:11px !important;
+    padding:0 !important;
+    flex-shrink:0 !important;
+  }
+  .replay-play-btn{
+    min-width:34px !important;
+    width:34px !important;
+    height:28px !important;
+    font-size:12px !important;
+    padding:0 !important;
+    flex-shrink:0 !important;
+  }
+  .replay-speed-wrap{
+    flex-shrink:0 !important;
+  }
+  .replay-speed-wrap select{
+    font-size:10px !important;
+    height:28px !important;
+    padding:1px 3px !important;
+  }
+  .replay-tf-badge{
+    font-size:9.5px !important;
+    padding:1px 4px !important;
+    height:24px !important;
+    display:flex !important;
+    align-items:center !important;
+    flex-shrink:0 !important;
+  }
+  .replay-exit-btn{
+    padding:3px 6px !important;
+    font-size:10.5px !important;
+    min-height:28px !important;
+    height:28px !important;
+    white-space:nowrap !important;
+    flex-shrink:0 !important;
+  }
 }
 
 @media (max-width:380px){
@@ -1014,6 +1342,14 @@ tbody tr:hover{background:var(--bg-2);}
   }
   .bottom-col{
     grid-column:1 / -1 !important;
+  }
+  #btnDesktopReplay{
+    display:inline-flex !important;
+  }
+  .mob-replay-btn,
+  .mob-replay-select-bar,
+  .tb-replay-btn{
+    display:none !important;
   }
 }
 
@@ -1901,6 +2237,7 @@ tbody tr:hover{background:var(--bg-2);}
     </div>
     <div class="status offline" id="wsStatus"><span class="dot"></span><span id="wsStatusText">OFFLINE</span><span class="fresh" id="wsFresh"></span></div>
     <button id="btnToggleSideNav" class="header-btn" title="Toggle Order Ticket &amp; Account Panel (Alt+B)" aria-label="Toggle Order Ticket"><span style="font-size:13px;line-height:1;">&#9697;</span> Order Panel</button>
+    <button id="btnDesktopReplay" class="header-btn" title="Bar Replay Mode (Alt+R)" aria-label="Bar Replay Mode"><span style="font-size:12px;line-height:1;">&#10226;</span> Replay</button>
     <button id="btnHeaderWideChart" class="header-btn chart-expand-btn" title="Toggle Wide Chart Mode (Maximize Chart) [Alt+W]" aria-label="Toggle Wide Chart Mode"><span style="font-size:13px;line-height:1;">&#x26F6;</span> Wide</button>
     <button id="btnMobileMenu" class="header-btn header-menu-btn" title="Open All Features Menu" aria-label="Open Menu">&#9776;</button>
   </header>
@@ -1921,15 +2258,45 @@ tbody tr:hover{background:var(--bg-2);}
       <button data-tool="long" title="Long: click your stop-loss price">L</button>
       <button data-tool="short" title="Short: click your stop-loss price">S</button>
       <button id="tbClear" title="Clear drawn lines on this symbol">&#128465;</button>
+      <button id="btnMobileFloatReplay" class="tb-replay-btn" title="Bar Replay Mode">&#10226;</button>
     </div>
     <div class="wide-chart-restore-pill" id="wideChartRestorePill" title="Exit Wide Chart Mode">
       <span class="pill-badge">&#x26F6; Wide Chart Mode Active</span>
       <button id="btnExitWideChart" class="pill-restore-btn">&#10557; Restore</button>
     </div>
+    <div class="mob-replay-select-bar" id="mobileReplaySelectBar" style="display:none;">
+      <span class="hint-text">Drag or tap bar to replay</span>
+      <button id="btnMobileReplayConfirm" class="btn-confirm">✓ Start</button>
+      <button id="btnMobileReplayCancel" class="btn-cancel">✕</button>
+    </div>
     <div class="hist-notice" id="histNotice" title="Click to dismiss"></div>
     <div id="price-chart"></div>
+    <div class="replay-dark-overlay" id="replayDarkOverlay" style="display:none;"></div>
+    <div class="replay-select-line" id="replaySelectLine" style="display:none;"></div>
+    <div class="replay-select-badge" id="replaySelectBadge" style="display:none;"></div>
+    <div class="replay-control-bar" id="replayControlBar" style="display:none;">
+      <div class="replay-inner">
+        <button id="btnReplaySelectBar" class="replay-btn" title="Select starting bar on chart"><span style="font-size:12px;">&#8592;</span> Select Bar</button>
+        <button id="btnReplayJumpStart" class="replay-icon-btn" title="Jump to replay start"><span style="font-size:12px;">|&#9664;</span></button>
+        <button id="btnReplayPlayPause" class="replay-play-btn" title="Play / Pause Replay (Space)"><span id="replayPlayIcon" style="font-size:12px;">&#9654;</span></button>
+        <button id="btnReplayStepForward" class="replay-icon-btn" title="Step forward 1 candle"><span style="font-size:12px;">&#9654;|</span></button>
+        <div class="replay-speed-wrap">
+          <select id="replaySpeedSelect" title="Replay Speed">
+            <option value="0.5">0.5x</option>
+            <option value="1" selected>1x</option>
+            <option value="2">2x</option>
+            <option value="3">3x</option>
+            <option value="5">5x</option>
+            <option value="10">10x</option>
+          </select>
+        </div>
+        <div class="replay-tf-badge" id="replayTfBadge" title="Current chart timeframe">5m</div>
+        <button id="btnReplayExit" class="replay-exit-btn" title="Exit Replay Mode"><span style="font-size:12px;">&#10005;</span> Exit Replay</button>
+      </div>
+    </div>
     <div class="range-bar">
       <button id="btnWideChart" class="chart-expand-btn" title="Toggle Wide Chart Mode (Maximize Chart) [Alt+W]">&#x26F6; Wide Chart</button>
+      <button id="btnMobileReplay" class="mob-replay-btn" title="Bar Replay Mode">&#10226; Replay</button>
       <div class="range-btns" id="rangeBtns">
         <button data-r="1D">1D</button><button data-r="5D">5D</button><button data-r="1M">1M</button>
         <button data-r="3M">3M</button><button data-r="6M">6M</button><button data-r="YTD">YTD</button>
@@ -3719,10 +4086,10 @@ const noticeEl = document.getElementById("histNotice");
 const liveBtn = document.getElementById("liveBtn");
 let noticeTimer = null;
 
-function showNotice(msg){
-  noticeEl.textContent = noticeEl.textContent ? noticeEl.textContent + "  ·  " + msg : msg;
+function showNotice(msg, replace = false){
+  noticeEl.textContent = (!replace && noticeEl.textContent) ? noticeEl.textContent + "  ·  " + msg : msg;
   noticeEl.style.display = "block";
-  clearTimeout(noticeTimer); noticeTimer = setTimeout(hideNotice, 14000);
+  clearTimeout(noticeTimer); noticeTimer = setTimeout(hideNotice, 10000);
 }
 function hideNotice(){ noticeEl.textContent=""; noticeEl.style.display="none"; }
 noticeEl.addEventListener("click", hideNotice);
@@ -3745,12 +4112,32 @@ async function announceStart(){
   if(s) showNotice(`${ui.symbol} futures data starts ${fmtDate(s)} — nothing exists before this.`);
 }
 
+/* ================= BAR REPLAY STATE ================= */
+const replayState = {
+  active: false,
+  selecting: false,
+  playing: false,
+  timer: null,
+  speed: 1,
+  fullBars: [],
+  startIndex: 0,
+  currentIndex: 0,
+  hoveredIndex: -1,
+  pendingLiveBar: null
+};
+window.replayState = replayState;
+
 function paintAll(){
   candleSeries.setData(H.bars.map(b=>({time:b.time,open:b.open,high:b.high,low:b.low,close:b.close})));
   volumeSeries.setData(H.bars.map(b=>({time:b.time,value:b.volume,color:b.close>=b.open?"rgba(8,153,129,.45)":"rgba(242,54,69,.45)"})));
+  if(typeof updateStrategyOverlays === "function") updateStrategyOverlays();
 }
 
 function syncLast(bar, vol){
+  if(typeof replayState !== "undefined" && replayState.active){
+    replayState.pendingLiveBar = { bar, vol };
+    return;
+  }
   const last = H.bars[H.bars.length-1];
   if(last && last.time===bar.time){
     last.open=bar.open; last.high=bar.high; last.low=bar.low; last.close=bar.close;
@@ -3810,12 +4197,18 @@ async function loadNewer(){
   finally{ if(g===H.gen) H.busy=false; }
 }
 chart.timeScale().subscribeVisibleLogicalRangeChange(r=>{
+  if(typeof replayState !== "undefined" && replayState.active){
+    return;
+  }
   if(!r || H.busy || !H.bars.length) return;
   if(r.from < 80 && H.hasOlder) loadOlder();
   else if(r.to > H.bars.length-80 && H.hasNewer) loadNewer();
 });
 
 async function refreshChart(opts){
+  if(typeof exitReplay === "function" && typeof replayState !== "undefined" && (replayState.active || replayState.selecting)){
+    exitReplay(false);
+  }
   opts = opts || {};
   clearOrderLines(); hideNotice(); 
   const matchingMarkers = (lastBacktestResult && lastBacktestResult.opts && lastBacktestResult.opts.symbol === ui.symbol && lastBacktestResult.opts.tf === ui.tf) ? backtestOverlayMarkers : [];
@@ -3990,6 +4383,7 @@ function bucketStartSec(tf){
 }
 function updateLiveBar(price){
   if(H.hasNewer || !price || isNaN(price)) return;
+  if(typeof replayState !== "undefined" && replayState.active) return;
   const bStart = bucketStartSec(ui.tf);
   if(!liveBar || liveBar.time !== bStart){
     const prevClose = liveBar ? liveBar.close : price;
@@ -4108,6 +4502,11 @@ function handleKline(d){
     open: parseFloat(k.o), high: parseFloat(k.h), low: parseFloat(k.l), close: parseFloat(k.c)
   };
   if([bar.open,bar.high,bar.low,bar.close].some(v=>isNaN(v))) return;
+  if(typeof replayState !== "undefined" && replayState.active){
+    replayState.pendingLiveBar = { bar, vol: parseFloat(k.v)||0 };
+    lastKlineTs = Date.now();
+    return;
+  }
   candleSeries.update(bar);
   volumeSeries.update({ time:bar.time, value: parseFloat(k.v)||0, color: bar.close>=bar.open ? "rgba(8,153,129,.45)" : "rgba(242,54,69,.45)" });
   liveBar = bar;
@@ -4160,7 +4559,9 @@ function marginUsed(){
 function unrealizedPnl(symbol){
   const p = account.positions[symbol];
   if(!p) return 0;
-  const mkt = market[symbol].last || p.entry;
+  const isReplayActive = (typeof replayState !== "undefined" && replayState.active && symbol === ui.symbol);
+  const lastBar = (isReplayActive && typeof H !== "undefined" && H.bars && H.bars.length) ? H.bars[H.bars.length - 1] : null;
+  const mkt = (isReplayActive && lastBar) ? lastBar.close : (market[symbol].last || p.entry);
   return p.side==="LONG" ? p.qty*(mkt-p.entry) : p.qty*(p.entry-mkt);
 }
 function totalUnrealizedPnl(){
@@ -4188,14 +4589,15 @@ function computeOrderPreview(){
   const sl = parseFloat(document.getElementById("slInput").value);
   const tp = parseFloat(document.getElementById("tpInput").value);
   const mkt = market[symbol] || {};
+  const isReplayActive = (typeof replayState !== "undefined" && replayState.active && symbol === ui.symbol);
   const lastBar = (typeof H !== "undefined" && H.bars && H.bars.length) ? H.bars[H.bars.length - 1] : null;
-  const refPrice = mkt.last || (side==="LONG" ? mkt.ask : mkt.bid) || (lastBar ? lastBar.close : 0);
+  const refPrice = isReplayActive ? (lastBar ? lastBar.close : 0) : (mkt.last || (side==="LONG" ? mkt.ask : mkt.bid) || (lastBar ? lastBar.close : 0));
 
   if(!qty || qty<=0){
     return { valid:false, reason: refPrice ? "Enter a quantity, or size from Risk $." : "Waiting for live price…" };
   }
   const slippageMult = 1 + (account.slippageBps/10000) * (side==="LONG" ? 1 : -1);
-  const entryEst = (side==="LONG" ? (mkt.ask||refPrice) : (mkt.bid||refPrice)) * slippageMult;
+  const entryEst = isReplayActive ? (refPrice * slippageMult) : ((side==="LONG" ? (mkt.ask||refPrice) : (mkt.bid||refPrice)) * slippageMult);
   const notional = qty * entryEst;
   const margin = notional / leverage;
   const fee = notional * account.feeRate;
@@ -4311,11 +4713,13 @@ function closePosition(symbol, fraction, reason, override){
     exitPrice = override.exitPrice;
     closedAt = override.closedAt;
   }else{
-    const mkt = market[symbol];
-    const exitRef = pos.side==="LONG" ? (mkt.bid||mkt.last) : (mkt.ask||mkt.last);
+    const isReplayActive = (typeof replayState !== "undefined" && replayState.active && symbol === ui.symbol);
+    const lastBar = (isReplayActive && typeof H !== "undefined" && H.bars && H.bars.length) ? H.bars[H.bars.length - 1] : null;
+    const mkt = market[symbol] || {};
+    const exitRef = isReplayActive ? (lastBar ? lastBar.close : 0) : (pos.side==="LONG" ? (mkt.bid||mkt.last) : (mkt.ask||mkt.last));
     const slippageMult = 1 + (account.slippageBps/10000) * (pos.side==="LONG" ? -1 : 1);
     exitPrice = exitRef * slippageMult;
-    closedAt = Date.now();
+    closedAt = isReplayActive ? (lastBar ? (lastBar.timeMs || lastBar.time * 1000) : Date.now()) : Date.now();
   }
 
   const closedQty = pos.qty * fraction;
@@ -4360,6 +4764,7 @@ function reversePosition(symbol){
 }
 
 function checkSlTp(symbol){
+  if(typeof replayState !== "undefined" && replayState.active && symbol === ui.symbol) return;
   const pos = account.positions[symbol];
   if(!pos) return;
   const mkt = market[symbol];
@@ -5205,6 +5610,8 @@ try {
   window.roundPrice = roundPrice;
   window.startLineDrag = startLineDrag;
   window.endLineDrag = endLineDrag;
+  window.unrealizedPnl = unrealizedPnl;
+  window.computeOrderPreview = computeOrderPreview;
   Object.defineProperty(window, '_activeDrag', { get: () => activeDrag, set: v => { activeDrag = v; }, configurable: true });
 } catch(e) {}
 
@@ -5212,6 +5619,9 @@ try {
 document.getElementById("symbolTabs").addEventListener("click", async (e)=>{
   const btn = e.target.closest("button[data-symbol]");
   if(!btn) return;
+  if(typeof exitReplay === "function" && typeof replayState !== "undefined" && (replayState.active || replayState.selecting)){
+    exitReplay(false);
+  }
   const prevSymbol = ui.symbol;
   ui.symbol = btn.dataset.symbol;
   setPickMode(null);
@@ -5263,6 +5673,9 @@ document.getElementById("symbolTabs").addEventListener("click", async (e)=>{
 document.getElementById("tfTabs").addEventListener("click", async (e)=>{
   const btn = e.target.closest("button[data-tf]");
   if(!btn) return;
+  if(typeof exitReplay === "function" && typeof replayState !== "undefined" && (replayState.active || replayState.selecting)){
+    exitReplay(false);
+  }
   ui.tf = btn.dataset.tf;
   setPickMode(null);
   document.querySelectorAll("#tfTabs button").forEach(b=>b.classList.toggle("active", b===btn));
@@ -6003,6 +6416,678 @@ window.addEventListener("keydown", (e)=>{
   }
 });
 
+/* ================= BAR REPLAY ENGINE (PHASE 1: DESKTOP) ================= */
+function fmtReplayBadgeDate(ms){
+  const d = new Date(ms);
+  const day = d.getUTCDate();
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const mon = months[d.getUTCMonth()];
+  const yr = String(d.getUTCFullYear()).slice(-2);
+  const hh = String(d.getUTCHours()).padStart(2, "0");
+  const mm = String(d.getUTCMinutes()).padStart(2, "0");
+  return `${day} ${mon} '${yr} ${hh}:${mm}`;
+}
+
+function findBarIndexByTime(time){
+  if(!replayState.fullBars || !replayState.fullBars.length) return -1;
+  let low = 0, high = replayState.fullBars.length - 1;
+  while(low <= high){
+    const mid = (low + high) >> 1;
+    const bTime = replayState.fullBars[mid].time;
+    if(bTime === time) return mid;
+    if(bTime < time) low = mid + 1;
+    else high = mid - 1;
+  }
+  if(low >= replayState.fullBars.length) return replayState.fullBars.length - 1;
+  if(high < 0) return 0;
+  const diffLow = Math.abs(replayState.fullBars[low].time - time);
+  const diffHigh = Math.abs(replayState.fullBars[high].time - time);
+  return diffLow < diffHigh ? low : high;
+}
+
+function findNearestBar(mouseX){
+  if(!replayState.fullBars || replayState.fullBars.length === 0) return -1;
+  const t = chart.timeScale().coordinateToTime(mouseX);
+  if(t != null){
+    return findBarIndexByTime(t);
+  }
+  try {
+    const logical = chart.timeScale().coordinateToLogical(mouseX);
+    if(logical != null){
+      return Math.max(0, Math.min(replayState.fullBars.length - 1, Math.round(logical)));
+    }
+  } catch(e){}
+  let bestIdx = -1, bestDist = Infinity;
+  for(let i = 0; i < replayState.fullBars.length; i++){
+    const coord = chart.timeScale().timeToCoordinate(replayState.fullBars[i].time);
+    if(coord != null){
+      const dist = Math.abs(coord - mouseX);
+      if(dist < bestDist){
+        bestDist = dist;
+        bestIdx = i;
+      }
+    }
+  }
+  return bestIdx;
+}
+
+function updateReplayDarkOverlay(lineX){
+  const darkOverlay = document.getElementById("replayDarkOverlay");
+  if(!darkOverlay) return;
+  if(lineX == null || isNaN(lineX)){
+    darkOverlay.style.display = "none";
+    return;
+  }
+  const col = document.querySelector(".chart-col");
+  const chartRect = chartEl.getBoundingClientRect();
+  const scaleWidth = (chart && chart.priceScale && chart.priceScale("right")) ? chart.priceScale("right").width() : 58;
+  const rightBound = chartEl.offsetLeft + chartEl.clientWidth - (scaleWidth || 58);
+  const overlayW = Math.max(0, rightBound - lineX);
+
+  if(overlayW > 0){
+    darkOverlay.style.left = lineX + "px";
+    darkOverlay.style.width = overlayW + "px";
+    darkOverlay.style.top = chartEl.offsetTop + "px";
+    darkOverlay.style.height = chartEl.clientHeight + "px";
+    darkOverlay.style.display = "block";
+  } else {
+    darkOverlay.style.display = "none";
+  }
+}
+
+function updateReplayCutoffOverlay(){
+  const darkOverlay = document.getElementById("replayDarkOverlay");
+  if(darkOverlay) darkOverlay.style.display = "none";
+}
+
+function checkReplaySlTp(symbol, bar){
+  const pos = account.positions[symbol];
+  if(!pos || !bar) return;
+  let hitPrice = null, reason = null;
+  if(pos.side === "LONG"){
+    if(pos.sl != null && bar.low <= pos.sl){ hitPrice = pos.sl; reason = "Stop loss hit (replay)"; }
+    else if(pos.tp != null && bar.high >= pos.tp){ hitPrice = pos.tp; reason = "Take profit hit (replay)"; }
+  } else {
+    if(pos.sl != null && bar.high >= pos.sl){ hitPrice = pos.sl; reason = "Stop loss hit (replay)"; }
+    else if(pos.tp != null && bar.low <= pos.tp){ hitPrice = pos.tp; reason = "Take profit hit (replay)"; }
+  }
+  if(hitPrice != null){
+    closePosition(symbol, 1, reason, { exitPrice: hitPrice, closedAt: bar.timeMs || bar.time * 1000 });
+  }
+}
+
+function updateReplaySelectionUI(snappedX, bar){
+  if(snappedX == null || isNaN(snappedX) || !bar) return;
+  const col = document.querySelector(".chart-col");
+  const chartRect = chartEl.getBoundingClientRect();
+  const colRect = col ? col.getBoundingClientRect() : chartRect;
+  const lineX = snappedX + (chartRect.left - colRect.left);
+
+  const selectLine = document.getElementById("replaySelectLine");
+  const selectBadge = document.getElementById("replaySelectBadge");
+
+  if(selectLine){
+    selectLine.style.left = lineX + "px";
+    selectLine.style.top = chartEl.offsetTop + "px";
+    selectLine.style.height = chartEl.clientHeight + "px";
+    selectLine.style.display = "block";
+  }
+
+  if(selectBadge){
+    selectBadge.textContent = fmtReplayBadgeDate(bar.timeMs || bar.time * 1000);
+    const badgeW = 120;
+    const minX = chartEl.offsetLeft + badgeW / 2 + 6;
+    const maxX = chartEl.offsetLeft + chartEl.clientWidth - (badgeW / 2) - 55;
+    const clampedX = Math.max(minX, Math.min(maxX, lineX));
+
+    selectBadge.style.left = clampedX + "px";
+    selectBadge.style.top = (chartEl.offsetTop + chartEl.clientHeight - 26) + "px";
+    selectBadge.style.display = "block";
+  }
+
+  updateReplayDarkOverlay(lineX);
+}
+
+function resizeChartAfterReplayChange(){
+  const col = document.querySelector(".chart-col");
+  const w = col ? col.clientWidth : (chartEl ? chartEl.clientWidth : 0);
+  const h = chartEl ? chartEl.clientHeight : 0;
+  if(chart && w > 0 && h > 0){
+    chart.applyOptions({ width: w, height: h });
+  }
+  window.dispatchEvent(new Event("resize"));
+}
+
+function enterReplaySelectMode(){
+  if(!H.bars || H.bars.length < 2){
+    showNotice("Not enough historical candle data to start Replay.");
+    return;
+  }
+  if(!replayState.active){
+    replayState.fullBars = H.bars.map(b => ({ ...b }));
+  }
+  replayState.selecting = true;
+  replayState.hoveredIndex = -1;
+  hideNotice();
+
+  const btnDesktop = document.getElementById("btnDesktopReplay");
+  if(btnDesktop) btnDesktop.classList.add("active");
+  const btnMobile = document.getElementById("btnMobileReplay");
+  if(btnMobile) btnMobile.classList.add("active");
+  const btnMobileFloat = document.getElementById("btnMobileFloatReplay");
+  if(btnMobileFloat) btnMobileFloat.classList.add("active");
+  const btnSelectBar = document.getElementById("btnReplaySelectBar");
+  if(btnSelectBar) btnSelectBar.classList.add("active");
+
+  const ctrlBar = document.getElementById("replayControlBar");
+  if(ctrlBar){
+    ctrlBar.style.display = replayState.active ? "flex" : "none";
+  }
+
+  const tfBadge = document.getElementById("replayTfBadge");
+  if(tfBadge) tfBadge.textContent = ui.tf;
+
+  chartEl.classList.add("picking");
+
+  const isMobile = window.innerWidth <= 880;
+  const mobSelBar = document.getElementById("mobileReplaySelectBar");
+  if(mobSelBar && isMobile){
+    mobSelBar.style.display = "flex";
+  }
+
+  // Pre-position selection line and dark overlay at a visible candle
+  if(replayState.fullBars && replayState.fullBars.length > 0){
+    const initIdx = Math.max(0, replayState.fullBars.length - 25);
+    replayState.hoveredIndex = initIdx;
+    const bar = replayState.fullBars[initIdx];
+    try {
+      const snappedX = chart.timeScale().timeToCoordinate(bar.time) ?? (chartEl.clientWidth * 0.7);
+      updateReplaySelectionUI(snappedX, bar);
+    } catch(e){}
+  }
+
+  requestAnimationFrame(resizeChartAfterReplayChange);
+  showNotice("Select Bar Replay start point. Tap or drag across chart. (Esc to cancel)", true);
+}
+
+function exitReplaySelectMode(){
+  replayState.selecting = false;
+  chartEl.classList.remove("picking");
+  const selectLine = document.getElementById("replaySelectLine");
+  const selectBadge = document.getElementById("replaySelectBadge");
+  if(selectLine) selectLine.style.display = "none";
+  if(selectBadge) selectBadge.style.display = "none";
+  const btnSelectBar = document.getElementById("btnReplaySelectBar");
+  if(btnSelectBar) btnSelectBar.classList.remove("active");
+  const darkOverlay = document.getElementById("replayDarkOverlay");
+  if(darkOverlay) darkOverlay.style.display = "none";
+  const mobSelBar = document.getElementById("mobileReplaySelectBar");
+  if(mobSelBar) mobSelBar.style.display = "none";
+
+  if(!replayState.active){
+    const btnDesktop = document.getElementById("btnDesktopReplay");
+    if(btnDesktop) btnDesktop.classList.remove("active");
+    const btnMobile = document.getElementById("btnMobileReplay");
+    if(btnMobile) btnMobile.classList.remove("active");
+    const btnMobileFloat = document.getElementById("btnMobileFloatReplay");
+    if(btnMobileFloat) btnMobileFloat.classList.remove("active");
+    const ctrlBar = document.getElementById("replayControlBar");
+    if(ctrlBar) ctrlBar.style.display = "none";
+    requestAnimationFrame(resizeChartAfterReplayChange);
+  }
+}
+
+function startReplayAt(index){
+  if(!replayState.fullBars || replayState.fullBars.length === 0){
+    if(H.bars && H.bars.length > 0){
+      replayState.fullBars = H.bars.map(b => ({ ...b }));
+    } else {
+      return;
+    }
+  }
+  if(index < 0) index = 0;
+  if(index >= replayState.fullBars.length - 1){
+    index = Math.max(0, replayState.fullBars.length - 2);
+  }
+
+  exitReplaySelectMode();
+  pauseReplay();
+
+  replayState.active = true;
+  replayState.startIndex = index;
+  replayState.currentIndex = index;
+
+  const btnDesktop = document.getElementById("btnDesktopReplay");
+  if(btnDesktop) btnDesktop.classList.add("active");
+  const btnMobile = document.getElementById("btnMobileReplay");
+  if(btnMobile) btnMobile.classList.add("active");
+  const btnMobileFloat = document.getElementById("btnMobileFloatReplay");
+  if(btnMobileFloat) btnMobileFloat.classList.add("active");
+  const ctrlBar = document.getElementById("replayControlBar");
+  if(ctrlBar) ctrlBar.style.display = "flex";
+  const mobSelBar = document.getElementById("mobileReplaySelectBar");
+  if(mobSelBar) mobSelBar.style.display = "none";
+  const tfBadge = document.getElementById("replayTfBadge");
+  if(tfBadge) tfBadge.textContent = ui.tf;
+
+  H.bars = replayState.fullBars.slice(0, index + 1).map(b => ({ ...b }));
+  paintAll();
+
+  try {
+    chart.timeScale().scrollToPosition(3, false);
+  } catch(e){}
+
+  if(typeof renderPositionOverlay === "function") renderPositionOverlay();
+  if(typeof drawOrderLinesForCurrentSymbol === "function") drawOrderLinesForCurrentSymbol();
+
+  requestAnimationFrame(resizeChartAfterReplayChange);
+  showNotice(`Replay set at bar ${index + 1} of ${replayState.fullBars.length}. Press ▶ or Space to play, ▶| to step.`, true);
+}
+
+function replayStepForward(){
+  if(!replayState.active || !replayState.fullBars) return;
+  if(replayState.currentIndex >= replayState.fullBars.length - 1){
+    pauseReplay();
+    showNotice("Reached the end of historical replay data.", true);
+    return;
+  }
+  replayState.currentIndex++;
+  const nextBar = replayState.fullBars[replayState.currentIndex];
+  H.bars.push({ ...nextBar });
+
+  candleSeries.update({
+    time: nextBar.time,
+    open: nextBar.open,
+    high: nextBar.high,
+    low: nextBar.low,
+    close: nextBar.close
+  });
+  volumeSeries.update({
+    time: nextBar.time,
+    value: nextBar.volume,
+    color: nextBar.close >= nextBar.open ? "rgba(8,153,129,.45)" : "rgba(242,54,69,.45)"
+  });
+
+  checkReplaySlTp(ui.symbol, nextBar);
+
+  if(typeof renderPositionOverlay === "function") renderPositionOverlay();
+  if(typeof drawOrderLinesForCurrentSymbol === "function") drawOrderLinesForCurrentSymbol();
+
+  if(replayState.currentIndex >= replayState.fullBars.length - 1){
+    pauseReplay();
+    showNotice("Reached the end of historical replay data.", true);
+  }
+}
+
+function playReplay(){
+  if(!replayState.active) return;
+  if(replayState.currentIndex >= replayState.fullBars.length - 1){
+    replayJumpToStart();
+  }
+  replayState.playing = true;
+  const playIcon = document.getElementById("replayPlayIcon");
+  const playBtn = document.getElementById("btnReplayPlayPause");
+  if(playIcon) playIcon.innerHTML = "&#10074;&#10074;";
+  if(playBtn){
+    playBtn.classList.add("playing");
+    playBtn.title = "Pause Replay (Space)";
+  }
+  if(replayState.timer) clearInterval(replayState.timer);
+  const ms = Math.max(80, Math.round(1000 / (replayState.speed || 1)));
+  replayState.timer = setInterval(replayStepForward, ms);
+}
+
+function pauseReplay(){
+  replayState.playing = false;
+  if(replayState.timer){
+    clearInterval(replayState.timer);
+    replayState.timer = null;
+  }
+  const playIcon = document.getElementById("replayPlayIcon");
+  const playBtn = document.getElementById("btnReplayPlayPause");
+  if(playIcon) playIcon.innerHTML = "&#9654;";
+  if(playBtn){
+    playBtn.classList.remove("playing");
+    playBtn.title = "Play Replay (Space)";
+  }
+}
+
+function toggleReplayPlay(){
+  if(replayState.playing){
+    pauseReplay();
+  } else {
+    playReplay();
+  }
+}
+
+function replayJumpToStart(){
+  if(!replayState.active || !replayState.fullBars) return;
+  pauseReplay();
+  replayState.currentIndex = replayState.startIndex;
+  H.bars = replayState.fullBars.slice(0, replayState.startIndex + 1).map(b => ({ ...b }));
+  paintAll();
+  try {
+    chart.timeScale().scrollToPosition(3, false);
+  } catch(e){}
+  if(typeof renderPositionOverlay === "function") renderPositionOverlay();
+  if(typeof drawOrderLinesForCurrentSymbol === "function") drawOrderLinesForCurrentSymbol();
+  showNotice(`Reset to start bar ${replayState.startIndex + 1}.`, true);
+}
+
+function exitReplay(showMsg = true){
+  pauseReplay();
+  exitReplaySelectMode();
+  const wasActive = replayState.active;
+  replayState.active = false;
+
+  const darkOverlay = document.getElementById("replayDarkOverlay");
+  if(darkOverlay) darkOverlay.style.display = "none";
+  const btnDesktop = document.getElementById("btnDesktopReplay");
+  if(btnDesktop) btnDesktop.classList.remove("active");
+  const btnMobile = document.getElementById("btnMobileReplay");
+  if(btnMobile) btnMobile.classList.remove("active");
+  const btnMobileFloat = document.getElementById("btnMobileFloatReplay");
+  if(btnMobileFloat) btnMobileFloat.classList.remove("active");
+  const ctrlBar = document.getElementById("replayControlBar");
+  if(ctrlBar) ctrlBar.style.display = "none";
+  const mobSelBar = document.getElementById("mobileReplaySelectBar");
+  if(mobSelBar) mobSelBar.style.display = "none";
+
+  if(replayState.fullBars && replayState.fullBars.length > 0){
+    H.bars = replayState.fullBars.map(b => ({ ...b }));
+    replayState.fullBars = [];
+  }
+
+  if(replayState.pendingLiveBar){
+    const { bar, vol } = replayState.pendingLiveBar;
+    syncLast(bar, vol);
+    liveBar = bar;
+    replayState.pendingLiveBar = null;
+  }
+
+  paintAll();
+  try {
+    chart.timeScale().resetTimeScale();
+  } catch(e){}
+
+  if(typeof renderPositionOverlay === "function") renderPositionOverlay();
+  if(typeof drawOrderLinesForCurrentSymbol === "function") drawOrderLinesForCurrentSymbol();
+
+  requestAnimationFrame(resizeChartAfterReplayChange);
+  if(showMsg && wasActive){
+    showNotice("Exited Bar Replay. Restored live chart.", true);
+  }
+}
+
+// Lightweight Charts Native Crosshair Movement Listener
+chart.subscribeCrosshairMove((param) => {
+  if(!replayState.selecting || !replayState.fullBars || replayState.fullBars.length === 0){
+    return;
+  }
+  if(!param || !param.point || param.point.x < 0 || param.point.x > chartEl.clientWidth){
+    const selectLine = document.getElementById("replaySelectLine");
+    const selectBadge = document.getElementById("replaySelectBadge");
+    if(selectLine) selectLine.style.display = "none";
+    if(selectBadge) selectBadge.style.display = "none";
+    return;
+  }
+
+  let barIdx = -1;
+  if(param.time != null){
+    barIdx = findBarIndexByTime(param.time);
+  } else if(param.logical != null){
+    barIdx = Math.max(0, Math.min(replayState.fullBars.length - 1, Math.round(param.logical)));
+  }
+
+  if(barIdx < 0 || barIdx >= replayState.fullBars.length) return;
+
+  replayState.hoveredIndex = barIdx;
+  const bar = replayState.fullBars[barIdx];
+  const snappedX = chart.timeScale().timeToCoordinate(bar.time) ?? param.point.x;
+  updateReplaySelectionUI(snappedX, bar);
+});
+
+// Lightweight Charts Native Click Listener
+chart.subscribeClick((param) => {
+  if(!replayState.selecting) return;
+  let barIdx = -1;
+  if(param && param.time != null){
+    barIdx = findBarIndexByTime(param.time);
+  } else if(param && param.logical != null){
+    barIdx = Math.max(0, Math.min(replayState.fullBars.length - 1, Math.round(param.logical)));
+  } else if(replayState.hoveredIndex >= 0){
+    barIdx = replayState.hoveredIndex;
+  }
+  if(barIdx >= 0){
+    startReplayAt(barIdx);
+  }
+});
+
+// DOM mouse interaction fallback for replay selection
+chartEl.addEventListener("mousemove", (e)=>{
+  if(!replayState.selecting || !replayState.fullBars || replayState.fullBars.length === 0) return;
+  const rect = chartEl.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  if(mouseX < 0 || mouseX > rect.width) return;
+
+  const nearestIdx = findNearestBar(mouseX);
+  if(nearestIdx < 0 || nearestIdx >= replayState.fullBars.length) return;
+
+  replayState.hoveredIndex = nearestIdx;
+  const bar = replayState.fullBars[nearestIdx];
+  const snappedX = chart.timeScale().timeToCoordinate(bar.time) ?? mouseX;
+  updateReplaySelectionUI(snappedX, bar);
+});
+
+chartEl.addEventListener("mouseleave", ()=>{
+  if(replayState.selecting){
+    const selectLine = document.getElementById("replaySelectLine");
+    const selectBadge = document.getElementById("replaySelectBadge");
+    if(selectLine) selectLine.style.display = "none";
+    if(selectBadge) selectBadge.style.display = "none";
+  }
+});
+
+chartEl.addEventListener("click", (e)=>{
+  if(replayState.selecting && replayState.hoveredIndex >= 0){
+    e.preventDefault();
+    e.stopPropagation();
+    startReplayAt(replayState.hoveredIndex);
+  }
+}, true);
+
+// Mobile Touch Interaction for Replay Candle Selection
+let mobTouchStartX = null;
+let mobTouchStartY = null;
+let mobTouchMoved = false;
+
+function updateMobileTouchSelection(clientX){
+  if(!replayState.selecting || !replayState.fullBars || replayState.fullBars.length === 0) return;
+  const rect = chartEl.getBoundingClientRect();
+  const relX = clientX - rect.left;
+  if(relX < 0 || relX > rect.width) return;
+
+  const nearestIdx = findNearestBar(relX);
+  if(nearestIdx < 0 || nearestIdx >= replayState.fullBars.length) return;
+
+  replayState.hoveredIndex = nearestIdx;
+  const bar = replayState.fullBars[nearestIdx];
+  const snappedX = chart.timeScale().timeToCoordinate(bar.time) ?? relX;
+  updateReplaySelectionUI(snappedX, bar);
+}
+
+chartEl.addEventListener("touchstart", (e)=>{
+  if(!replayState.selecting) return;
+  if(e.touches.length === 1){
+    mobTouchStartX = e.touches[0].clientX;
+    mobTouchStartY = e.touches[0].clientY;
+    mobTouchMoved = false;
+    updateMobileTouchSelection(mobTouchStartX);
+  }
+}, { passive: true });
+
+chartEl.addEventListener("touchmove", (e)=>{
+  if(!replayState.selecting) return;
+  if(e.touches.length === 1 && mobTouchStartX != null){
+    const curX = e.touches[0].clientX;
+    const curY = e.touches[0].clientY;
+    const dx = Math.abs(curX - mobTouchStartX);
+    const dy = Math.abs(curY - mobTouchStartY);
+    if(dx > 4){
+      mobTouchMoved = true;
+      if(e.cancelable && dx > dy) e.preventDefault();
+    }
+    updateMobileTouchSelection(curX);
+  }
+}, { passive: false });
+
+chartEl.addEventListener("touchend", (e)=>{
+  if(!replayState.selecting) return;
+  if(!mobTouchMoved && replayState.hoveredIndex >= 0){
+    startReplayAt(replayState.hoveredIndex);
+  }
+  mobTouchStartX = null;
+  mobTouchStartY = null;
+  mobTouchMoved = false;
+}, { passive: true });
+
+// Mobile Replay Buttons
+const btnMobileReplay = document.getElementById("btnMobileReplay");
+if(btnMobileReplay){
+  btnMobileReplay.addEventListener("click", ()=>{
+    if(replayState.active || replayState.selecting){
+      exitReplay(true);
+    } else {
+      enterReplaySelectMode();
+    }
+  });
+}
+
+const btnMobileFloatReplay = document.getElementById("btnMobileFloatReplay");
+if(btnMobileFloatReplay){
+  btnMobileFloatReplay.addEventListener("click", ()=>{
+    if(replayState.active || replayState.selecting){
+      exitReplay(true);
+    } else {
+      enterReplaySelectMode();
+    }
+  });
+}
+
+const btnMobileReplayConfirm = document.getElementById("btnMobileReplayConfirm");
+if(btnMobileReplayConfirm){
+  btnMobileReplayConfirm.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    if(replayState.hoveredIndex >= 0){
+      startReplayAt(replayState.hoveredIndex);
+    } else if(replayState.fullBars && replayState.fullBars.length > 0){
+      startReplayAt(Math.max(0, replayState.fullBars.length - 25));
+    }
+  });
+}
+
+const btnMobileReplayCancel = document.getElementById("btnMobileReplayCancel");
+if(btnMobileReplayCancel){
+  btnMobileReplayCancel.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    exitReplaySelectMode();
+  });
+}
+
+// Header Replay Button
+const btnDesktopReplay = document.getElementById("btnDesktopReplay");
+if(btnDesktopReplay){
+  btnDesktopReplay.addEventListener("click", ()=>{
+    if(replayState.active || replayState.selecting){
+      exitReplay(true);
+    } else {
+      enterReplaySelectMode();
+    }
+  });
+}
+
+// Replay Control Bar Buttons
+const btnReplaySelectBar = document.getElementById("btnReplaySelectBar");
+if(btnReplaySelectBar){
+  btnReplaySelectBar.addEventListener("click", ()=>{
+    if(replayState.selecting){
+      exitReplaySelectMode();
+    } else {
+      enterReplaySelectMode();
+    }
+  });
+}
+
+const btnReplayJumpStart = document.getElementById("btnReplayJumpStart");
+if(btnReplayJumpStart) btnReplayJumpStart.addEventListener("click", replayJumpToStart);
+
+const btnReplayPlayPause = document.getElementById("btnReplayPlayPause");
+if(btnReplayPlayPause) btnReplayPlayPause.addEventListener("click", toggleReplayPlay);
+
+const btnReplayStepForward = document.getElementById("btnReplayStepForward");
+if(btnReplayStepForward) btnReplayStepForward.addEventListener("click", ()=>{
+  pauseReplay();
+  replayStepForward();
+});
+
+const replaySpeedSelect = document.getElementById("replaySpeedSelect");
+if(replaySpeedSelect){
+  replaySpeedSelect.addEventListener("change", (e)=>{
+    replayState.speed = parseFloat(e.target.value) || 1;
+    if(replayState.playing){
+      playReplay();
+    }
+  });
+}
+
+const btnReplayExit = document.getElementById("btnReplayExit");
+if(btnReplayExit) btnReplayExit.addEventListener("click", ()=> exitReplay(true));
+
+// Bar Replay Keyboard Shortcuts
+window.addEventListener("keydown", (e)=>{
+  if(e.altKey && (e.key === "r" || e.key === "R")){
+    e.preventDefault();
+    if(replayState.active || replayState.selecting){
+      exitReplay(true);
+    } else {
+      enterReplaySelectMode();
+    }
+    return;
+  }
+  if(e.key === "Escape"){
+    if(replayState.selecting){
+      e.preventDefault();
+      exitReplaySelectMode();
+      return;
+    }
+    if(replayState.playing){
+      pauseReplay();
+      return;
+    }
+  }
+  if(e.code === "Space" && replayState.active){
+    const tag = (document.activeElement && document.activeElement.tagName) ? document.activeElement.tagName.toLowerCase() : "";
+    if(tag !== "input" && tag !== "textarea" && tag !== "select" && !document.activeElement?.isContentEditable){
+      e.preventDefault();
+      toggleReplayPlay();
+    }
+  }
+});
+
+// Export functions to window
+window.enterReplaySelectMode = enterReplaySelectMode;
+window.exitReplaySelectMode = exitReplaySelectMode;
+window.startReplayAt = startReplayAt;
+window.playReplay = playReplay;
+window.pauseReplay = pauseReplay;
+window.toggleReplayPlay = toggleReplayPlay;
+window.replayStepForward = replayStepForward;
+window.replayJumpToStart = replayJumpToStart;
+window.exitReplay = exitReplay;
+window.updateReplaySelectionUI = updateReplaySelectionUI;
+window.updateReplayCutoffOverlay = updateReplayCutoffOverlay;
+window.updateReplayDarkOverlay = updateReplayDarkOverlay;
+
 /* ---- Collapsible Drawing Toolbar ---- */
 function toggleTbCollapsed(force){
   const floatTb = document.getElementById("floatTb");
@@ -6141,8 +7226,12 @@ setupSideMenuItem("smBacktest", ()=>{
   if(typeof sbNav === "function") sbNav("tester");
 });
 setupSideMenuItem("smReplay", ()=>{
-  const dateBtn = document.getElementById("goDateBtn");
-  if(dateBtn) dateBtn.click();
+  toggleSideMenu(false);
+  if(replayState.active || replayState.selecting){
+    exitReplay(true);
+  } else {
+    enterReplaySelectMode();
+  }
 });
 setupSideMenuItem("smHistorical", ()=>{
   const dateBtn = document.getElementById("goDateBtn");
@@ -7347,7 +8436,11 @@ function updateStrategyOverlays(){
 
   const visibleStrats = sb.list.filter(s => s.visible);
   if(visibleStrats.length === 0){
-    const matchingBacktest = (lastBacktestResult && lastBacktestResult.opts && lastBacktestResult.opts.symbol === ui.symbol && lastBacktestResult.opts.tf === ui.tf) ? backtestOverlayMarkers : [];
+    let matchingBacktest = (lastBacktestResult && lastBacktestResult.opts && lastBacktestResult.opts.symbol === ui.symbol && lastBacktestResult.opts.tf === ui.tf) ? backtestOverlayMarkers : [];
+    if(typeof replayState !== "undefined" && replayState.active && H.bars && H.bars.length > 0){
+      const cutoffTime = H.bars[H.bars.length - 1].time;
+      matchingBacktest = matchingBacktest.filter(m => m.time <= cutoffTime);
+    }
     candleSeries.setMarkers(matchingBacktest);
     return;
   }
