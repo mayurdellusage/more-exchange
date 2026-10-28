@@ -1116,8 +1116,11 @@ tbody tr:hover{background:var(--bg-2);}
   background:var(--bg-3);
 }
 
-/* ---- Mobile Bottom Navigation (Screens <= 880px) ---- */
+/* ---- Mobile Bottom Navigation & Chart Control Strip (Screens <= 880px) ---- */
 .mobile-bottom-nav{
+  display:none;
+}
+.mobile-chart-strip{
   display:none;
 }
 
@@ -1127,7 +1130,7 @@ tbody tr:hover{background:var(--bg-2);}
     grid-template-rows:auto 1fr var(--bottom-h, 215px) !important;
     height:100%;
     height:100dvh;
-    padding-bottom:calc(46px + var(--sab, 0px));
+    padding-bottom:calc(46px + 38px + var(--sab, 0px)) !important;
   }
   #app.wide-chart-mode{
     grid-template-rows:auto 1fr 0px !important;
@@ -1138,6 +1141,9 @@ tbody tr:hover{background:var(--bg-2);}
     display:none !important;
   }
   #app.wide-chart-mode .mobile-bottom-nav{
+    display:none !important;
+  }
+  #app.wide-chart-mode .mobile-chart-strip{
     display:none !important;
   }
   #app.wide-chart-mode .side-col:not(.mobile-open){
@@ -1157,6 +1163,96 @@ tbody tr:hover{background:var(--bg-2);}
     align-items:center;
     justify-content:space-around;
   }
+
+  /* TradingView-Inspired Mobile Chart Control Strip immediately above Bottom Nav */
+  .mobile-chart-strip{
+    display:flex;
+    position:fixed;
+    bottom:calc(46px + var(--sab, 0px));
+    left:0;
+    right:0;
+    height:38px;
+    background:#131722;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid rgba(0, 0, 0, 0.45);
+    z-index:79;
+    align-items:center;
+    justify-content:space-between;
+    padding:0 6px;
+    padding-left:max(6px, var(--sal));
+    padding-right:max(6px, var(--sar));
+    box-sizing:border-box;
+    user-select:none;
+    -webkit-user-select:none;
+    pointer-events:auto;
+    gap:4px;
+  }
+  .mob-strip-group{
+    display:flex;
+    align-items:center;
+    gap:3px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    white-space:nowrap;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    padding:2px 0;
+  }
+  .mob-strip-group::-webkit-scrollbar{
+    display:none;
+  }
+  .mob-strip-symbols{
+    flex-shrink:0;
+    max-width:48%;
+  }
+  .mob-strip-divider{
+    width:1px;
+    height:18px;
+    background:var(--line);
+    flex-shrink:0;
+    margin:0 2px;
+  }
+  .mob-strip-timeframes{
+    flex:1 1 auto;
+    min-width:0;
+  }
+  .mob-strip-btn{
+    border:none;
+    outline:none;
+    background:transparent;
+    color:var(--text-dim);
+    font-family:var(--sans);
+    font-size:11.5px;
+    font-weight:600;
+    padding:4px 9px;
+    border-radius:4px;
+    cursor:pointer;
+    flex-shrink:0;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-height:28px;
+    transition:background .15s ease, color .15s ease, border-color .15s ease;
+    touch-action:pan-x;
+  }
+  .mob-strip-btn:active{
+    opacity:0.75;
+  }
+  /* Selected state: subtle dark-gray pill for instrument */
+  .mob-symbol-btn.active{
+    background:#2a2e39;
+    color:#ffffff;
+    font-weight:700;
+    box-shadow:inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+  /* Selected state: distinct active indicator for timeframe */
+  .mob-tf-btn.active{
+    background:rgba(41,98,255,0.18);
+    color:#2962ff;
+    font-weight:700;
+    border:1px solid rgba(41,98,255,0.45);
+  }
+
   .nav-item{
     background:transparent;
     border:none;
@@ -1194,115 +1290,116 @@ tbody tr:hover{background:var(--bg-2);}
     color:var(--blue);
   }
   
-  /* Header in clean, ultra-compact 2-row layout */
+  /* Mobile Header: Sleek, compact single row. Branding, symbol tabs, and timeframe tabs are removed from top header (accessed via bottom control strip) */
   header{
     display:flex;
-    flex-wrap:wrap;
+    flex-wrap:nowrap;
     align-items:center;
-    gap:3px 5px;
-    padding:3px 6px;
+    gap:6px;
+    padding:4px 8px;
+    padding-top:max(4px, var(--sat));
+    padding-left:max(8px, var(--sal));
+    padding-right:max(8px, var(--sar));
     height:auto;
-    min-height:54px;
+    min-height:38px;
+    max-height:42px;
     overflow-x:hidden;
   }
-  .brand{
-    font-size:11px;
-    gap:3px;
-    order:1;
-    letter-spacing:0;
-    max-width:75px;
-    overflow:hidden;
-    white-space:nowrap;
+  header .brand{
+    display:none !important;
   }
-  .symbol-tabs{
-    order:2;
-    padding:1px;
-    gap:1px;
+  header .symbol-tabs{
+    display:none !important;
   }
-  .symbol-tabs button{
-    padding:2px 5px;
+  header .tf-tabs{
+    display:none !important;
+  }
+  .price-strip{
+    display:inline-flex;
+    align-items:baseline;
+    gap:5px;
+    margin-left:0;
+    flex-shrink:0;
+  }
+  .price-strip .last{
+    font-size:14px;
+    font-weight:800;
+  }
+  .price-strip .chg{
     font-size:10px;
-    min-height:24px;
-    height:24px;
+    font-weight:700;
+    padding:1px 4px;
   }
   .status{
-    order:3;
-    padding:1px 5px;
-    font-size:9.5px;
+    padding:2px 6px;
+    font-size:10px;
+    font-weight:700;
     flex-shrink:0;
-    min-height:22px;
-    height:22px;
+    min-height:24px;
+    height:24px;
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
   }
   .status .fresh{
     display:none;
   }
-  #btnHeaderWideChart{
-    order:4;
+  #btnToggleSideNav{
     margin-left:auto;
-    padding:2px 5px;
-    font-size:10.5px;
-    min-height:24px;
-    height:24px;
+    padding:2px 8px;
+    font-size:11px;
+    font-weight:700;
+    min-height:28px;
+    height:28px;
+    background:rgba(41,98,255,0.18);
+    border:1px solid var(--blue);
+    border-color:var(--blue);
+    color:#ffffff;
+    max-width:92px;
+    overflow:hidden;
+    white-space:nowrap;
+    text-overflow:ellipsis;
+    flex-shrink:0;
+    border-radius:4px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:3px;
+  }
+  #btnHeaderAlerts{
+    padding:2px 6px;
+    font-size:11px;
+    min-height:28px;
+    height:28px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+  }
+  #btnHeaderAlerts span:not(.alerts-badge){
+    display:none;
+  }
+  #btnHeaderWideChart{
+    padding:2px 6px;
+    font-size:11px;
+    min-height:28px;
+    height:28px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
   }
   #btnHeaderWideChart .btn-text{
     display:none;
   }
   #btnMobileMenu{
-    order:5;
-    padding:2px 6px;
-    font-size:13px;
-    min-height:24px;
-    height:24px;
-  }
-  
-  /* Second row: Price strip, scrollable Timeframes, and Order Panel button */
-  .price-strip{
-    order:6;
-    gap:2px;
-    margin-left:0;
-    flex-shrink:0;
-  }
-  .price-strip .last{
-    font-size:12px;
-  }
-  .price-strip .chg{
-    font-size:9px;
-    padding:1px 2px;
-  }
-  .tf-tabs{
-    order:7;
-    margin-left:2px;
-    overflow-x:auto;
-    white-space:nowrap;
-    -webkit-overflow-scrolling:touch;
-    scrollbar-width:none;
-    flex:1 1 110px;
-    min-width:0;
-    max-width:calc(100% - 170px);
-    padding:1px;
-    gap:1px;
-  }
-  .tf-tabs::-webkit-scrollbar{display:none;}
-  .tf-tabs button{
-    padding:2px 4px;
-    font-size:10px;
-    min-height:22px;
-    height:22px;
-  }
-  #btnToggleSideNav{
-    order:8;
-    margin-left:auto;
-    padding:2px 4px;
-    font-size:10px;
-    min-height:22px;
-    height:22px;
-    background:rgba(41,98,255,0.18);
-    border-color:var(--blue);
-    color:#ffffff;
-    max-width:62px;
-    overflow:hidden;
-    white-space:nowrap;
-    text-overflow:ellipsis;
+    padding:2px 7px;
+    font-size:14px;
+    min-height:28px;
+    height:28px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
     flex-shrink:0;
   }
   .acct-switch{
@@ -1745,6 +1842,170 @@ tbody tr:hover{background:var(--bg-2);}
   #app.sidebar-collapsed .side-col{
     display:none !important;
   }
+  header{
+    grid-column:1 / -1 !important;
+    background:var(--bg-1) !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:14px !important;
+    padding:0 14px !important;
+    border-bottom:1px solid var(--line) !important;
+    user-select:none !important;
+    height:46px !important;
+    min-height:46px !important;
+    max-height:46px !important;
+    flex-wrap:nowrap !important;
+    overflow-x:visible !important;
+  }
+  header .brand{
+    display:flex !important;
+    font-weight:800 !important;
+    font-size:13px !important;
+    letter-spacing:.4px !important;
+    align-items:center !important;
+    gap:8px !important;
+    color:var(--text-bright) !important;
+    white-space:nowrap !important;
+  }
+  header .symbol-tabs{
+    display:flex !important;
+    gap:2px !important;
+    background:var(--bg-0) !important;
+    border:1px solid var(--line) !important;
+    border-radius:var(--radius) !important;
+    padding:2px !important;
+    order:0 !important;
+  }
+  header .symbol-tabs button{
+    background:transparent !important;
+    border:none !important;
+    color:var(--text-dim) !important;
+    padding:5px 12px !important;
+    border-radius:3px !important;
+    font-weight:700 !important;
+    font-size:12px !important;
+    min-height:0 !important;
+    height:auto !important;
+  }
+  header .symbol-tabs button.active{
+    background:var(--bg-3) !important;
+    color:var(--text-bright) !important;
+  }
+  header .price-strip{
+    display:flex !important;
+    align-items:baseline !important;
+    gap:8px !important;
+    margin-left:4px !important;
+    order:0 !important;
+  }
+  header .price-strip .last{
+    font-size:19px !important;
+    font-weight:700 !important;
+  }
+  header .price-strip .chg{
+    font-size:12px !important;
+    font-weight:700 !important;
+    padding:2px 7px !important;
+  }
+  header .tf-tabs{
+    display:flex !important;
+    gap:2px !important;
+    margin-left:auto !important;
+    background:var(--bg-0) !important;
+    border:1px solid var(--line) !important;
+    border-radius:var(--radius) !important;
+    padding:2px !important;
+    order:0 !important;
+    overflow-x:visible !important;
+    max-width:none !important;
+  }
+  header .tf-tabs button{
+    background:transparent !important;
+    border:none !important;
+    color:var(--text-dim) !important;
+    padding:5px 9px !important;
+    border-radius:3px !important;
+    font-size:12px !important;
+    font-weight:700 !important;
+    min-height:0 !important;
+    height:auto !important;
+  }
+  header .tf-tabs button.active{
+    background:var(--bg-3) !important;
+    color:var(--text-bright) !important;
+  }
+  header .status{
+    display:flex !important;
+    align-items:center !important;
+    gap:6px !important;
+    font-size:11px !important;
+    color:var(--text-dim) !important;
+    font-weight:700 !important;
+    white-space:nowrap !important;
+    padding:4px 8px !important;
+    background:var(--bg-0) !important;
+    border:1px solid var(--line) !important;
+    border-radius:var(--radius) !important;
+    min-height:0 !important;
+    height:auto !important;
+    order:0 !important;
+  }
+  header .status .fresh{
+    display:inline !important;
+  }
+  header .acct-switch{
+    display:flex !important;
+    order:0 !important;
+  }
+  #btnToggleSideNav{
+    display:inline-flex !important;
+    background:transparent !important;
+    border:1px solid var(--line) !important;
+    color:var(--text-dim) !important;
+    max-width:none !important;
+    padding:5px 9px !important;
+    font-size:11.5px !important;
+    height:auto !important;
+    min-height:0 !important;
+    order:0 !important;
+    margin-left:0 !important;
+  }
+  #btnHeaderAlerts{
+    display:inline-flex !important;
+    padding:5px 9px !important;
+    font-size:11.5px !important;
+    height:auto !important;
+    min-height:0 !important;
+    order:0 !important;
+    margin-left:0 !important;
+  }
+  #btnHeaderAlerts span:not(.alerts-badge){
+    display:inline !important;
+  }
+  #btnDesktopReplay{
+    display:inline-flex !important;
+    order:0 !important;
+  }
+  #btnHeaderWideChart{
+    display:inline-flex !important;
+    padding:5px 9px !important;
+    font-size:11.5px !important;
+    height:auto !important;
+    min-height:0 !important;
+    order:0 !important;
+  }
+  #btnHeaderWideChart .btn-text{
+    display:inline !important;
+  }
+  #btnMobileMenu{
+    display:none !important;
+  }
+  .mobile-bottom-nav{
+    display:none !important;
+  }
+  .mobile-chart-strip{
+    display:none !important;
+  }
   .side-col{
     position:static !important;
     transform:none !important;
@@ -1768,20 +2029,8 @@ tbody tr:hover{background:var(--bg-2);}
   .mobile-drawer-backdrop{
     display:none !important;
   }
-  .mobile-bottom-nav{
-    display:none !important;
-  }
-  .header-menu-btn{
-    display:none !important;
-  }
-  .acct-switch{
-    display:flex !important;
-  }
   .bottom-col{
     grid-column:1 / -1 !important;
-  }
-  #btnDesktopReplay{
-    display:inline-flex !important;
   }
   .mob-replay-btn,
   .mob-replay-select-bar,
@@ -1807,11 +2056,17 @@ tbody tr:hover{background:var(--bg-2);}
   .mobile-bottom-nav{
     display:none !important;
   }
+  .mobile-chart-strip{
+    display:none !important;
+  }
   header{
     min-height:34px !important;
     padding:2px 8px !important;
     flex-wrap:nowrap !important;
     gap:4px !important;
+  }
+  header .brand{
+    display:none !important;
   }
   .range-bar{
     min-height:24px !important;
@@ -3953,6 +4208,23 @@ tbody tr:hover{background:var(--bg-2);}
   </div>
 </div>
 
+<!-- Mobile Chart Control Strip (TradingView-Inspired, Screens <= 880px) -->
+<div class="mobile-chart-strip" id="mobileChartStrip" role="toolbar" aria-label="Mobile Instrument & Timeframe Selector">
+  <div class="mob-strip-group mob-strip-symbols" id="mobStripSymbols" role="tablist" aria-label="Select Instrument">
+    <button type="button" class="mob-strip-btn mob-symbol-btn active" data-symbol="BTCUSDT" role="tab" aria-selected="true">BTCUSDT</button>
+    <button type="button" class="mob-strip-btn mob-symbol-btn" data-symbol="ETHUSDT" role="tab" aria-selected="false">ETHUSDT</button>
+  </div>
+  <div class="mob-strip-divider" aria-hidden="true"></div>
+  <div class="mob-strip-group mob-strip-timeframes" id="mobStripTimeframes" role="tablist" aria-label="Select Timeframe">
+    <button type="button" class="mob-strip-btn mob-tf-btn" data-tf="1m" role="tab" aria-selected="false">1m</button>
+    <button type="button" class="mob-strip-btn mob-tf-btn active" data-tf="5m" role="tab" aria-selected="true">5m</button>
+    <button type="button" class="mob-strip-btn mob-tf-btn" data-tf="15m" role="tab" aria-selected="false">15m</button>
+    <button type="button" class="mob-strip-btn mob-tf-btn" data-tf="1h" role="tab" aria-selected="false">1h</button>
+    <button type="button" class="mob-strip-btn mob-tf-btn" data-tf="4h" role="tab" aria-selected="false">4h</button>
+    <button type="button" class="mob-strip-btn mob-tf-btn" data-tf="1d" role="tab" aria-selected="false">1D</button>
+  </div>
+</div>
+
 <!-- Mobile Bottom Navigation Bar (Screens <= 880px) -->
 <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Mobile Navigation">
   <button class="nav-item active" id="navItemChart" data-tab="chart">
@@ -5593,7 +5865,7 @@ noticeEl.addEventListener("click", hideNotice);
 function fmtDate(ms){ return new Date(ms).toLocaleDateString(undefined,{day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}); }
 function updateLiveBtn(){ liveBtn.style.display = H.hasNewer ? "inline-block" : "none"; }
 function clearRangeActive(){ document.querySelectorAll("#rangeBtns button").forEach(b=>b.classList.remove("active")); }
-function setTfUI(tf){ ui.tf = tf; saveUi(); document.querySelectorAll("#tfTabs button").forEach(b=>b.classList.toggle("active", b.dataset.tf===tf)); }
+function setTfUI(tf){ ui.tf = tf; saveUi(); document.querySelectorAll("#tfTabs button, #mobStripTimeframes button").forEach(b=>b.classList.toggle("active", b.dataset.tf===tf)); }
 
 async function getListingStart(symbol, tf){
   const key = symbol+"|"+tf;
@@ -7175,16 +7447,27 @@ try {
 } catch(e) {}
 
 /* ================= EVENTS ================= */
-document.getElementById("symbolTabs").addEventListener("click", async (e)=>{
-  const btn = e.target.closest("button[data-symbol]");
-  if(!btn) return;
+/* ================= UNIFIED INSTRUMENT & TIMEFRAME SWITCHING ================= */
+async function switchSymbol(symbol){
   if(typeof exitReplay === "function" && typeof replayState !== "undefined" && (replayState.active || replayState.selecting)){
     exitReplay(false);
   }
   const prevSymbol = ui.symbol;
-  ui.symbol = btn.dataset.symbol;
+  ui.symbol = symbol;
   setPickMode(null);
-  document.querySelectorAll("#symbolTabs button").forEach(b=>b.classList.toggle("active", b===btn));
+
+  // Synchronize all symbol buttons across desktop header and mobile control strip
+  document.querySelectorAll("[data-symbol]").forEach(b => {
+    const isAct = b.dataset.symbol === symbol;
+    b.classList.toggle("active", isAct);
+    if(b.hasAttribute("aria-selected")) b.setAttribute("aria-selected", isAct ? "true" : "false");
+  });
+
+  // Reveal active mobile button in the scroll strip if needed
+  const activeMobBtn = document.querySelector("#mobStripSymbols button[data-symbol='" + symbol + "']");
+  if(activeMobBtn){
+    try { activeMobBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" }); } catch(e){}
+  }
 
   if(prevSymbol !== ui.symbol){
     if(typeof previewSlLine !== "undefined" && previewSlLine){
@@ -7239,20 +7522,115 @@ document.getElementById("symbolTabs").addEventListener("click", async (e)=>{
   if(typeof updateQuickTradePositionPill === "function"){
     updateQuickTradePositionPill();
   }
-});
+}
 
-document.getElementById("tfTabs").addEventListener("click", async (e)=>{
-  const btn = e.target.closest("button[data-tf]");
-  if(!btn) return;
+async function switchTimeframe(tf){
   if(typeof exitReplay === "function" && typeof replayState !== "undefined" && (replayState.active || replayState.selecting)){
     exitReplay(false);
   }
-  ui.tf = btn.dataset.tf;
+  ui.tf = tf;
   setPickMode(null);
-  document.querySelectorAll("#tfTabs button").forEach(b=>b.classList.toggle("active", b===btn));
+  saveUi();
+
+  // Synchronize all timeframe buttons across desktop header and mobile control strip
+  document.querySelectorAll("[data-tf]").forEach(b => {
+    const isAct = b.dataset.tf === tf;
+    b.classList.toggle("active", isAct);
+    if(b.hasAttribute("aria-selected")) b.setAttribute("aria-selected", isAct ? "true" : "false");
+  });
+
+  // Reveal active mobile button in the scroll strip if needed
+  const activeMobBtn = document.querySelector("#mobStripTimeframes button[data-tf='" + tf + "']");
+  if(activeMobBtn){
+    try { activeMobBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" }); } catch(e){}
+  }
+
   await refreshChart();
   connectWS();
+}
+
+function initMobileChartStrip(){
+  const strip = document.getElementById("mobileChartStrip");
+  if(!strip) return;
+
+  // Prevent gestures on the mobile strip from bubbling into the chart canvas
+  strip.addEventListener("pointerdown", e => e.stopPropagation());
+  strip.addEventListener("mousedown", e => e.stopPropagation());
+  strip.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
+
+  let touchStartX = 0, touchStartY = 0, isTouchDrag = false;
+
+  strip.addEventListener("touchstart", (e) => {
+    if(e.touches.length === 1){
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      isTouchDrag = false;
+    }
+  }, { passive: true });
+
+  strip.addEventListener("touchmove", (e) => {
+    if(e.touches.length === 1){
+      const dx = Math.abs(e.touches[0].clientX - touchStartX);
+      const dy = Math.abs(e.touches[0].clientY - touchStartY);
+      if(dx > 6 || dy > 6){
+        isTouchDrag = true;
+      }
+    }
+  }, { passive: true });
+
+  // Handle symbol clicks
+  const symGroup = document.getElementById("mobStripSymbols");
+  if(symGroup){
+    symGroup.addEventListener("click", (e) => {
+      if(isTouchDrag) return;
+      const btn = e.target.closest("button[data-symbol]");
+      if(!btn) return;
+      e.preventDefault();
+      switchSymbol(btn.dataset.symbol);
+    });
+  }
+
+  // Handle timeframe clicks
+  const tfGroup = document.getElementById("mobStripTimeframes");
+  if(tfGroup){
+    tfGroup.addEventListener("click", (e) => {
+      if(isTouchDrag) return;
+      const btn = e.target.closest("button[data-tf]");
+      if(!btn) return;
+      e.preventDefault();
+      switchTimeframe(btn.dataset.tf);
+    });
+  }
+
+  // Initial sync with active state
+  document.querySelectorAll("#mobStripSymbols button[data-symbol]").forEach(b => {
+    const isAct = b.dataset.symbol === ui.symbol;
+    b.classList.toggle("active", isAct);
+    if(b.hasAttribute("aria-selected")) b.setAttribute("aria-selected", isAct ? "true" : "false");
+  });
+  document.querySelectorAll("#mobStripTimeframes button[data-tf]").forEach(b => {
+    const isAct = b.dataset.tf === ui.tf;
+    b.classList.toggle("active", isAct);
+    if(b.hasAttribute("aria-selected")) b.setAttribute("aria-selected", isAct ? "true" : "false");
+  });
+}
+
+// Attach event listeners to desktop header buttons
+document.getElementById("symbolTabs").addEventListener("click", (e)=>{
+  const btn = e.target.closest("button[data-symbol]");
+  if(!btn) return;
+  switchSymbol(btn.dataset.symbol);
 });
+
+document.getElementById("tfTabs").addEventListener("click", (e)=>{
+  const btn = e.target.closest("button[data-tf]");
+  if(!btn) return;
+  switchTimeframe(btn.dataset.tf);
+});
+
+initMobileChartStrip();
+window.switchSymbol = switchSymbol;
+window.switchTimeframe = switchTimeframe;
 
 document.querySelector(".side-toggle").addEventListener("click",(e)=>{
   const btn = e.target.closest("button[data-side]");
