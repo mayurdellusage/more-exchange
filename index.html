@@ -7,7 +7,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>More Exchange — BTC/ETH Futures Simulator</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#9670;</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%232962ff%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22M6 3h12l4 6-10 13L2 9Z%22/></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -16,25 +16,33 @@
 <style>
 :root{
   --bg-0:#131722;
-  --bg-1:#181b24;
+  --bg-1:#131722;
   --bg-2:#1e222d;
   --bg-3:#2a2e39;
   --line:#2a2e39;
   --line-soft:#1e222d;
+  --line-hover:#363a45;
   --text:#d1d4dc;
-  --text-dim:#9598a1;
-  --text-faint:#606470;
+  --text-bright:#f0f3fa;
+  --text-dim:#787b86;
+  --text-faint:#50535e;
   --long:#089981;
+  --long-hover:#0aa88f;
   --long-dim:#065e50;
-  --short:#F23645;
+  --short:#f23645;
+  --short-hover:#ff4a58;
   --short-dim:#781c24;
   --amber:#f59e0b;
   --focus:#2962ff;
   --blue:#2962ff;
+  --blue-hover:#1e53e5;
+  --blue-active:#1848cc;
   --radius:4px;
-  --mono:'IBM Plex Mono',ui-monospace,monospace;
   --sans:-apple-system,BlinkMacSystemFont,'Trebuchet MS',Roboto,Ubuntu,sans-serif;
+  --tv-font:-apple-system,BlinkMacSystemFont,'Trebuchet MS',Roboto,Ubuntu,sans-serif;
   --tv-num:-apple-system,BlinkMacSystemFont,'Trebuchet MS',Roboto,Ubuntu,sans-serif;
+  --mono:-apple-system,BlinkMacSystemFont,'Trebuchet MS',Roboto,Ubuntu,sans-serif;
+  --code-mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
   --sat:env(safe-area-inset-top, 0px);
   --sab:env(safe-area-inset-bottom, 0px);
   --sal:env(safe-area-inset-left, 0px);
@@ -59,17 +67,21 @@ body{
 button, input, select{font-family:inherit;font-size:inherit;color:inherit;}
 button{cursor:pointer;transition:background .15s,color .15s,border-color .15s,box-shadow .15s;}
 ::selection{background:rgba(41,98,255,0.35);color:#ffffff;}
-.mono{
-  font-family:var(--tv-num);
+.mono, .tv-num, .num, .tabular-nums{
+  font-family:var(--tv-num) !important;
   font-variant-numeric:tabular-nums;
   font-feature-settings:'tnum' 1, 'lnum' 1;
-  letter-spacing:-0.2px;
+  letter-spacing:-0.15px;
 }
-.code-mono, .sb-editor, .sb-console, .log-console, #liveStratLogOutput, .rob-log{
-  font-family:var(--mono) !important;
+.code-mono, .sb-editor, .sb-console, .log-console, #liveStratLogOutput, .rob-log, .sb-gutter, .sb-highlight, #sbCode, .live-log-container{
+  font-family:var(--code-mono) !important;
 }
-.up{color:var(--long);}
-.down{color:var(--short);}
+.up{color:var(--long) !important;}
+.down{color:var(--short) !important;}
+.neutral{color:var(--text) !important;}
+.pt-stat b.up, .acct-item .v.up{color:var(--long) !important;}
+.pt-stat b.down, .acct-item .v.down{color:var(--short) !important;}
+.pt-stat b.neutral, .acct-item .v.neutral{color:var(--text) !important;}
 .dim{color:var(--text-dim);}
 .faint{color:var(--text-faint);}
 
@@ -109,7 +121,7 @@ header{
   display:flex;
   align-items:center;
   gap:8px;
-  color:#ffffff;
+  color:var(--text-bright);
   white-space:nowrap;
 }
 .brand .mark{color:var(--blue);font-size:15px;}
@@ -118,17 +130,17 @@ header{
   background:transparent;border:none;color:var(--text-dim);
   padding:5px 12px;border-radius:3px;font-weight:700;font-size:12px;
 }
-.symbol-tabs button:hover{color:var(--text);background:rgba(255,255,255,0.04);}
-.symbol-tabs button.active{background:var(--bg-3);color:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.3);}
+.symbol-tabs button:hover{color:var(--text-bright);background:rgba(255,255,255,0.06);}
+.symbol-tabs button.active{background:var(--bg-3);color:var(--text-bright);box-shadow:none;}
 .price-strip{display:flex;align-items:baseline;gap:8px;margin-left:4px;}
-.price-strip .last{font-family:var(--mono);font-size:18px;font-weight:700;letter-spacing:-0.2px;}
-.price-strip .chg{font-family:var(--mono);font-size:12px;font-weight:700;padding:2px 7px;border-radius:3px;}
-.price-strip .chg.up{background:rgba(8,153,129,.14);color:var(--long);border:1px solid rgba(8,153,129,.25);}
-.price-strip .chg.down{background:rgba(242,54,69,.14);color:var(--short);border:1px solid rgba(242,54,69,.25);}
+.price-strip .last{font-family:var(--tv-num);font-size:19px;font-weight:700;letter-spacing:-0.2px;font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1, 'lnum' 1;}
+.price-strip .chg{font-family:var(--tv-num);font-size:12px;font-weight:700;padding:2px 7px;border-radius:3px;font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1, 'lnum' 1;}
+.price-strip .chg.up{background:rgba(8,153,129,.14);color:var(--long);border:1px solid rgba(8,153,129,.28);}
+.price-strip .chg.down{background:rgba(242,54,69,.14);color:var(--short);border:1px solid rgba(242,54,69,.28);}
 .tf-tabs{display:flex;gap:2px;margin-left:auto;background:var(--bg-0);border:1px solid var(--line);border-radius:var(--radius);padding:2px;}
 .tf-tabs button{background:transparent;border:none;color:var(--text-dim);padding:5px 9px;border-radius:3px;font-size:12px;font-weight:700;}
-.tf-tabs button:hover{color:var(--text);background:rgba(255,255,255,0.04);}
-.tf-tabs button.active{background:var(--bg-3);color:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.3);}
+.tf-tabs button:hover{color:var(--text-bright);background:rgba(255,255,255,0.06);}
+.tf-tabs button.active{background:var(--bg-3);color:var(--text-bright);box-shadow:none;}
 .status{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim);font-weight:700;white-space:nowrap;padding:4px 8px;background:var(--bg-0);border:1px solid var(--line);border-radius:var(--radius);}
 .status .dot{width:7px;height:7px;border-radius:50%;background:var(--text-faint);}
 .status.live .dot{background:var(--long);box-shadow:0 0 8px var(--long);}
@@ -139,7 +151,7 @@ header{
 
 .acct-switch{display:flex;align-items:center;gap:6px;}
 #sbOpenBtn{
-  background:rgba(41,98,255,.12);border:1px solid rgba(41,98,255,.35);color:#7099ff;
+  background:rgba(41,98,255,.12);border:1px solid rgba(41,98,255,.35);color:var(--blue);
   padding:5px 11px;border-radius:var(--radius);font-size:11.5px;font-weight:700;white-space:nowrap;
 }
 #sbOpenBtn:hover{background:var(--blue);color:#ffffff;border-color:var(--blue);}
@@ -152,7 +164,7 @@ header{
   background:var(--bg-2);border:1px solid var(--line);color:var(--text-dim);
   padding:5px 9px;border-radius:var(--radius);font-size:11.5px;font-weight:700;white-space:nowrap;
 }
-.acct-switch button:hover{color:var(--text);border-color:var(--focus);}
+.acct-switch button:hover{color:var(--text-bright);border-color:var(--line-hover);background:var(--bg-3);}
 
 /* modal */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,14,20,.78);display:none;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(3px);}
@@ -211,7 +223,7 @@ header{
   gap:12px;
 }
 
-section.panel{background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius);box-shadow:0 2px 8px rgba(0,0,0,.25);}
+section.panel{background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius);box-shadow:none;}
 .panel-head{
   padding:8px 12px;border-bottom:1px solid var(--line);
   font-size:11px;font-weight:800;color:var(--text-dim);letter-spacing:.5px;text-transform:uppercase;
@@ -221,21 +233,24 @@ section.panel{background:var(--bg-2);border:1px solid var(--line);border-radius:
 
 /* account grid */
 .acct-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.acct-item{background:var(--bg-0);border:1px solid rgba(42,46,57,.6);border-radius:var(--radius);padding:8px 10px;}
+.acct-item{background:var(--bg-0);border:1px solid var(--line);border-radius:var(--radius);padding:8px 10px;}
 .acct-item .k{font-size:10px;color:var(--text-dim);font-weight:700;text-transform:uppercase;letter-spacing:.3px;margin-bottom:3px;}
-.acct-item .v{font-family:var(--mono);font-size:13.5px;font-weight:700;color:var(--text);}
+.acct-item .v{font-family:var(--tv-num);font-size:13.5px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1, 'lnum' 1;}
 .acct-item.wide{
-  grid-column:1/3;background:linear-gradient(180deg,var(--bg-2),var(--bg-1));
+  grid-column:1/3;background:var(--bg-0);
   border:1px solid var(--line);padding:10px 12px;
 }
 .acct-item.wide .k{font-size:11px;color:var(--text-dim);font-weight:800;}
-.acct-item.wide .v{font-size:20px;font-weight:800;color:#ffffff;letter-spacing:-0.2px;}
+.acct-item.wide .v{font-size:20px;font-weight:800;color:var(--text-bright);letter-spacing:-0.2px;font-family:var(--tv-num);font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1, 'lnum' 1;}
 
 /* order ticket */
 .side-toggle{display:flex;gap:6px;margin-bottom:12px;}
 .side-toggle button{
   flex:1;padding:10px 0;border-radius:var(--radius);border:1px solid var(--line);
   background:var(--bg-0);color:var(--text-dim);font-weight:800;font-size:12.5px;letter-spacing:.4px;
+}
+.side-toggle button:hover:not(.active){
+  background:var(--bg-3);color:var(--text-bright);border-color:var(--line-hover);
 }
 .side-toggle button[data-side="LONG"].active{background:var(--long);border-color:var(--long);color:#ffffff;box-shadow:0 2px 10px rgba(8,153,129,.35);}
 .side-toggle button[data-side="SHORT"].active{background:var(--short);border-color:var(--short);color:#ffffff;box-shadow:0 2px 10px rgba(242,54,69,.35);}
@@ -265,9 +280,9 @@ section.panel{background:var(--bg-2);border:1px solid var(--line);border-radius:
   box-shadow:0 4px 14px rgba(0,0,0,.35);
 }
 .submit-btn.LONG{background:var(--long);box-shadow:0 4px 14px rgba(8,153,129,.35);}
-.submit-btn.LONG:hover{filter:brightness(1.1);box-shadow:0 4px 18px rgba(8,153,129,.5);}
+.submit-btn.LONG:hover{background:var(--long-hover);box-shadow:0 4px 18px rgba(8,153,129,.5);}
 .submit-btn.SHORT{background:var(--short);box-shadow:0 4px 14px rgba(242,54,69,.35);}
-.submit-btn.SHORT:hover{filter:brightness(1.1);box-shadow:0 4px 18px rgba(242,54,69,.5);}
+.submit-btn.SHORT:hover{background:var(--short-hover);box-shadow:0 4px 18px rgba(242,54,69,.5);}
 .submit-btn:disabled{background:var(--bg-3);color:var(--text-faint);cursor:not-allowed;box-shadow:none;}
 .warn{font-size:11px;color:var(--amber);margin-top:6px;min-height:14px;font-weight:600;}
 
@@ -285,14 +300,14 @@ section.panel{background:var(--bg-2);border:1px solid var(--line);border-radius:
   background:transparent;border:none;color:var(--text-dim);padding:7px 14px;font-weight:700;font-size:12px;
   border-bottom:2px solid transparent;
 }
-.tabbar button.active{color:var(--text);border-color:var(--amber);}
+.tabbar button.active{color:var(--text-bright);border-color:var(--blue);}
 .tabbar .spacer{flex:1;}
 .tabbar .tools{display:flex;gap:6px;align-items:center;padding-right:4px;}
 .tools button{
   background:var(--bg-2);border:1px solid var(--line);color:var(--text-dim);
   padding:5px 9px;border-radius:var(--radius);font-size:10.5px;font-weight:600;
 }
-.tools button:hover{color:var(--text);border-color:var(--focus);}
+.tools button:hover{color:var(--text-bright);border-color:var(--line-hover);background:var(--bg-3);}
 .tools input[type=file]{display:none;}
 
 .tab-view{flex:1;overflow:auto;padding:0 10px;}
@@ -303,7 +318,7 @@ thead th{
   padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap;
 }
 thead th:first-child, tbody td:first-child{text-align:left;}
-tbody td{padding:8px 10px;border-bottom:1px solid var(--line-soft);text-align:right;font-family:var(--mono);white-space:nowrap;color:var(--text);}
+tbody td{padding:8px 10px;border-bottom:1px solid var(--line-soft);text-align:right;font-family:var(--tv-num);font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1, 'lnum' 1;white-space:nowrap;color:var(--text);}
 tbody tr:hover{background:var(--bg-2);}
 .pill{display:inline-block;padding:2px 8px;border-radius:3px;font-weight:700;font-size:10.5px;letter-spacing:.3px;}
 .pill.LONG{background:rgba(8,153,129,.14);color:var(--long);border:1px solid rgba(8,153,129,.3);}
@@ -396,7 +411,7 @@ tbody tr:hover{background:var(--bg-2);}
   cursor:pointer;
 }
 .wide-chart-restore-pill .pill-restore-btn:hover{
-  background:#1a4cd2;
+  background:var(--blue-hover);
 }
 #app.wide-chart-mode .wide-chart-restore-pill{
   display:flex !important;
@@ -570,7 +585,7 @@ tbody tr:hover{background:var(--bg-2);}
   transition:transform 0.1s, background 0.15s;
 }
 .replay-play-btn:hover{
-  background:#1a4cd2;
+  background:var(--blue-hover);
   transform:scale(1.05);
 }
 .replay-speed-wrap select{
@@ -732,6 +747,65 @@ tbody tr:hover{background:var(--bg-2);}
   flex-direction:column;
   padding:6px 0;
 }
+/* ---- Professional TradingView-Style Lucide Icon System ---- */
+.app-icon{
+  display:inline-block;
+  vertical-align:middle;
+  flex-shrink:0;
+  stroke:currentColor;
+}
+.app-icon.fill-curr{
+  fill:currentColor;
+}
+.header-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:5px;
+}
+.header-btn .app-icon{
+  display:block;
+}
+.range-bar button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:4px;
+}
+.range-bar button .app-icon{
+  display:block;
+}
+.step-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.float-tb button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.float-tb .grip{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.pt-win button{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.side-drawer-close, .side-menu-close, .sb-x{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+.rob-warning-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+}
+
 .sm-item{
   display:flex;
   align-items:center;
@@ -752,27 +826,38 @@ tbody tr:hover{background:var(--bg-2);}
   color:#ffffff;
 }
 .sm-item .sm-icon{
-  width:20px;
-  text-align:center;
-  font-size:15px;
+  width:22px;
+  height:22px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
   color:var(--text-dim);
+}
+.sm-item:hover .sm-icon, .sm-item:active .sm-icon{
+  color:#ffffff;
 }
 .sm-item .sm-title{
   flex:1;
 }
 .sm-item .sm-arr{
   color:var(--text-faint);
-  font-size:16px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
 }
 .header-menu-btn{
   background:transparent;
   border:1px solid var(--line);
   color:var(--text);
-  font-size:16px;
   padding:4px 9px;
   border-radius:var(--radius);
   cursor:pointer;
   min-height:30px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
 }
 .header-menu-btn:hover{
   background:var(--bg-3);
@@ -834,8 +919,15 @@ tbody tr:hover{background:var(--bg-2);}
     cursor:pointer;
   }
   .nav-item .nav-icon{
-    font-size:14px;
-    line-height:1;
+    width:22px;
+    height:22px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+  }
+  .nav-item .nav-icon svg{
+    display:block;
   }
   .nav-item .nav-label{
     font-size:9.5px;
@@ -1488,10 +1580,197 @@ tbody tr:hover{background:var(--bg-2);}
 .field input[type=datetime-local]{width:100%;background:var(--bg-0);border:1px solid var(--line);border-radius:var(--radius);color:var(--text);padding:7px 8px;font-family:var(--mono);font-size:12px;color-scheme:dark;}
 .field input[type=datetime-local]:focus{outline:none;border-color:var(--focus);}
 
+/* ---- Go To Date Popup Redesign ---- */
+#dateOverlay .date-modal{
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px 22px;
+  width: min(460px, 92vw);
+  max-height: 90dvh;
+  overflow-y: auto;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.04);
+}
+#dateOverlay .date-modal-head{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+#dateOverlay .date-modal-title{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.2px;
+}
+#dateOverlay .date-modal-title .app-icon{
+  color: var(--long);
+}
+#dateOverlay .date-modal-close{
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all .15s ease;
+}
+#dateOverlay .date-modal-close:hover{
+  color: #ffffff;
+  background: var(--bg-3);
+}
+#dateOverlay .date-section{
+  margin-bottom: 16px;
+}
+#dateOverlay .date-section-title{
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+#dateOverlay .date-field-label{
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+#dateOverlay .date-input-wrap{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-0);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0 10px;
+  height: 36px;
+  min-width: 0;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+#dateOverlay .date-input-wrap:focus-within{
+  border-color: var(--long);
+  box-shadow: 0 0 0 1px var(--long);
+}
+#dateOverlay .date-input-wrap .app-icon{
+  color: var(--text-faint);
+  flex-shrink: 0;
+  transition: color .15s ease;
+}
+#dateOverlay .date-input-wrap:focus-within .app-icon{
+  color: var(--long);
+}
+#dateOverlay .date-input-wrap input[type="datetime-local"]{
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+  color-scheme: dark;
+  padding: 0 !important;
+  height: 100%;
+}
+#dateOverlay .date-section-divider{
+  height: 1px;
+  background: var(--line-soft);
+  margin: 16px 0;
+}
+#dateOverlay .date-range-grid{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 480px){
+  #dateOverlay .date-modal{
+    padding: 16px;
+    width: min(390px, 94vw);
+  }
+  #dateOverlay .date-range-grid{
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+#dateOverlay .date-btn-primary{
+  background: var(--long);
+  color: #ffffff;
+  border: 1px solid var(--long);
+  border-radius: 6px;
+  padding: 7px 18px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all .15s ease;
+  box-shadow: 0 2px 8px rgba(8,153,129,0.25);
+  white-space: nowrap;
+}
+#dateOverlay .date-btn-primary:hover{
+  background: #0aa88f;
+  border-color: #0aa88f;
+  box-shadow: 0 4px 14px rgba(8,153,129,0.4);
+}
+#dateOverlay .date-btn-primary:active{
+  transform: translateY(1px);
+}
+#dateOverlay .date-btn-secondary{
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 7px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all .15s ease;
+  white-space: nowrap;
+}
+#dateOverlay .date-btn-secondary:hover{
+  color: #ffffff;
+  background: var(--bg-3);
+  border-color: var(--text-dim);
+}
+#dateOverlay .date-btn-secondary:active{
+  transform: translateY(1px);
+}
+#dateOverlay .date-actions{
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+#dateOverlay .warn{
+  font-size: 11px;
+  color: var(--amber);
+  margin-top: 8px;
+  min-height: 14px;
+  font-weight: 600;
+}
+
 .chart-legend{position:absolute;top:10px;left:12px;z-index:4;pointer-events:none;max-width:calc(100% - 90px);}
 .chart-legend .lg-title{font-weight:700;font-size:13px;color:#ffffff;display:flex;align-items:center;gap:8px;white-space:nowrap;}
 .chart-legend .lg-title .tfm{color:var(--text-dim);font-weight:600;font-size:12px;}
-.chart-legend .lg-ohlc{font-family:var(--mono);font-size:11.5px;color:var(--text-dim);white-space:nowrap;margin-top:3px;}
+.chart-legend .lg-ohlc{font-family:var(--tv-num);font-size:11.5px;color:var(--text-dim);white-space:nowrap;margin-top:3px;font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1, 'lnum' 1;}
 .chart-legend .lg-ohlc i{font-style:normal;color:var(--text-faint);margin-right:2px;}
 .chart-legend .lg-ohlc b{font-weight:600;margin-right:9px;}
 .float-tb{position:absolute;top:50px;left:50%;transform:translateX(-50%);z-index:7;display:flex;align-items:center;gap:2px;background:rgba(30,34,45,.96);border:1px solid var(--line);border-radius:var(--radius);padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.5);user-select:none;}
@@ -1636,7 +1915,7 @@ tbody tr:hover{background:var(--bg-2);}
   height:24px;
   display:inline-flex;
   align-items:center;
-  background:#181b24;
+  background:var(--bg-2);
   border:1px solid var(--line);
   border-left:none;
   border-radius:0 4px 4px 0;
@@ -1678,7 +1957,7 @@ tbody tr:hover{background:var(--bg-2);}
   z-index:24;
   display:none;
   align-items:center;
-  background:#181b24;
+  background:var(--bg-2);
   border-radius:4px;
   box-shadow:0 4px 14px rgba(0,0,0,0.55);
   transform:translateY(-50%);
@@ -1872,18 +2151,18 @@ tbody tr:hover{background:var(--bg-2);}
 
 /* Code editor with syntax highlighting */
 .sb-editor{flex:1;min-height:0;display:flex;background:var(--bg-0);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;position:relative;}
-.sb-gutter{margin:0;padding:10px 6px;min-width:44px;text-align:right;color:var(--text-faint);background:var(--bg-1);border-right:1px solid var(--line);font:12.5px/19px var(--mono);overflow:hidden;user-select:none;}
+.sb-gutter{margin:0;padding:10px 6px;min-width:44px;text-align:right;color:var(--text-faint);background:var(--bg-1);border-right:1px solid var(--line);font:12.5px/19px var(--code-mono);overflow:hidden;user-select:none;}
 .sb-gutter div{cursor:pointer;padding:0 2px;}
 .sb-gutter div.err-ln{color:var(--short);background:rgba(242,54,69,.2);font-weight:700;border-radius:2px;}
 .sb-code-wrap{flex:1;min-height:0;position:relative;overflow:hidden;}
-.sb-highlight, #sbCode{position:absolute;inset:0;margin:0;padding:10px;border:none;font:12.5px/19px var(--mono);white-space:pre;overflow:auto;tab-size:4;box-sizing:border-box;}
+.sb-highlight, #sbCode{position:absolute;inset:0;margin:0;padding:10px;border:none;font:12.5px/19px var(--code-mono);white-space:pre;overflow:auto;tab-size:4;box-sizing:border-box;}
 .sb-highlight{pointer-events:none;background:transparent;color:var(--text);z-index:1;}
 .sb-highlight code{font-family:inherit;font-size:inherit;line-height:inherit;}
 #sbCode{z-index:2;color:transparent;caret-color:#ffffff;background:transparent;outline:none;resize:none;}
 #sbCode::selection{background:rgba(41,98,255,.35);color:transparent;}
 
 /* Syntax colors */
-.p-com{color:#606470;font-style:italic;}
+.p-com{color:var(--text-dim);font-style:italic;}
 .p-str{color:#e8a33d;}
 .p-kw{color:#b78cff;font-weight:700;}
 .p-fn{color:#5b8cff;}
@@ -2125,7 +2404,7 @@ tbody tr:hover{background:var(--bg-2);}
 .pulse-dot{width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;}
 .pulse-dot.running{animation:livePulse 1.2s infinite;}
 @keyframes livePulse{ 0%{opacity:1;transform:scale(1);} 50%{opacity:0.3;transform:scale(1.2);} 100%{opacity:1;transform:scale(1);} }
-.live-log-container{background:var(--bg-0);border:1px solid var(--line);border-radius:var(--radius);font-family:var(--mono);font-size:11px;padding:8px 12px;height:140px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;}
+.live-log-container{background:var(--bg-0);border:1px solid var(--line);border-radius:var(--radius);font-family:var(--code-mono);font-size:11px;padding:8px 12px;height:140px;overflow-y:auto;display:flex;flex-direction:column;gap:3px;}
 .live-log-row{display:flex;gap:8px;line-height:1.4;}
 .live-log-ts{color:var(--text-faint);flex-shrink:0;}
 .live-log-strat{color:var(--focus);font-weight:700;flex-shrink:0;}
@@ -2298,13 +2577,484 @@ tbody tr:hover{background:var(--bg-2);}
   }
 }
 
+/* ================= TRADINGVIEW-STYLE CHART HOVER PLUS & CONTEXT MENU ================= */
+.chart-plus-line{
+  position:absolute;
+  left:0;
+  right:65px;
+  height:0;
+  border-top:1px dashed rgba(120, 123, 134, 0.65);
+  pointer-events:none;
+  z-index:15;
+  transform:translateY(-0.5px);
+}
+.chart-plus-badge{
+  position:absolute;
+  right:2px;
+  z-index:25;
+  transform:translateY(-50%);
+  display:flex;
+  align-items:center;
+  background:#2a2e39;
+  border:1px solid #434651;
+  border-radius:4px;
+  height:20px;
+  padding:0 5px 0 3px;
+  gap:4px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.35);
+  user-select:none;
+  pointer-events:auto;
+  cursor:pointer;
+}
+.chart-plus-marker{
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:transparent;
+  border:1px solid #787b86;
+  color:#d1d4dc;
+  font-family:var(--sans);
+  font-size:11px;
+  font-weight:700;
+  line-height:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:all 0.15s ease;
+  user-select:none;
+  padding:0;
+}
+.chart-plus-marker:hover,
+.chart-plus-badge:hover .chart-plus-marker{
+  background:#363a45;
+  border-color:#d1d4dc;
+  color:#ffffff;
+  transform:scale(1.15);
+}
+.chart-plus-price-tag{
+  font-family:var(--mono);
+  font-size:11px;
+  font-weight:600;
+  color:#d1d4dc;
+  letter-spacing:-0.2px;
+  white-space:nowrap;
+  user-select:none;
+  pointer-events:none;
+}
+.chart-alert-markers-container{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:20;
+}
+.chart-alert-marker{
+  position:absolute;
+  z-index:20;
+  transform:translateY(-50%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:ns-resize;
+  pointer-events:auto;
+  transition:transform 0.1s ease;
+  padding:4px 2px;
+}
+.chart-alert-marker:hover{
+  transform:translateY(-50%) scale(1.25);
+}
+.chart-alert-marker svg{
+  display:block;
+  filter:drop-shadow(0 1px 2px rgba(0,0,0,0.6));
+}
+.chart-alert-drag-handle{
+  position:absolute;
+  left:24px;
+  z-index:35;
+  transform:translateY(-50%);
+  background:#1e222d;
+  border:1px solid #d1d4dc;
+  color:#d1d4dc;
+  border-radius:4px;
+  padding:2px 8px;
+  font-family:var(--sans);
+  font-size:11px;
+  font-weight:600;
+  display:flex;
+  align-items:center;
+  gap:5px;
+  pointer-events:none;
+  box-shadow:0 4px 12px rgba(0,0,0,0.55);
+  user-select:none;
+}
+.chart-alert-drag-handle .alert-drag-icon{
+  font-size:12px;
+}
+.chart-alert-drag-handle .alert-drag-title{
+  color:#787b86;
+  font-weight:700;
+  font-size:10px;
+  text-transform:uppercase;
+}
+.chart-alert-drag-handle .alert-drag-price{
+  font-family:var(--mono);
+  font-weight:700;
+  color:#f0f3fa;
+}
+.chart-alert-drag-handle .alert-drag-hint{
+  font-size:10px;
+  color:#787b86;
+  margin-left:3px;
+}
+
+/* ---- Chart Context Menu ---- */
+.chart-ctx-menu{
+  position:fixed;
+  z-index:1000;
+  background:#1e222d;
+  border:1px solid #2a2e39;
+  border-radius:6px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.3);
+  padding:5px 0;
+  min-width:250px;
+  max-width:320px;
+  font-family:var(--sans);
+  user-select:none;
+  animation:ctxFadeIn 0.12s ease-out;
+}
+@keyframes ctxFadeIn{
+  from{ opacity:0; transform:scale(0.97); }
+  to{ opacity:1; transform:scale(1); }
+}
+.ctx-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  padding:6px 12px;
+  font-size:12px;
+  font-weight:400;
+  color:#d1d4dc;
+  cursor:pointer;
+  transition:background 0.1s ease, color 0.1s ease;
+}
+.ctx-item:hover{
+  background:#2a2e39;
+  color:#ffffff;
+}
+.ctx-item .ctx-icon{
+  width:15px;
+  height:15px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#787b86;
+  flex-shrink:0;
+}
+.ctx-item:hover .ctx-icon{
+  color:#d1d4dc;
+}
+.ctx-item .ctx-label{
+  flex:1;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  font-weight:400;
+}
+.ctx-item .ctx-shortcut{
+  font-size:11px;
+  font-weight:500;
+  color:#787b86;
+  margin-left:12px;
+  font-family:var(--sans);
+}
+.ctx-sep{
+  height:1px;
+  background:#2a2e39;
+  margin:4px 0;
+}
+
+/* ---- Alerts Modal & Badge & Toast ---- */
+.alerts-badge{
+  background:#f59e0b;
+  color:#000;
+  font-size:10px;
+  font-weight:800;
+  padding:1px 5px;
+  border-radius:9px;
+  margin-left:5px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  line-height:1.2;
+}
+.alerts-badge:empty, .alerts-badge[data-count="0"]{
+  display:none;
+}
+.alert-modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.72);
+  z-index:1100;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  backdrop-filter:blur(2px);
+}
+.alert-modal{
+  background:#1e222d;
+  border:1px solid #2a2e39;
+  border-radius:8px;
+  box-shadow:0 12px 32px rgba(0,0,0,0.65);
+  width:440px;
+  max-width:95vw;
+  max-height:90vh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  animation:ctxFadeIn 0.15s ease-out;
+}
+.alert-modal-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:12px 18px;
+  border-bottom:1px solid #2a2e39;
+  background:#191d26;
+}
+.alert-modal-title{
+  font-size:14px;
+  font-weight:700;
+  color:#ffffff;
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+.alert-modal-close{
+  background:transparent;
+  border:none;
+  color:#787b86;
+  cursor:pointer;
+  padding:4px;
+  border-radius:4px;
+  display:flex;
+  align-items:center;
+}
+.alert-modal-close:hover{
+  color:#ffffff;
+  background:#2a2e39;
+}
+.alert-modal-tabs{
+  display:flex;
+  border-bottom:1px solid #2a2e39;
+  background:#161921;
+}
+.alert-modal-tab{
+  flex:1;
+  padding:10px 14px;
+  background:transparent;
+  border:none;
+  border-bottom:2px solid transparent;
+  color:#787b86;
+  font-size:12.5px;
+  font-weight:700;
+  cursor:pointer;
+  text-align:center;
+  transition:all 0.15s ease;
+}
+.alert-modal-tab.active{
+  color:#ffffff;
+  border-bottom-color:var(--blue);
+  background:#1e222d;
+}
+.alert-modal-body{
+  padding:16px 18px;
+  overflow-y:auto;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  gap:13px;
+}
+.alert-form-group{
+  display:flex;
+  flex-direction:column;
+  gap:5px;
+}
+.alert-form-group label{
+  font-size:11.5px;
+  font-weight:700;
+  color:#787b86;
+  text-transform:uppercase;
+  letter-spacing:0.3px;
+}
+.alert-form-group input, .alert-form-group select{
+  background:#131722;
+  border:1px solid #2a2e39;
+  border-radius:4px;
+  color:#d1d4dc;
+  font-family:var(--sans);
+  font-size:13px;
+  padding:7px 10px;
+  outline:none;
+}
+.alert-form-group input:focus, .alert-form-group select:focus{
+  border-color:var(--blue);
+}
+.alert-form-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.alert-checkbox-row{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12.5px;
+  color:#d1d4dc;
+  cursor:pointer;
+}
+.alert-checkbox-row input[type="checkbox"]{
+  cursor:pointer;
+  accent-color:var(--blue);
+}
+.alert-modal-foot{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  padding:12px 18px;
+  border-top:1px solid #2a2e39;
+  background:#191d26;
+}
+.alerts-list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.alert-list-item{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:9px 12px;
+  background:#131722;
+  border:1px solid #2a2e39;
+  border-radius:5px;
+  gap:10px;
+}
+.alert-list-item.triggered{
+  opacity:0.65;
+  border-style:dashed;
+}
+.alert-list-info{
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+  min-width:0;
+  flex:1;
+}
+.alert-list-title{
+  font-size:12.5px;
+  font-weight:700;
+  color:#ffffff;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.alert-list-meta{
+  font-size:11px;
+  color:#787b86;
+  font-family:var(--mono);
+}
+.alert-list-actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.alert-action-btn{
+  background:transparent;
+  border:1px solid #2a2e39;
+  color:#787b86;
+  padding:4px 7px;
+  border-radius:3px;
+  font-size:11px;
+  cursor:pointer;
+}
+.alert-action-btn:hover{
+  background:#2a2e39;
+  color:#ffffff;
+}
+.alert-action-btn.delete:hover{
+  border-color:#f23645;
+  color:#f23645;
+  background:rgba(242,54,69,0.1);
+}
+.alert-action-btn.active-toggle.on{
+  color:var(--long);
+  border-color:rgba(8,153,129,0.4);
+  background:rgba(8,153,129,0.12);
+}
+
+/* ---- Alert In-App Toast ---- */
+#alertToastContainer{
+  position:fixed;
+  top:54px;
+  right:18px;
+  z-index:1200;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  pointer-events:none;
+}
+.alert-toast{
+  pointer-events:auto;
+  background:#1e222d;
+  border:1px solid #f59e0b;
+  border-left:4px solid #f59e0b;
+  border-radius:5px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.6);
+  padding:10px 14px;
+  min-width:280px;
+  max-width:380px;
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  animation:toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes toastSlideIn{
+  from{ opacity:0; transform:translateX(20px); }
+  to{ opacity:1; transform:translateX(0); }
+}
+.alert-toast-body{
+  flex:1;
+}
+.alert-toast-title{
+  font-size:12.5px;
+  font-weight:700;
+  color:#ffffff;
+  margin-bottom:2px;
+}
+.alert-toast-desc{
+  font-size:11.5px;
+  color:#d1d4dc;
+}
+.alert-toast-close{
+  background:transparent;
+  border:none;
+  color:#787b86;
+  cursor:pointer;
+  padding:2px;
+}
+.alert-toast-close:hover{
+  color:#ffffff;
+}
+
+
 </style>
 </head>
 <body>
 <div id="app">
 
   <header>
-    <div class="brand"><span class="mark">&#9670;</span>MORE EXCHANGE</div>
+    <div class="brand"><span class="mark"><svg class="app-icon fill-curr" width="10" height="10" viewBox="0 0 24 24"><polygon points="12 2 22 12 12 22 2 12"/></svg></span>MORE EXCHANGE</div>
     <div class="symbol-tabs" id="symbolTabs">
       <button data-symbol="BTCUSDT" class="active">BTCUSDT</button>
       <button data-symbol="ETHUSDT">ETHUSDT</button>
@@ -2322,15 +3072,16 @@ tbody tr:hover{background:var(--bg-2);}
       <button data-tf="1d">1D</button>
     </div>
     <div class="acct-switch">
-      <button id="sbOpenBtn" title="Strategy Builder">&#402; Strategies</button>
+      <button id="sbOpenBtn" title="Strategy Builder"><svg class="app-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px;"><path d="M4 17c2.2 0 3-1.2 3.5-3.5L9 6.5C9.4 4.5 10.5 4 12 4"/><path d="M5 11h6"/><path d="m14 17 6-8"/><path d="m20 17-6-8"/></svg><span>Strategies</span></button>
       <select id="acctSelect" title="Paper trading account"></select>
-      <button id="newAcctBtn">+ New account</button>
+      <button id="newAcctBtn"><svg class="app-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg><span>New account</span></button>
     </div>
     <div class="status offline" id="wsStatus"><span class="dot"></span><span id="wsStatusText">OFFLINE</span><span class="fresh" id="wsFresh"></span></div>
-    <button id="btnToggleSideNav" class="header-btn" title="Toggle Order Ticket &amp; Account Panel (Alt+B)" aria-label="Toggle Order Ticket"><span style="font-size:13px;line-height:1;">&#9697;</span> Order Panel</button>
-    <button id="btnDesktopReplay" class="header-btn" title="Bar Replay Mode (Alt+R)" aria-label="Bar Replay Mode"><span style="font-size:12px;line-height:1;">&#10226;</span> Replay</button>
-    <button id="btnHeaderWideChart" class="header-btn chart-expand-btn" title="Toggle Wide Chart Mode (Maximize Chart) [Alt+W]" aria-label="Toggle Wide Chart Mode"><span style="font-size:13px;line-height:1;">&#x26F6;</span> Wide</button>
-    <button id="btnMobileMenu" class="header-btn header-menu-btn" title="Open All Features Menu" aria-label="Open Menu">&#9776;</button>
+    <button id="btnToggleSideNav" class="header-btn" title="Toggle Order Panel (Alt+B)" aria-label="Toggle Order Panel"><svg class="app-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/></svg> <span>Order Panel</span></button>
+    <button id="btnHeaderAlerts" class="header-btn" title="Price Alerts (Alt+A)" aria-label="Price Alerts"><svg class="app-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> <span>Alerts</span><span class="alerts-badge" id="alertsHeaderBadge" data-count="0" style="display:none;">0</span></button>
+    <button id="btnDesktopReplay" class="header-btn" title="Bar Replay Mode (Alt+R)" aria-label="Bar Replay Mode"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> <span>Replay</span></button>
+    <button id="btnHeaderWideChart" class="header-btn chart-expand-btn" title="Toggle Wide Chart Mode (Maximize Chart) [Alt+W]" aria-label="Toggle Wide Chart Mode"><svg class="app-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg> <span class="btn-text">Wide</span></button>
+    <button id="btnMobileMenu" class="header-btn header-menu-btn" title="Open All Features Menu" aria-label="Open Menu"><svg class="app-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="18" y2="18"/></svg></button>
   </header>
 
   <div class="chart-col">
@@ -2343,17 +3094,17 @@ tbody tr:hover{background:var(--bg-2);}
         <div class="strat-chips" id="stratChips"></div>
         <div class="layers-pop" id="layersPop"></div>
     <div class="float-tb" id="floatTb">
-      <span class="grip" id="tbGrip" title="Drag to move">&#8942;&#8942;</span>
-      <button class="tb-collapse-btn" id="tbCollapseBtn" title="Collapse / Expand Tools" aria-label="Collapse Tools">&#9664;</button>
-      <button data-tool="h" title="Horizontal line (click a price)">&#9472;</button>
-      <button data-tool="long" title="Long: click your stop-loss price">L</button>
-      <button data-tool="short" title="Short: click your stop-loss price">S</button>
-      <button id="tbClear" title="Clear drawn lines on this symbol">&#128465;</button>
+      <span class="grip" id="tbGrip" title="Drag to move"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg></span>
+      <button class="tb-collapse-btn" id="tbCollapseBtn" title="Collapse / Expand Tools" aria-label="Collapse Tools"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg></button>
+      <button data-tool="h" title="Horizontal line (click a price)"><svg class="app-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><circle cx="6" cy="12" r="1.5" fill="currentColor"/><circle cx="18" cy="12" r="1.5" fill="currentColor"/></svg></button>
+      <button data-tool="long" title="Long: click your stop-loss price"><svg class="app-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--long)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg></button>
+      <button data-tool="short" title="Short: click your stop-loss price"><svg class="app-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--short)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9s1 1 4 1 5-2 8-2 4 1 4 1v12s-1-1-4-1-5 2-8 2-4-1-4-1z"/><line x1="4" x2="4" y1="2" y2="9"/></svg></button>
+      <button id="tbClear" title="Clear drawn lines on this symbol"><svg class="app-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg></button>
       <button id="btnMobileFloatReplay" class="tb-replay-btn" title="Bar Replay Mode"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block;margin:auto;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
     </div>
     <div class="wide-chart-restore-pill" id="wideChartRestorePill" title="Exit Wide Chart Mode">
-      <span class="pill-badge">&#x26F6; Wide Chart Mode Active</span>
-      <button id="btnExitWideChart" class="pill-restore-btn">&#10557; Restore</button>
+      <span class="pill-badge"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg> Wide Chart Mode Active</span>
+      <button id="btnExitWideChart" class="pill-restore-btn"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14h6v6"/><path d="M20 10h-6V4"/><path d="m14 10 7-7"/><path d="m3 21 7-7"/></svg> Restore</button>
     </div>
     <div class="mob-replay-select-bar" id="mobileReplaySelectBar" style="display:none;">
       <span class="hint-text">Drag or tap bar to replay</span>
@@ -2361,6 +3112,13 @@ tbody tr:hover{background:var(--bg-2);}
       <button id="btnMobileReplayCancel" class="btn-cancel" title="Cancel Selection"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
     </div>
     <div class="hist-notice" id="histNotice" title="Click to dismiss"></div>
+    <div id="chartPlusLine" class="chart-plus-line" style="display:none;"></div>
+    <div id="chartPlusBadge" class="chart-plus-badge" style="display:none;" title="Add Alert or Order">
+      <button id="chartPlusMarker" class="chart-plus-marker" title="Add Alert or Order" aria-label="Add Alert or Order">+</button>
+      <span id="chartPlusPriceTag" class="chart-plus-price-tag">—</span>
+    </div>
+    <div id="chartAlertMarkersContainer" class="chart-alert-markers-container"></div>
+    <div id="chartAlertDragHandle" class="chart-alert-drag-handle" style="display:none;"><span class="alert-drag-icon">🔔</span><span class="alert-drag-title">Alert:</span><span class="alert-drag-price mono" id="alertDragPriceText">—</span><span class="alert-drag-hint">Drag to adjust</span></div>
     <div id="price-chart"></div>
     <div class="replay-dark-overlay" id="replayDarkOverlay" style="display:none;"></div>
     <div class="replay-select-line" id="replaySelectLine" style="display:none;"></div>
@@ -2399,7 +3157,7 @@ tbody tr:hover{background:var(--bg-2);}
       </div>
     </div>
     <div class="range-bar">
-      <button id="btnWideChart" class="chart-expand-btn" title="Toggle Wide Chart Mode (Maximize Chart) [Alt+W]">&#x26F6; Wide Chart</button>
+      <button id="btnWideChart" class="chart-expand-btn" title="Toggle Wide Chart Mode (Maximize Chart) [Alt+W]"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg> <span>Wide Chart</span></button>
       <button id="btnMobileReplay" class="mob-replay-btn" title="Bar Replay Mode"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="display:block;flex-shrink:0;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg> <span>Replay</span></button>
       <div class="range-btns" id="rangeBtns">
         <button data-r="1D">1D</button><button data-r="5D">5D</button><button data-r="1M">1M</button>
@@ -2407,10 +3165,10 @@ tbody tr:hover{background:var(--bg-2);}
         <button data-r="1Y">1Y</button><button data-r="5Y">5Y</button><button data-r="ALL">ALL</button>
       </div>
       <span class="sep"></span>
-      <button id="goDateBtn">&#128197; Go to date</button>
-      <button id="layersBtn" title="Strategy layers">&#9776; Layers</button>
-      <button id="toggleOverlayDrawingsBtn" title="Show / hide strategy drawings on chart">&#128065; Drawings</button>
-      <button id="liveBtn">&#9679; Live</button>
+      <button id="goDateBtn"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg> <span>Go to date</span></button>
+      <button id="layersBtn" title="Strategy layers"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg> <span>Layers</span></button>
+      <button id="toggleOverlayDrawingsBtn" title="Show / hide strategy drawings on chart"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> <span>Drawings</span></button>
+      <button id="liveBtn"><span class="pulse-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--long);margin-right:2px;"></span> Live</button>
       <span class="info" id="dataStart"></span>
       <span class="clock" id="utcClock"></span>
     </div>
@@ -2420,21 +3178,9 @@ tbody tr:hover{background:var(--bg-2);}
   <div class="side-col" id="sideColPanel">
     <div class="side-drawer-header" id="sideDrawerHeader">
       <div class="side-drawer-handle" id="sideDrawerHandle" title="Tap to close drawer"></div>
-      <div class="side-drawer-title">ORDER TICKET &amp; ACCOUNT</div>
-      <button class="side-drawer-close" id="sideDrawerClose" title="Close Order Panel" aria-label="Close Order Panel">&times;</button>
+      <div class="side-drawer-title">ORDER TICKET</div>
+      <button class="side-drawer-close" id="sideDrawerClose" title="Close Order Panel" aria-label="Close Order Panel"><svg class="app-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
-    <section class="panel">
-      <div class="panel-head">ACCOUNT<button class="mini-btn" id="resetAcctBtn" title="Reset this paper account">RESET</button></div>
-      <div class="panel-body acct-grid">
-        <div class="acct-item wide"><div class="k">EQUITY</div><div class="v wide mono" id="acctEquity">—</div></div>
-        <div class="acct-item"><div class="k">Balance</div><div class="v" id="acctBalance">—</div></div>
-        <div class="acct-item"><div class="k">Unrealized P&amp;L</div><div class="v" id="acctUpnl">—</div></div>
-        <div class="acct-item"><div class="k">Realized P&amp;L</div><div class="v" id="acctRpnl">—</div></div>
-        <div class="acct-item"><div class="k">Margin Used</div><div class="v" id="acctMargin">—</div></div>
-        <div class="acct-item"><div class="k">Available</div><div class="v" id="acctAvail">—</div></div>
-      </div>
-    </section>
-
     <section class="panel">
       <div class="panel-head">ORDER TICKET</div>
       <div class="panel-body">
@@ -2449,7 +3195,7 @@ tbody tr:hover{background:var(--bg-2);}
             <input type="number" id="qtyInput" step="0.001" min="0" placeholder="0.000">
           </div>
           <div class="field">
-            <label>Risk $ <span class="hint" id="applyRisk" title="Auto-size qty from risk $ and stop distance">use →</span></label>
+            <label>Risk $ <span class="hint" id="applyRisk" title="Auto-size qty from risk $ and stop distance">use <svg class="app-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" x2="19" y1="12" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span></label>
             <input type="number" id="riskInput" step="1" min="0" placeholder="e.g. 500">
           </div>
         </div>
@@ -2476,17 +3222,17 @@ tbody tr:hover{background:var(--bg-2);}
           <div class="field">
             <label>Stop Loss <span class="hint" id="pickSlBtn" title="Click a price on the chart">pick on chart</span></label>
             <div class="stepper-wrap">
-              <button type="button" class="step-btn" id="btnSlMinus" title="Decrease Stop Loss">-</button>
+              <button type="button" class="step-btn" id="btnSlMinus" title="Decrease Stop Loss"><svg class="app-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" x2="19" y1="12" y2="12"/></svg></button>
               <input type="number" id="slInput" step="0.01" placeholder="optional">
-              <button type="button" class="step-btn" id="btnSlPlus" title="Increase Stop Loss">+</button>
+              <button type="button" class="step-btn" id="btnSlPlus" title="Increase Stop Loss"><svg class="app-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg></button>
             </div>
           </div>
           <div class="field">
             <label>Take Profit <span class="hint" id="pickTpBtn" title="Click a price on the chart">pick on chart</span></label>
             <div class="stepper-wrap">
-              <button type="button" class="step-btn" id="btnTpMinus" title="Decrease Take Profit">-</button>
+              <button type="button" class="step-btn" id="btnTpMinus" title="Decrease Take Profit"><svg class="app-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" x2="19" y1="12" y2="12"/></svg></button>
               <input type="number" id="tpInput" step="0.01" placeholder="optional">
-              <button type="button" class="step-btn" id="btnTpPlus" title="Increase Take Profit">+</button>
+              <button type="button" class="step-btn" id="btnTpPlus" title="Increase Take Profit"><svg class="app-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" x2="12" y1="5" y2="19"/><line x1="5" x2="19" y1="12" y2="12"/></svg></button>
             </div>
           </div>
         </div>
@@ -2509,10 +3255,10 @@ tbody tr:hover{background:var(--bg-2);}
     <div class="bottom-col" id="ptPanel">
     <div class="pt-resize" id="ptResize" title="Drag to resize"></div>
     <div class="pt-titlebar" id="ptTitle">
-      <div class="pt-name"><span class="pt-mark">&#9679;</span>Paper Trading</div>
+      <div class="pt-name"><span class="pulse-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--long);margin-right:5px;"></span>Paper Trading</div>
       <div class="pt-win">
-        <button id="ptMin" title="Minimize / restore">&#8211;</button>
-        <button id="ptMax" title="Maximize / restore">&#9633;</button>
+        <button id="ptMin" title="Minimize / restore"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" x2="19" y1="12" y2="12"/></svg></button>
+        <button id="ptMax" title="Maximize / restore"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg></button>
       </div>
     </div>
     <div class="pt-body" id="ptBody">
@@ -2635,7 +3381,7 @@ tbody tr:hover{background:var(--bg-2);}
               <span class="badge" id="liveActiveEnginesBadge" style="background:rgba(61,220,151,0.15); color:var(--long); font-size:11px; padding:2px 8px; border-radius:10px; font-weight:700;">0 Running</span>
             </div>
             <div style="display:flex; gap:6px;">
-              <button id="btnOpenDeployStrat" class="mini-btn" style="background:var(--long); color:#000; border-color:var(--long); font-weight:700; padding:4px 12px;">+ Deploy Strategy</button>
+              <button id="btnOpenDeployStrat" class="mini-btn" style="background:var(--long); color:#ffffff; border-color:var(--long); font-weight:700; padding:4px 12px;">+ Deploy Strategy</button>
               <button id="btnPauseAllLiveStrat" class="mini-btn" title="Pause all running strategy engines">Pause All</button>
               <button id="btnResumeAllLiveStrat" class="mini-btn" title="Resume all paused strategy engines">Resume All</button>
               <button id="btnRefreshLiveStrat" class="mini-btn" title="Refresh Live State">Refresh</button>
@@ -2702,20 +3448,59 @@ tbody tr:hover{background:var(--bg-2);}
 </div>
 
 <div class="modal-overlay" id="dateOverlay">
-  <div class="modal" style="width:340px">
-    <h3>Go to date</h3>
-    <div class="field"><label>Specific date &amp; time (your local time)</label><input type="datetime-local" id="gotoDt"></div>
-    <div class="modal-actions" style="margin:0 0 16px"><button class="submit-btn LONG" id="gotoGo">Go</button></div>
-    <h3>Custom date range</h3>
-    <div class="row2">
-      <div class="field"><label>From</label><input type="datetime-local" id="rngFrom"></div>
-      <div class="field"><label>To</label><input type="datetime-local" id="rngTo"></div>
+  <div class="modal date-modal">
+    <div class="date-modal-head">
+      <div class="date-modal-title">
+        <svg class="app-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+        <span>Go to Date</span>
+      </div>
+      <button class="date-modal-close" id="dateCloseBtn" title="Close" aria-label="Close dialog">
+        <svg class="app-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
     </div>
-    <div class="modal-actions">
-      <button class="mini-btn" id="dateCancel">Close</button>
-      <button class="submit-btn LONG" id="rangeGo">Load range</button>
+
+    <!-- Specific Date & Time Section -->
+    <div class="date-section">
+      <label class="date-field-label" for="gotoDt">Specific date &amp; time (your local time)</label>
+      <div style="display:flex;gap:8px;">
+        <div class="date-input-wrap" style="flex:1;">
+          <svg class="app-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+          <input type="datetime-local" id="gotoDt">
+        </div>
+        <button class="date-btn-primary" id="gotoGo" title="Jump to specific date/time" style="height:36px;padding:0 18px;">Go</button>
+      </div>
     </div>
+
+    <div class="date-section-divider"></div>
+
+    <!-- Custom Date Range Section -->
+    <div class="date-section" style="margin-bottom:12px;">
+      <div class="date-section-title">Custom Date Range</div>
+      <div class="date-range-grid">
+        <div>
+          <label class="date-field-label" for="rngFrom">From</label>
+          <div class="date-input-wrap">
+            <svg class="app-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+            <input type="datetime-local" id="rngFrom">
+          </div>
+        </div>
+        <div>
+          <label class="date-field-label" for="rngTo">To</label>
+          <div class="date-input-wrap">
+            <svg class="app-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>
+            <input type="datetime-local" id="rngTo">
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="warn" id="dateWarn"></div>
+
+    <!-- Actions -->
+    <div class="date-actions">
+      <button class="date-btn-secondary" id="dateCancel">Close</button>
+      <button class="date-btn-primary" id="rangeGo">Load range</button>
+    </div>
   </div>
 </div>
 
@@ -2783,61 +3568,133 @@ tbody tr:hover{background:var(--bg-2);}
     </div>
     <div class="modal-actions">
       <button class="mini-btn" id="deployStratCancel">Cancel</button>
-      <button class="submit-btn LONG" id="deployStratSubmit">🚀 Deploy &amp; Run</button>
+      <button class="submit-btn LONG" id="deployStratSubmit"><svg class="app-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Deploy &amp; Run</button>
     </div>
   </div>
-
-  <!-- Mobile Bottom Navigation Bar (Screens <= 880px) -->
-  <nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Mobile Navigation">
-    <button class="nav-item active" id="navItemChart" data-tab="chart">
-      <span class="nav-icon">&#128200;</span>
-      <span class="nav-label">Chart</span>
-    </button>
-    <button class="nav-item" id="navItemTrade" data-tab="trade">
-      <span class="nav-icon">&#8644;</span>
-      <span class="nav-label">Trade</span>
-    </button>
-    <button class="nav-item" id="navItemPositions" data-tab="positions">
-      <span class="nav-icon">&#128203;</span>
-      <span class="nav-label">Positions</span>
-    </button>
-    <button class="nav-item" id="navItemStrategies" data-tab="strategies">
-      <span class="nav-icon">&#402;x</span>
-      <span class="nav-label">Strategies</span>
-    </button>
-    <button class="nav-item" id="navItemMore" data-tab="more">
-      <span class="nav-icon">&#9776;</span>
-      <span class="nav-label">More</span>
-    </button>
-  </nav>
-
 </div>
+
+<!-- Mobile Bottom Navigation Bar (Screens <= 880px) -->
+<nav class="mobile-bottom-nav" id="mobileBottomNav" aria-label="Mobile Navigation">
+  <button class="nav-item active" id="navItemChart" data-tab="chart">
+    <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v4"/><rect width="4" height="6" x="7" y="9" rx="1"/><path d="M9 15v4"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v3"/></svg></span>
+    <span class="nav-label">Chart</span>
+  </button>
+  <button class="nav-item" id="navItemTrade" data-tab="trade">
+    <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg></span>
+    <span class="nav-label">Trade</span>
+  </button>
+  <button class="nav-item" id="navItemPositions" data-tab="positions">
+    <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg></span>
+    <span class="nav-label">Positions</span>
+  </button>
+  <button class="nav-item" id="navItemStrategies" data-tab="strategies">
+    <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17c2.2 0 3-1.2 3.5-3.5L9 6.5C9.4 4.5 10.5 4 12 4"/><path d="M5 11h6"/><path d="m14 17 6-8"/><path d="m20 17-6-8"/></svg></span>
+    <span class="nav-label">Strategies</span>
+  </button>
+  <button class="nav-item" id="navItemMore" data-tab="more">
+    <span class="nav-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="19" cy="12" r="1.2" fill="currentColor"/><circle cx="5" cy="12" r="1.2" fill="currentColor"/></svg></span>
+    <span class="nav-label">More</span>
+  </button>
+</nav>
 
 <!-- Mobile Side Menu Drawer (All Features - Screen 4) -->
 <div class="side-menu-backdrop" id="sideMenuBackdrop"></div>
 <aside class="mobile-side-menu" id="mobileSideMenu" aria-label="Main Menu Drawer">
   <div class="side-menu-head">
-    <div class="brand"><span class="mark">&#9670;</span> MORE EXCHANGE</div>
-    <button class="side-menu-close" id="sideMenuClose" title="Close Menu" aria-label="Close Menu">&times;</button>
+    <div class="brand"><span class="mark"><svg class="app-icon fill-curr" width="11" height="11" viewBox="0 0 24 24"><polygon points="12 2 22 12 12 22 2 12"/></svg></span> MORE EXCHANGE</div>
+    <button class="side-menu-close" id="sideMenuClose" title="Close Menu" aria-label="Close Menu"><svg class="app-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
   </div>
   <div class="side-menu-list">
-    <button class="sm-item" id="smChart"><span class="sm-icon">&#128200;</span> <span class="sm-title">Chart</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smTrade"><span class="sm-icon">&#8644;</span> <span class="sm-title">Trade</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smPositions"><span class="sm-icon">&#128203;</span> <span class="sm-title">Positions</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smOrders"><span class="sm-icon">&#128196;</span> <span class="sm-title">Orders</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smPaperTrading"><span class="sm-icon">&#128209;</span> <span class="sm-title">Paper Trading</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smStrategies"><span class="sm-icon">&#402;x</span> <span class="sm-title">Strategies</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smStrategyBuilder"><span class="sm-icon">&#128295;</span> <span class="sm-title">Strategy Builder</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smPineEditor"><span class="sm-icon">&#128187;</span> <span class="sm-title">Pine Script Editor</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smBacktest"><span class="sm-icon">&#9201;</span> <span class="sm-title">Backtest</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smReplay"><span class="sm-icon">&#128257;</span> <span class="sm-title">Replay</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smHistorical"><span class="sm-icon">&#128197;</span> <span class="sm-title">Historical Data</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smDownload"><span class="sm-icon">&#128229;</span> <span class="sm-title">Download Data</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smDrawingTools"><span class="sm-icon">&#9998;</span> <span class="sm-title">Drawing Tools</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smIndicators"><span class="sm-icon">&#128202;</span> <span class="sm-title">Indicators</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smAccount"><span class="sm-icon">&#128100;</span> <span class="sm-title">Account</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smSettings"><span class="sm-icon">&#9881;</span> <span class="sm-title">Settings</span> <span class="sm-arr">&rsaquo;</span></button>
-    <button class="sm-item" id="smHelp"><span class="sm-icon">&#10067;</span> <span class="sm-title">Help &amp; About</span> <span class="sm-arr">&rsaquo;</span></button>
+    <button class="sm-item" id="smChart">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5v4"/><rect width="4" height="6" x="7" y="9" rx="1"/><path d="M9 15v4"/><path d="M17 3v2"/><rect width="4" height="8" x="15" y="5" rx="1"/><path d="M17 13v3"/></svg></span>
+      <span class="sm-title">Chart</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smTrade">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg></span>
+      <span class="sm-title">Trade</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smPositions">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg></span>
+      <span class="sm-title">Positions</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smOrders">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg></span>
+      <span class="sm-title">Orders</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smPaperTrading">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg></span>
+      <span class="sm-title">Paper Trading</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smStrategies">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17c2.2 0 3-1.2 3.5-3.5L9 6.5C9.4 4.5 10.5 4 12 4"/><path d="M5 11h6"/><path d="m14 17 6-8"/><path d="m20 17-6-8"/></svg></span>
+      <span class="sm-title">Strategies</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smStrategyBuilder">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" x2="4" y1="21" y2="14"/><line x1="4" x2="4" y1="10" y2="3"/><line x1="12" x2="12" y1="21" y2="12"/><line x1="12" x2="12" y1="8" y2="3"/><line x1="20" x2="20" y1="21" y2="16"/><line x1="20" x2="20" y1="12" y2="3"/><line x1="1" x2="7" y1="14" y2="14"/><line x1="9" x2="15" y1="8" y2="8"/><line x1="17" x2="23" y1="16" y2="16"/></svg></span>
+      <span class="sm-title">Strategy Builder</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smPineEditor">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></svg></span>
+      <span class="sm-title">Pine Script Editor</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smBacktest">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+      <span class="sm-title">Backtest</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smReplay">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></span>
+      <span class="sm-title">Replay</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smHistorical">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg></span>
+      <span class="sm-title">Historical Data</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smDownload">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg></span>
+      <span class="sm-title">Download Data</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smDrawingTools">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19 7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></span>
+      <span class="sm-title">Drawing Tools</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smIndicators">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg></span>
+      <span class="sm-title">Indicators</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smAlerts">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></span>
+      <span class="sm-title">Price Alerts</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smAccount">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg></span>
+      <span class="sm-title">Account</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smSettings">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></span>
+      <span class="sm-title">Settings</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
+    <button class="sm-item" id="smHelp">
+      <span class="sm-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span>
+      <span class="sm-title">Help &amp; About</span>
+      <span class="sm-arr"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg></span>
+    </button>
   </div>
 </aside>
 
@@ -2853,7 +3710,7 @@ tbody tr:hover{background:var(--bg-2);}
         <button data-nav="optimizer">Optimizer</button>
         <button data-nav="robustness">Robustness</button>
       </div>
-      <button class="sb-x" id="sbClose" title="Close (Esc)">&#10005;</button>
+      <button class="sb-x" id="sbClose" title="Close (Esc)"><svg class="app-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
     </div>
 
     <div class="sb-mobile-subnav" id="sbMobileSubNav">
@@ -2878,12 +3735,12 @@ tbody tr:hover{background:var(--bg-2);}
         <div class="sb-tools">
           <span class="sb-cur" id="sbCurName">—</span>
           <button class="sb-btn primary" id="sbCompile" title="Compile &amp; Validate (Ctrl+Enter)">Compile</button>
-          <span class="sb-badge ok" id="sbCompileBadge">✓ Ready</span>
-          <button class="sb-btn" id="sbSave" title="Ctrl+S">Save</button>
+          <span class="sb-badge ok" id="sbCompileBadge"><svg class="app-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg> Ready</span>
+          <button class="sb-btn" id="sbSave" title="Ctrl+S"><svg class="app-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Save</button>
           <button class="sb-btn" id="sbSaveAs">Save As</button>
           <button class="sb-btn" id="sbReset">Reset</button>
-          <button class="sb-btn" id="sbUndo">Undo</button>
-          <button class="sb-btn" id="sbRedo">Redo</button>
+          <button class="sb-btn" id="sbUndo" title="Undo"><svg class="app-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/></svg> Undo</button>
+          <button class="sb-btn" id="sbRedo" title="Redo"><svg class="app-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px;"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/></svg> Redo</button>
           <span class="sb-dirty" id="sbDirty"></span>
         </div>
         <div class="sb-editor">
@@ -2899,7 +3756,7 @@ tbody tr:hover{background:var(--bg-2);}
             <span id="sbConsoleCount" class="faint">0 errors</span>
           </div>
           <div class="sb-console-body" id="sbConsoleBody">
-            <div class="sb-err-item ok">✓ Ready to compile</div>
+            <div class="sb-err-item ok"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg> Ready to compile</div>
           </div>
         </div>
         <div class="sb-foot" id="sbFoot"></div>
@@ -3065,8 +3922,8 @@ tbody tr:hover{background:var(--bg-2);}
           </div>
 
           <div class="bt-action-row">
-            <button class="sb-btn primary" id="runBacktestBtn" style="padding:7px 18px;font-size:12.5px;font-weight:800;">▶ RUN BACKTEST</button>
-            <button class="sb-btn" id="btDeployLiveBtn" style="background:#22ab94;color:#fff;border-color:#22ab94;font-weight:700;">⚡ Deploy Live Paper</button>
+            <button class="sb-btn primary" id="runBacktestBtn" style="padding:7px 18px;font-size:12.5px;font-weight:800;"><svg class="app-icon fill-curr" width="12" height="12" viewBox="0 0 24 24" style="margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg> RUN BACKTEST</button>
+            <button class="sb-btn" id="btDeployLiveBtn" style="background:var(--long);color:#ffffff;border-color:var(--long);font-weight:700;"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Deploy Live Paper</button>
             <button class="sb-btn" id="btOverlayToggle">Show Trades on Chart</button>
             <button class="sb-btn" id="btClearOverlay">Clear Overlay</button>
             <button class="sb-btn" id="btExportCsvBtn">Export Trades CSV</button>
@@ -3124,7 +3981,7 @@ tbody tr:hover{background:var(--bg-2);}
 
     <div class="sb-pane" id="sbAnalytics" style="display:none;padding:16px;">
       <div id="anEmptyState" class="an-empty-state">
-        <div class="an-empty-icon">&#128202;</div>
+        <div class="an-empty-icon"><svg class="app-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.4;"><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg></div>
         <h3>No Strategy Backtest Results Yet</h3>
         <p>Run a historical strategy in the <b>Strategy Tester</b> tab to generate institutional-grade performance analytics, win/loss distributions, risk-adjusted metrics, and underwater drawdown curves.</p>
         <button class="sb-btn primary" id="anGoTesterBtn" style="padding:8px 18px;font-size:12.5px;font-weight:800;">Go to Strategy Tester</button>
@@ -3180,7 +4037,7 @@ tbody tr:hover{background:var(--bg-2);}
           <!-- Benchmark Buy-and-Hold Comparison Banner -->
           <div class="an-bench-card" id="anBenchmarkBanner">
             <div class="an-bench-left">
-              <span class="an-bench-title">&#9670; Benchmark Comparison vs Asset Buy &amp; Hold</span>
+              <span class="an-bench-title"><svg class="app-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> Benchmark Comparison vs Asset Buy &amp; Hold</span>
               <span class="faint" id="anBenchSubtitle">Strategy performance vs holding BTC/ETH spot throughout identical test period</span>
             </div>
             <div class="an-bench-stats" id="anBenchStats">
@@ -3251,11 +4108,11 @@ tbody tr:hover{background:var(--bg-2);}
           </div>
           <div class="an-compare-grid">
             <div class="an-dist-card">
-              <h4 style="margin:0 0 10px;font-size:13px;color:var(--long);">&#9650; LONG POSITIONS</h4>
+              <h4 style="margin:0 0 10px;font-size:13px;color:var(--long);display:flex;align-items:center;gap:5px;"><svg class="app-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m18 15-6-6-6 6"/></svg> LONG POSITIONS</h4>
               <div id="anLongStatsGrid"></div>
             </div>
             <div class="an-dist-card">
-              <h4 style="margin:0 0 10px;font-size:13px;color:var(--short);">&#9660; SHORT POSITIONS</h4>
+              <h4 style="margin:0 0 10px;font-size:13px;color:var(--short);display:flex;align-items:center;gap:5px;"><svg class="app-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg> SHORT POSITIONS</h4>
               <div id="anShortStatsGrid"></div>
             </div>
           </div>
@@ -3408,8 +4265,8 @@ tbody tr:hover{background:var(--bg-2);}
               </div>
 
               <div style="display:flex;gap:8px;">
-                <button class="sb-btn primary" id="optRunBtn" style="flex:1;padding:9px;font-size:12.5px;font-weight:800;">&#9654; Run Optimization</button>
-                <button class="sb-btn danger" id="optCancelBtn" style="display:none;padding:9px 16px;font-size:12px;font-weight:700;">&#9632; Cancel</button>
+                <button class="sb-btn primary" id="optRunBtn" style="flex:1;padding:9px;font-size:12.5px;font-weight:800;"><svg class="app-icon fill-curr" width="12" height="12" viewBox="0 0 24 24" style="margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run Optimization</button>
+                <button class="sb-btn danger" id="optCancelBtn" style="display:none;padding:9px 16px;font-size:12px;font-weight:700;"><svg class="app-icon fill-curr" width="10" height="10" viewBox="0 0 24 24" style="margin-right:4px;"><rect width="18" height="18" x="3" y="3" rx="2"/></svg> Cancel</button>
               </div>
             </div>
           </div>
@@ -3490,7 +4347,7 @@ tbody tr:hover{background:var(--bg-2);}
             </div>
           </div>
           <div style="display:flex;gap:8px;">
-            <button class="sb-btn primary" id="robRunAllBtn" style="padding:6px 14px;font-weight:800;">&#9654; Run Robustness Audit</button>
+            <button class="sb-btn primary" id="robRunAllBtn" style="padding:6px 14px;font-weight:800;"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polygon points="5 3 19 12 5 21 5 3"/></svg> <span>Run Robustness Audit</span></button>
             <button class="sb-btn" id="robExportReportBtn">Export Audit Report</button>
           </div>
         </div>
@@ -3498,7 +4355,7 @@ tbody tr:hover{background:var(--bg-2);}
         <!-- Strategy Robustness Scorecard Banner -->
         <div class="rob-score-card" id="robScorecard">
           <div style="display:flex;align-items:center;gap:16px;">
-            <div class="rob-score-badge down" id="robScoreBadge" style="background:rgba(255,92,108,0.15);">—</div>
+            <div class="rob-score-badge down" id="robScoreBadge" style="background:rgba(242,54,69,0.15);">—</div>
             <div>
               <div style="font-size:15px;font-weight:800;" id="robScoreTitle">Audit Not Run Yet</div>
               <div class="faint" style="font-size:11.5px;max-width:540px;margin-top:2px;" id="robScoreSummary">
@@ -3546,18 +4403,18 @@ tbody tr:hover{background:var(--bg-2);}
           </div>
 
           <div class="rob-split-bar" id="robSplitBar">
-            <div class="rob-split-seg" id="robSplitIsSeg" style="width:70%;background:#5b8cff;" title="In-Sample Training">IN-SAMPLE (TRAINING: 70%)</div>
-            <div class="rob-split-seg" id="robSplitOosSeg" style="width:30%;background:#089981;" title="Out-of-Sample Test">OUT-OF-SAMPLE (TEST: 30%)</div>
+            <div class="rob-split-seg" id="robSplitIsSeg" style="width:70%;background:var(--blue);" title="In-Sample Training">IN-SAMPLE (TRAINING: 70%)</div>
+            <div class="rob-split-seg" id="robSplitOosSeg" style="width:30%;background:var(--long);" title="Out-of-Sample Test">OUT-OF-SAMPLE (TEST: 30%)</div>
           </div>
 
           <!-- IS vs OOS Comparative Matrix -->
           <div class="an-compare-grid" style="margin-top:14px;">
             <div class="an-dist-card">
-              <h4 style="margin:0 0 10px;font-size:13px;color:#5b8cff;">&#9632; IN-SAMPLE (TRAINING SET)</h4>
+              <h4 style="margin:0 0 10px;font-size:13px;color:var(--blue);"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--blue);vertical-align:middle;margin-right:6px;"></span>IN-SAMPLE (TRAINING SET)</h4>
               <div id="robIsMetricsGrid"></div>
             </div>
             <div class="an-dist-card">
-              <h4 style="margin:0 0 10px;font-size:13px;color:var(--long);">&#9632; OUT-OF-SAMPLE (UNSEEN TEST SET)</h4>
+              <h4 style="margin:0 0 10px;font-size:13px;color:var(--long);"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--long);vertical-align:middle;margin-right:6px;"></span>OUT-OF-SAMPLE (UNSEEN TEST SET)</h4>
               <div id="robOosMetricsGrid"></div>
             </div>
           </div>
@@ -3682,10 +4539,10 @@ tbody tr:hover{background:var(--bg-2);}
             <button class="mini-btn" id="dashResetFiltersBtn" style="padding:4px 8px;">Reset</button>
           </div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <button class="mini-btn" id="dashBackupAllBtn" title="Backup all strategies, accounts, and presets" style="background:#5b8cff;color:#fff;border-color:#5b8cff;font-weight:700;padding:4px 10px;">💾 Backup All</button>
-            <button class="mini-btn" id="dashRestoreAllBtn" title="Restore platform from JSON backup" style="padding:4px 10px;font-weight:700;">📂 Restore All</button>
+            <button class="mini-btn" id="dashBackupAllBtn" title="Backup all strategies, accounts, and presets" style="background:var(--blue);color:#ffffff;border-color:var(--blue);font-weight:700;padding:4px 10px;display:inline-flex;align-items:center;gap:5px;"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg> <span>Backup All</span></button>
+            <button class="mini-btn" id="dashRestoreAllBtn" title="Restore platform from JSON backup" style="padding:4px 10px;font-weight:700;display:inline-flex;align-items:center;gap:5px;"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg> <span>Restore All</span></button>
             <input type="file" id="dashRestoreFileInput" accept=".json" style="display:none;">
-            <button class="mini-btn" id="dashRefreshBtn" title="Refresh metrics" style="padding:4px 10px;">🔄 Refresh</button>
+            <button class="mini-btn" id="dashRefreshBtn" title="Refresh metrics" style="padding:4px 10px;display:inline-flex;align-items:center;gap:5px;"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/><path d="M16 16h5v5"/></svg> <span>Refresh</span></button>
           </div>
         </div>
 
@@ -3758,7 +4615,7 @@ tbody tr:hover{background:var(--bg-2);}
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:12px;font-size:11px;">
-              <span style="color:#22ab94;font-weight:700;">● Backtest Simulated</span>
+              <span style="color:var(--long);font-weight:700;">● Backtest Simulated</span>
               <span style="color:#e8a33d;font-weight:700;">● Live Paper Realized</span>
             </div>
           </div>
@@ -3860,6 +4717,139 @@ tbody tr:hover{background:var(--bg-2);}
     </div>
   </div>
 </div>
+
+<!-- TradingView-Style Chart Context Menu -->
+<div id="chartContextMenu" class="chart-ctx-menu" style="display:none;">
+  <div class="ctx-item" id="ctxAddAlert">
+    <span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5"/><path d="M5 3 2 6"/><path d="M22 6l-3-3"/><path d="M18 13h4M20 11v4"/></svg></span>
+    <span class="ctx-label" id="ctxAddAlertLabel">Add alert on BTCUSDT at 67,500.00</span>
+    <span class="ctx-shortcut">Alt + A</span>
+  </div>
+  <div id="ctxIndicatorAlerts" style="display:none;"></div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" id="ctxSellOrder">
+    <span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="6 9 12 15 18 9"/></svg></span>
+    <span class="ctx-label" id="ctxSellOrderLabel">Sell 0.100 BTCUSDT @ 67,500.00 limit</span>
+    <span class="ctx-shortcut">Alt + Shift + S</span>
+  </div>
+  <div class="ctx-item" id="ctxBuyOrder">
+    <span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="18 15 12 9 6 15"/></svg></span>
+    <span class="ctx-label" id="ctxBuyOrderLabel">Buy 0.100 BTCUSDT @ 67,500.00 stop</span>
+  </div>
+  <div class="ctx-item" id="ctxAddOrder">
+    <span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8"/><path d="M12 8v8"/></svg></span>
+    <span class="ctx-label" id="ctxAddOrderLabel">Add order on BTCUSDT at 67,500.00...</span>
+    <span class="ctx-shortcut">Shift + T</span>
+  </div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" id="ctxDrawHLine">
+    <span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="5" cy="12" r="2.5" fill="none"/><line x1="7.5" y1="12" x2="16.5" y2="12"/><circle cx="19" cy="12" r="2.5" fill="none"/></svg></span>
+    <span class="ctx-label" id="ctxDrawHLineLabel">Draw horizontal line at 67,500.00</span>
+    <span class="ctx-shortcut">Alt + H</span>
+  </div>
+</div>
+
+<!-- Alert Line Context Menu -->
+<div id="alertLineContextMenu" class="chart-ctx-menu" style="display:none; min-width:170px;">
+  <div class="ctx-item" id="alcPause">
+    <span class="ctx-icon">⏸️</span>
+    <span class="ctx-label" id="alcPauseLabel">Pause Alert</span>
+  </div>
+  <div class="ctx-item ctx-sell" id="alcDelete">
+    <span class="ctx-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg></span>
+    <span class="ctx-label">Delete Alert</span>
+  </div>
+</div>
+
+<!-- Price Alerts Modal Dialog -->
+<div class="alert-modal-overlay" id="alertModalOverlay" style="display:none;">
+  <div class="alert-modal" id="alertModal">
+    <div class="alert-modal-head">
+      <div class="alert-modal-title">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span id="alertModalTitleText">Create Price Alert</span>
+      </div>
+      <button class="alert-modal-close" id="alertModalClose" title="Close (Esc)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="alert-modal-tabs">
+      <button class="alert-modal-tab active" id="alertTabCreate">Create Alert</button>
+      <button class="alert-modal-tab" id="alertTabManage">Active Alerts (<span id="alertActiveCount">0</span>)</button>
+    </div>
+    <div class="alert-modal-body" id="alertBodyCreate">
+      <div class="alert-form-row">
+        <div class="alert-form-group">
+          <label>Symbol</label>
+          <input type="text" id="alertSymbolInput" readonly style="opacity:0.85;">
+        </div>
+        <div class="alert-form-group">
+          <label>Target</label>
+          <select id="alertTargetType">
+            <option value="price">Instrument Price</option>
+          </select>
+        </div>
+      </div>
+      <div class="alert-form-row">
+        <div class="alert-form-group">
+          <label>Condition</label>
+          <select id="alertConditionSelect">
+            <option value="crossing">Crossing</option>
+            <option value="crossing_up">Crossing Up</option>
+            <option value="crossing_down">Crossing Down</option>
+            <option value="greater_than">Greater Than (&gt;=)</option>
+            <option value="less_than">Less Than (&lt;=)</option>
+          </select>
+        </div>
+        <div class="alert-form-group">
+          <label>Price</label>
+          <input type="number" step="any" id="alertPriceInput">
+        </div>
+      </div>
+      <div class="alert-form-group">
+        <label>Trigger Frequency</label>
+        <select id="alertFrequencySelect">
+          <option value="once">Only Once (Deactivates when triggered)</option>
+          <option value="every_time">Every Time (Continuous trigger)</option>
+        </select>
+      </div>
+      <div class="alert-form-group">
+        <label>Alert Message / Name</label>
+        <input type="text" id="alertNameInput" maxlength="100" placeholder="e.g. BTC crossing resistance">
+      </div>
+      <div class="alert-form-group" style="gap:8px; margin-top:4px;">
+        <label>Notification Actions</label>
+        <label class="alert-checkbox-row">
+          <input type="checkbox" id="alertSoundCheck" checked>
+          <span>Play Bell Sound Chime (Web Audio Synthesizer)</span>
+        </label>
+        <label class="alert-checkbox-row">
+          <input type="checkbox" id="alertToastCheck" checked>
+          <span>Show In-App Banner Notification</span>
+        </label>
+        <label class="alert-checkbox-row">
+          <input type="checkbox" id="alertBrowserCheck">
+          <span>Send Browser Desktop Notification</span>
+        </label>
+      </div>
+    </div>
+    <div class="alert-modal-body" id="alertBodyManage" style="display:none;">
+      <div class="alerts-list" id="alertsListContainer">
+        <div class="empty-row" style="padding:24px;text-align:center;color:var(--text-faint);">No alerts configured yet</div>
+      </div>
+    </div>
+    <div class="alert-modal-foot" id="alertFootCreate">
+      <button class="sb-btn" id="alertBtnCancel">Cancel</button>
+      <button class="sb-btn primary" id="alertBtnSave" style="padding:6px 16px;font-weight:700;">Create Alert</button>
+    </div>
+    <div class="alert-modal-foot" id="alertFootManage" style="display:none;">
+      <button class="sb-btn danger" id="alertBtnClearTriggered" style="font-size:11px;">Clear Inactive</button>
+      <button class="sb-btn primary" id="alertBtnNewAlert" style="font-size:11px;">+ New Alert</button>
+    </div>
+  </div>
+</div>
+
+<!-- Alert Toast Notification Container -->
+<div id="alertToastContainer"></div>
+
 
 <script>
 (function(){
@@ -4024,12 +5014,13 @@ let market = {
 };
 
 /* ================= CHART SETUP ================= */
+const TV_CHART_FONT = "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif";
 const chartEl = document.getElementById("price-chart");
 const chart = LightweightCharts.createChart(chartEl, {
   layout:{
     background:{color:"#131722"},
-    textColor:"#9598a1",
-    fontFamily:"-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif",
+    textColor:"#787b86",
+    fontFamily:TV_CHART_FONT,
     fontSize:11
   },
   grid:{
@@ -4038,12 +5029,12 @@ const chart = LightweightCharts.createChart(chartEl, {
   },
   rightPriceScale:{
     borderColor:"#2a2e39",
-    textColor:"#d1d4dc",
+    textColor:"#787b86",
     scaleMargins:{ top:0.08, bottom:0.18 }
   },
   timeScale:{
     borderColor:"#2a2e39",
-    textColor:"#d1d4dc",
+    textColor:"#787b86",
     timeVisible:true,
     secondsVisible:false,
     rightOffset:5,
@@ -4108,11 +5099,12 @@ function clearOrderLines(){
 try {
   chart.timeScale().subscribeVisibleLogicalRangeChange(()=>{
     if(typeof renderPositionOverlay === "function") renderPositionOverlay();
+    if(typeof updateAlertMarkerPositions === "function") updateAlertMarkerPositions();
   });
 } catch(e){}
 
 const eqChart = LightweightCharts.createChart(document.getElementById("equity-chart"), {
-  layout:{ background:{color:"transparent"}, textColor:"#9598a1", fontFamily:"IBM Plex Mono, monospace", fontSize:11 },
+  layout:{ background:{color:"transparent"}, textColor:"#787b86", fontFamily:TV_CHART_FONT, fontSize:11 },
   grid:{ vertLines:{color:"#1e222d"}, horzLines:{color:"#1e222d"} },
   rightPriceScale:{ borderColor:"#2a2e39" },
   timeScale:{ borderColor:"#2a2e39", timeVisible:true }
@@ -4456,6 +5448,8 @@ document.getElementById("goDateBtn").addEventListener("click", ()=>{
   dateOverlay.style.display = "flex";
 });
 document.getElementById("dateCancel").addEventListener("click", ()=> dateOverlay.style.display="none");
+const dateCloseBtn = document.getElementById("dateCloseBtn");
+if(dateCloseBtn) dateCloseBtn.addEventListener("click", ()=> dateOverlay.style.display="none");
 dateOverlay.addEventListener("click", (e)=>{ if(e.target===dateOverlay) dateOverlay.style.display="none"; });
 
 document.getElementById("gotoGo").addEventListener("click", async ()=>{
@@ -4580,6 +5574,9 @@ function handleBookTicker(d){
   market[symbol].last = (bid+ask)/2;
   lastTickerTs = Date.now();
   checkSlTp(symbol);
+  if(typeof evaluateAlerts === "function"){
+    evaluateAlerts(symbol, market[symbol].last);
+  }
   if(typeof MXLiveStrategyEngine !== "undefined"){
     MXLiveStrategyEngine.onTick(symbol, market[symbol].last);
   }
@@ -4615,6 +5612,9 @@ function handleKline(d){
   volumeSeries.update({ time:bar.time, value: parseFloat(k.v)||0, color: bar.close>=bar.open ? "rgba(8,153,129,.45)" : "rgba(242,54,69,.45)" });
   liveBar = bar;
   syncLast(bar, parseFloat(k.v)||0);
+  if(typeof evaluateAlerts === "function"){
+    evaluateAlerts(d.s, bar.close, bar.high, bar.low);
+  }
   lastKlineTs = Date.now();
 }
 
@@ -4647,6 +5647,15 @@ function fmtPct(v){
   if(v==null || isNaN(v)) return "—";
   return (v>=0?"+":"") + v.toFixed(2) + "%";
 }
+function pnlClass(v){
+  if(v == null) return "neutral";
+  let n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.-]/g, ""));
+  if(isNaN(n)) return "neutral";
+  if(n > 0.004) return "up";
+  if(n < -0.004) return "down";
+  return "neutral";
+}
+window.pnlClass = pnlClass;
 function roundToStep(value, step){
   if(!step) return value;
   return Math.round(value/step) * step;
@@ -4989,13 +5998,13 @@ function getOrCreateStripDOM(strip){
   if(!revBtn){
     strip.className = "chart-position-strip tv-position-pill";
     strip.innerHTML = `
-      <button class="tv-pill-rev" data-act="reverse" title="Reverse Position (close current & open opposite)">&#8644;</button>
+      <button class="tv-pill-rev" data-act="reverse" title="Reverse Position (close current & open opposite)"><svg class="app-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/></svg></button>
       <button class="tv-pill-btn tp" data-act="tp">TP</button>
       <button class="tv-pill-btn sl" data-act="sl">SL</button>
       <span class="tv-pill-size"></span>
       <div class="tv-pill-pnl-wrap">
         <span class="tv-pill-pnl"></span>
-        <button class="tv-pill-close" data-act="close" title="Market Close Position">&times;</button>
+        <button class="tv-pill-close" data-act="close" title="Market Close Position"><svg class="app-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       </div>
     `;
     revBtn = strip.querySelector(".tv-pill-rev");
@@ -5025,8 +6034,8 @@ function getOrCreateHandleDOM(handleEl, type){
         <span class="tv-pill-tag ${tagClass}">${tagText}</span>
         <span class="tv-pill-price"></span>
         <span class="tv-pill-pnl-sub"></span>
-        <span class="tv-drag-grip" title="Drag to adjust ${titleText}">&#10565;</span>
-        <button class="tv-pill-close" data-act="${actName}" title="Remove ${titleText}">&times;</button>
+        <span class="tv-drag-grip" title="Drag to adjust ${titleText}"><svg class="app-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1"/><circle cx="9" cy="5" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="19" r="1"/></svg></span>
+        <button class="tv-pill-close" data-act="${actName}" title="Remove ${titleText}"><svg class="app-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
       </div>
     `;
     handle = handleEl.querySelector(".tv-pill-handle");
@@ -5064,7 +6073,7 @@ function renderPositionOverlay(){
     dom.slBtn.title = pos.sl != null ? ("Stop Loss: " + fmtPrice(ui.symbol, pos.sl) + " (drag red line or click to edit)") : "Add Stop Loss";
     dom.sizeSpan.className = "tv-pill-size " + sideLower;
     dom.sizeSpan.textContent = sign + pos.qty;
-    dom.pnlSpan.className = "tv-pill-pnl " + (pnl >= 0 ? "up" : "down");
+    dom.pnlSpan.className = "tv-pill-pnl " + pnlClass(pnl);
     dom.pnlSpan.textContent = (pnl >= 0 ? "+" : "") + fmtUsd(pnl);
 
     const y = candleSeries.priceToCoordinate(pos.entry);
@@ -5123,7 +6132,7 @@ function updateChartPnlBadge(){
   const pnl = unrealizedPnl(ui.symbol);
   const pct = pos.margin>0 ? (pnl/pos.margin*100) : 0;
   valEl.textContent = `${fmtUsd(pnl)} (${fmtPct(pct)}) · ${pos.side} ${pos.leverage}x`;
-  valEl.className = pnl>=0 ? "up" : "down";
+  valEl.className = pnlClass(pnl);
   badge.style.display = "block";
 }
 
@@ -5536,16 +6545,26 @@ function updatePriceStrip(){
 }
 
 function updateAccountPanel(){
-  document.getElementById("acctEquity").textContent = fmtUsd(equity());
-  document.getElementById("acctBalance").textContent = fmtUsd(account.balance);
-  const upnl = totalUnrealizedPnl();
+  const eq = document.getElementById("acctEquity");
+  if(eq) eq.textContent = fmtUsd(equity());
+  const bal = document.getElementById("acctBalance");
+  if(bal) bal.textContent = fmtUsd(account.balance);
   const upnlEl = document.getElementById("acctUpnl");
-  upnlEl.textContent = fmtUsd(upnl); upnlEl.className = "v mono " + (upnl>=0?"up":"down");
+  if(upnlEl){
+    const upnl = totalUnrealizedPnl();
+    upnlEl.textContent = fmtUsd(upnl);
+    upnlEl.className = "v mono " + pnlClass(upnl);
+  }
   const rpnlEl = document.getElementById("acctRpnl");
-  const rpnl = account.trades.reduce((s,t)=>s+t.netPnl,0);
-  rpnlEl.textContent = fmtUsd(rpnl); rpnlEl.className = "v mono " + (rpnl>=0?"up":"down");
-  document.getElementById("acctMargin").textContent = fmtUsd(marginUsed());
-  document.getElementById("acctAvail").textContent = fmtUsd(availableMargin());
+  if(rpnlEl){
+    const rpnl = account.trades.reduce((s,t)=>s+t.netPnl,0);
+    rpnlEl.textContent = fmtUsd(rpnl);
+    rpnlEl.className = "v mono " + pnlClass(rpnl);
+  }
+  const mar = document.getElementById("acctMargin");
+  if(mar) mar.textContent = fmtUsd(marginUsed());
+  const av = document.getElementById("acctAvail");
+  if(av) av.textContent = fmtUsd(availableMargin());
 }
 
 let posSig = "";
@@ -5596,8 +6615,8 @@ function updatePositionsTable(){
     const last = market[symbol].last || pos.entry;
     const pnl = unrealizedPnl(symbol);
     const pct = pos.margin>0 ? (pnl/pos.margin*100) : 0;
-    const cls = pnl>=0 ? "up" : "down";
-    const set = (f,txt,c)=>{ const el = tr.querySelector('[data-f="'+f+'"]'); if(!el) return; if(el.textContent!==txt) el.textContent = txt; if(c && el.className!==c) el.className = c; };
+    const cls = pnlClass(pnl);
+    const set = (f,txt,c)=>{ const el = tr.querySelector('[data-f="'+f+'"]'); if(!el) return; if(el.textContent!==txt) el.textContent = txt; el.className = c || "neutral"; };
     set("last", fmtPrice(symbol,last));
     set("pnl", fmtUsd(pnl), cls);
     set("pct", fmtPct(pct), cls);
@@ -5644,7 +6663,7 @@ function updateHistoryTable(){
       <td>${fmtPrice(t.symbol,t.exit)}</td>
       <td>${t.leverage}x</td>
       <td class="faint">${fmtUsd(t.fees)}</td>
-      <td class="${t.netPnl>=0?'up':'down'}">${fmtUsd(t.netPnl)}</td>
+      <td class="${pnlClass(t.netPnl)}">${fmtUsd(t.netPnl)}</td>
       <td class="faint" style="text-align:left;font-family:var(--sans);">${t.reason}</td>
     </tr>`;
   });
@@ -5772,6 +6791,12 @@ document.getElementById("symbolTabs").addEventListener("click", async (e)=>{
   if(typeof refreshOrderPreview === "function"){
     refreshOrderPreview();
   }
+  if(typeof renderAlertPriceLines === "function"){
+    renderAlertPriceLines();
+  }
+  if(typeof closeChartContextMenu === "function"){
+    closeChartContextMenu();
+  }
 });
 
 document.getElementById("tfTabs").addEventListener("click", async (e)=>{
@@ -5823,15 +6848,18 @@ document.getElementById("positionsBody").addEventListener("click",(e)=>{
   else if(act==="settp") editLevel(symbol,"tp");
 });
 
-document.getElementById("resetAcctBtn").addEventListener("click", ()=>{
-  if(!confirm("Reset this paper account to its starting balance? This clears positions, trades, and equity history.")) return;
-  const keepId = account.id, keepName = account.name, keepCur = account.currencySymbol, keepStart = account.startingBalance;
-  account = freshAccount(keepName, keepStart, keepCur);
-  account.id = keepId;
-  saveState();
-  clearOrderLines();
-  updateAll();
-});
+const resetAcctBtn = document.getElementById("resetAcctBtn");
+if(resetAcctBtn){
+  resetAcctBtn.addEventListener("click", ()=>{
+    if(!confirm("Reset this paper account to its starting balance? This clears positions, trades, and equity history.")) return;
+    const keepId = account.id, keepName = account.name, keepCur = account.currencySymbol, keepStart = account.startingBalance;
+    account = freshAccount(keepName, keepStart, keepCur);
+    account.id = keepId;
+    saveState();
+    clearOrderLines();
+    updateAll();
+  });
+}
 
 document.getElementById("exportCsvBtn").addEventListener("click", ()=>{
   const header = ["closedAt","symbol","side","qty","entry","exit","leverage","fees","netPnl","reason"];
@@ -5958,7 +6986,7 @@ function saveHL(){ try{ localStorage.setItem(HL_KEY, JSON.stringify(hlStore)); }
 function renderHLines(){
   hlObjs.forEach(l=>candleSeries.removePriceLine(l)); hlObjs = [];
   (hlStore[ui.symbol]||[]).forEach(p=>{
-    hlObjs.push(candleSeries.createPriceLine({ price:p, color:"#5b8cff", lineWidth:1, lineStyle:0, axisLabelVisible:true, title:"" }));
+    hlObjs.push(candleSeries.createPriceLine({ price:p, color:"#2962ff", lineWidth:1, lineStyle:0, axisLabelVisible:true, title:"" }));
   });
 }
 
@@ -6068,6 +7096,1240 @@ function tickClock(){
 }
 tickClock(); setInterval(tickClock, 1000);
 
+/* ================= TRADINGVIEW-STYLE CHART CONTEXT MENU & PRICE ALERTS ================= */
+
+// Price formatting with commas
+function fmtPriceWithCommas(p, sym){
+  if(p == null || isNaN(p)) return "—";
+  const symbol = sym || ui.symbol;
+  const meta = symbolMeta[symbol];
+  const prec = meta ? meta.pricePrecision : (p > 100 ? 2 : 4);
+  const fixed = Number(p).toFixed(prec);
+  const parts = fixed.split(".");
+  parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return parts.join(".");
+}
+
+// Add Horizontal Line immediately at price
+function addHorizontalLineAt(price){
+  const symbol = ui.symbol;
+  const rounded = roundPrice(symbol, price);
+  (hlStore[symbol] = hlStore[symbol] || []).push(rounded);
+  saveHL();
+  renderHLines();
+  showNotice(`Horizontal line added at ${fmtPrice(symbol, rounded)}`, false);
+}
+
+// Web Audio API offline sound chime
+let audioCtx = null;
+function playAlertChime(){
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if(!AudioContextClass) return;
+    if(!audioCtx || audioCtx.state === "closed"){
+      audioCtx = new AudioContextClass();
+    }
+    if(audioCtx.state === "suspended"){
+      audioCtx.resume();
+    }
+    const now = audioCtx.currentTime;
+    
+    // Tone 1: D5 (587.33Hz) -> A5 (880Hz)
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(587.33, now);
+    osc1.frequency.exponentialRampToValueAtTime(880.00, now + 0.12);
+    gain1.gain.setValueAtTime(0.28, now);
+    gain1.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.8);
+    
+    // Tone 2: D6 (1174.66Hz)
+    const osc2 = audioCtx.createOscillator();
+    const gain2 = audioCtx.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(1174.66, now + 0.14);
+    gain2.gain.setValueAtTime(0.2, now + 0.14);
+    gain2.gain.exponentialRampToValueAtTime(0.0001, now + 1.0);
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    osc2.start(now + 0.14);
+    osc2.stop(now + 1.0);
+  } catch(e){
+    console.warn("Audio chime error:", e);
+  }
+}
+
+// In-app alert toast notification
+function showAlertToast(title, desc){
+  const container = document.getElementById("alertToastContainer");
+  if(!container) return;
+  const toast = document.createElement("div");
+  toast.className = "alert-toast";
+  toast.innerHTML = `
+    <div style="color:#f59e0b;font-size:16px;line-height:1;margin-top:1px;">🔔</div>
+    <div class="alert-toast-body">
+      <div class="alert-toast-title">${escapeHtml(title)}</div>
+      <div class="alert-toast-desc">${escapeHtml(desc)}</div>
+    </div>
+    <button class="alert-toast-close" title="Dismiss" aria-label="Dismiss">&times;</button>
+  `;
+  const closeBtn = toast.querySelector(".alert-toast-close");
+  if(closeBtn) closeBtn.addEventListener("click", () => toast.remove());
+  container.appendChild(toast);
+  setTimeout(()=>{
+    if(toast.parentElement) toast.remove();
+  }, 6000);
+}
+
+// Alerts Storage & State
+const ALERTS_KEY = "paperExchange.alerts.v1";
+let alertsStore = [];
+try {
+  alertsStore = JSON.parse(localStorage.getItem(ALERTS_KEY) || "[]") || [];
+} catch(e){ alertsStore = []; }
+
+let alertPriceLines = [];
+let alertLineMap = new Map();
+let activeAlertDrag = null;
+
+function saveAlerts(){
+  try {
+    localStorage.setItem(ALERTS_KEY, JSON.stringify(alertsStore));
+  } catch(e){}
+  updateAlertsUI();
+  renderAlertPriceLines();
+}
+
+function renderAlertPriceLines(){
+  alertPriceLines.forEach(l => {
+    try { candleSeries.removePriceLine(l); } catch(e){}
+  });
+  alertPriceLines = [];
+  alertLineMap.clear();
+  
+  if(typeof candleSeries === "undefined" || !candleSeries) return;
+  const currentSymbol = ui.symbol;
+  const activeAlerts = alertsStore.filter(a => a.active && a.symbol === currentSymbol);
+  
+  activeAlerts.forEach(a => {
+    try {
+      const line = candleSeries.createPriceLine({
+        price: a.price,
+        color: "#d1d4dc", // Clean light-grey dashed line matching TradingView (Image 3)
+        lineWidth: 1,
+        lineStyle: 2, // Dashed
+        axisLabelVisible: true,
+        title: ""
+      });
+      alertPriceLines.push(line);
+      alertLineMap.set(a.id, { alert: a, priceLine: line });
+    } catch(e){}
+  });
+  window.alertPriceLines = alertPriceLines;
+  window.alertLineMap = alertLineMap;
+  updateAlertMarkerPositions();
+}
+
+// Update right-edge arrow markers (▶) for active alert lines
+function updateAlertMarkerPositions(){
+  const container = document.getElementById("chartAlertMarkersContainer");
+  if(!container || typeof candleSeries === "undefined" || !candleSeries || !chartEl) return;
+  const pScaleWidth = getPriceScaleWidth();
+  const currentSymbol = ui.symbol;
+  const activeAlerts = alertsStore.filter(a => a.active && a.symbol === currentSymbol);
+  
+  container.innerHTML = "";
+  activeAlerts.forEach(a => {
+    try {
+      const lineY = candleSeries.priceToCoordinate(a.price);
+      if(lineY != null && lineY >= 0 && lineY <= chartEl.clientHeight){
+        const marker = document.createElement("div");
+        marker.className = "chart-alert-marker";
+        marker.dataset.alertId = a.id;
+        marker.style.top = Math.round(lineY) + "px";
+        marker.style.right = pScaleWidth + "px";
+        marker.title = `Alert: ${fmtPriceWithCommas(a.price, currentSymbol)} (Drag to adjust, right-click for menu)`;
+        marker.innerHTML = `<svg width="8" height="10" viewBox="0 0 8 10" fill="#d1d4dc"><polygon points="0,0 8,5 0,10"/></svg>`;
+        
+        marker.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          startAlertLineDrag(a, e.pointerId, lineY);
+        });
+        marker.addEventListener("mousedown", (e) => {
+          if(e.button !== 0) return;
+          e.preventDefault();
+          e.stopPropagation();
+          startAlertLineDrag(a, 1, lineY);
+        });
+        marker.addEventListener("contextmenu", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          openAlertLineMenu(e.clientX, e.clientY, a);
+        });
+        
+        container.appendChild(marker);
+      }
+    } catch(e){}
+  });
+}
+
+// Hit-testing active alert lines
+function findActiveAlertNearY(y, maxDist = 8){
+  if(typeof candleSeries === "undefined" || !candleSeries) return null;
+  const currentSymbol = ui.symbol;
+  const activeAlerts = alertsStore.filter(a => a.active && a.symbol === currentSymbol);
+  let closest = null;
+  let minDist = maxDist;
+  
+  activeAlerts.forEach(a => {
+    try {
+      const lineY = candleSeries.priceToCoordinate(a.price);
+      if(lineY != null){
+        const dist = Math.abs(lineY - y);
+        if(dist <= minDist){
+          minDist = dist;
+          closest = { alert: a, lineY, dist, lineEntry: alertLineMap.get(a.id) };
+        }
+      }
+    } catch(e){}
+  });
+  return closest;
+}
+
+// Dragging active alert line
+function startAlertLineDrag(alert, pointerId, startY){
+  let prevOptions = { handleScroll: true, handleScale: true };
+  if(chart && chart.options){
+    try {
+      const opts = chart.options();
+      if(opts){
+        prevOptions.handleScroll = opts.handleScroll !== false;
+        prevOptions.handleScale = opts.handleScale !== false;
+      }
+    } catch(e){}
+  }
+  
+  const lineEntry = alertLineMap.get(alert.id);
+  activeAlertDrag = {
+    alert: alert,
+    origPrice: alert.price,
+    currentPrice: alert.price,
+    pointerId: pointerId,
+    prevOptions: prevOptions,
+    priceLine: lineEntry ? lineEntry.priceLine : null
+  };
+  
+  if(chart && chart.applyOptions){
+    chart.applyOptions({ handleScroll: false, handleScale: false });
+  }
+  if(pointerId != null && chartEl && chartEl.setPointerCapture){
+    try { chartEl.setPointerCapture(pointerId); } catch(e){}
+  }
+  document.body.style.cursor = "ns-resize";
+  if(chartEl) chartEl.style.cursor = "ns-resize";
+  
+  const handle = document.getElementById("chartAlertDragHandle");
+  if(handle){
+    handle.style.top = Math.round(startY) + "px";
+    const pText = document.getElementById("alertDragPriceText");
+    if(pText) pText.textContent = fmtPriceWithCommas(alert.price, ui.symbol);
+    handle.style.display = "flex";
+  }
+  hideChartPlusMarker();
+}
+
+function endAlertLineDrag(commit = true){
+  if(!activeAlertDrag) return;
+  const drag = activeAlertDrag;
+  activeAlertDrag = null;
+  
+  document.body.style.cursor = "";
+  if(chartEl) chartEl.style.cursor = "";
+  
+  if(drag.pointerId != null && chartEl && chartEl.releasePointerCapture){
+    try { chartEl.releasePointerCapture(drag.pointerId); } catch(e){}
+  }
+  
+  const handle = document.getElementById("chartAlertDragHandle");
+  if(handle) handle.style.display = "none";
+  
+  if(chart && chart.applyOptions){
+    chart.applyOptions(drag.prevOptions || { handleScroll: true, handleScale: true });
+  }
+  
+  if(commit && drag.currentPrice && drag.currentPrice !== drag.origPrice){
+    const newPriceFmt = fmtPriceWithCommas(drag.currentPrice, drag.alert.symbol);
+    drag.alert.price = drag.currentPrice;
+    const labelPrefix = drag.alert.indicatorName || drag.alert.symbol;
+    drag.alert.name = `${labelPrefix} @ ${newPriceFmt}`;
+    saveAlerts();
+    showAlertToast("Alert Updated", `Alert updated to ${newPriceFmt}`);
+  } else if(!commit || !drag.currentPrice){
+    if(drag.priceLine){
+      drag.priceLine.applyOptions({
+        price: drag.origPrice
+      });
+    }
+  }
+  updateAlertMarkerPositions();
+}
+
+// Drag move handler for pointer/mouse events
+function handleAlertDragMove(clientY){
+  if(activeAlertDrag){
+    const rect = chartEl.getBoundingClientRect();
+    const y = Math.max(8, Math.min(chartEl.clientHeight - 8, clientY - rect.top));
+    const raw = candleSeries.coordinateToPrice(y);
+    if(raw != null && !isNaN(raw)){
+      const rounded = roundPrice(ui.symbol, raw);
+      activeAlertDrag.currentPrice = rounded;
+      
+      if(activeAlertDrag.priceLine){
+        activeAlertDrag.priceLine.applyOptions({
+          price: rounded
+        });
+      }
+      
+      const markerEl = document.querySelector(`.chart-alert-marker[data-alert-id="${activeAlertDrag.alert.id}"]`);
+      if(markerEl){
+        markerEl.style.top = Math.round(y) + "px";
+      }
+      
+      const handle = document.getElementById("chartAlertDragHandle");
+      if(handle){
+        handle.style.top = Math.round(y) + "px";
+        const pText = document.getElementById("alertDragPriceText");
+        if(pText) pText.textContent = fmtPriceWithCommas(rounded, ui.symbol);
+      }
+    }
+  }
+}
+
+// Window pointer listeners for line drag
+window.addEventListener("pointermove", (e) => handleAlertDragMove(e.clientY));
+window.addEventListener("mousemove", (e) => { if(activeAlertDrag && (e.buttons & 1)) handleAlertDragMove(e.clientY); });
+window.addEventListener("pointerup", (e) => {
+  if(activeAlertDrag){
+    endAlertLineDrag(true);
+  }
+});
+window.addEventListener("mouseup", (e) => {
+  if(activeAlertDrag){
+    endAlertLineDrag(true);
+  }
+});
+window.addEventListener("pointercancel", (e) => {
+  if(activeAlertDrag){
+    endAlertLineDrag(false);
+  }
+});
+
+// Real-time tick evaluation
+let lastAlertEvaluatedPrice = {};
+
+function evaluateAlerts(symbol, currentPrice, high, low){
+  if(!currentPrice || isNaN(currentPrice) || currentPrice <= 0) return;
+  const prev = lastAlertEvaluatedPrice[symbol] || currentPrice;
+  lastAlertEvaluatedPrice[symbol] = currentPrice;
+  
+  let changed = false;
+  
+  alertsStore.forEach(alert => {
+    if(!alert.active || alert.symbol !== symbol) return;
+    
+    let hit = false;
+    const targetPrice = alert.price;
+    const cond = alert.condition;
+    
+    if(cond === "crossing"){
+      hit = (prev < targetPrice && currentPrice >= targetPrice) || (prev > targetPrice && currentPrice <= targetPrice);
+    } else if(cond === "crossing_up"){
+      hit = (prev < targetPrice && currentPrice >= targetPrice);
+    } else if(cond === "crossing_down"){
+      hit = (prev > targetPrice && currentPrice <= targetPrice);
+    } else if(cond === "greater_than"){
+      hit = (currentPrice >= targetPrice);
+    } else if(cond === "less_than"){
+      hit = (currentPrice <= targetPrice);
+    } else if(cond === "indicator"){
+      hit = (prev < targetPrice && currentPrice >= targetPrice) || (prev > targetPrice && currentPrice <= targetPrice);
+    }
+    
+    if(hit){
+      triggerAlert(alert, currentPrice);
+      alert.lastTriggeredAt = Date.now();
+      alert.triggeredCount = (alert.triggeredCount || 0) + 1;
+      if(alert.frequency === "once"){
+        alert.active = false;
+        alert.triggered = true;
+      }
+      changed = true;
+    }
+  });
+  
+  if(changed){
+    saveAlerts();
+  }
+}
+
+function triggerAlert(alert, currentPrice){
+  const title = `Price Alert: ${alert.symbol}`;
+  const condText = {
+    crossing: "crossing",
+    crossing_up: "crossing up",
+    crossing_down: "crossing down",
+    greater_than: "greater than",
+    less_than: "less than",
+    indicator: "indicator signal"
+  }[alert.condition] || "triggered";
+  
+  const desc = `${alert.name || alert.symbol} ${condText} at ${fmtPriceWithCommas(currentPrice, alert.symbol)}`;
+  
+  if(alert.sound !== false){
+    playAlertChime();
+  }
+  if(alert.toast !== false){
+    showAlertToast(title, desc);
+  }
+  if(alert.browserNotif && typeof Notification !== "undefined" && Notification.permission === "granted"){
+    try {
+      new Notification(title, { body: desc });
+    } catch(e){}
+  }
+}
+
+// Immediate Alert Creation
+let lastAlertCreationTime = 0;
+function createPriceAlertImmediate(symbol, price){
+  if(!price || isNaN(price) || price <= 0){
+    showAlertToast("Error", "Invalid price for alert");
+    return null;
+  }
+  const now = Date.now();
+  if(now - lastAlertCreationTime < 600){
+    return null;
+  }
+  lastAlertCreationTime = now;
+  
+  const roundedPrice = roundPrice(symbol, price);
+  const exists = alertsStore.some(a => a.active && a.symbol === symbol && Math.abs(a.price - roundedPrice) < 0.00001);
+  if(exists){
+    showAlertToast("Notice", `Active alert already exists at ${fmtPriceWithCommas(roundedPrice, symbol)}`);
+    return null;
+  }
+  
+  const newAlert = {
+    id: "alert_" + now + "_" + Math.floor(Math.random()*1000),
+    symbol: symbol,
+    targetType: "price",
+    indicatorName: "",
+    stratId: null,
+    price: roundedPrice,
+    condition: "crossing",
+    frequency: "once",
+    name: `${symbol} @ ${fmtPriceWithCommas(roundedPrice, symbol)}`,
+    sound: true,
+    toast: true,
+    browserNotif: false,
+    active: true,
+    triggered: false,
+    createdAt: now,
+    lastTriggeredAt: null,
+    triggeredCount: 0
+  };
+  
+  alertsStore.push(newAlert);
+  saveAlerts();
+  showAlertToast("Alert Created", `Alert set on ${symbol} at ${fmtPriceWithCommas(roundedPrice, symbol)} (crossing)`);
+  return newAlert;
+}
+
+function createIndicatorAlertImmediate(symbol, strat, price){
+  if(!price || isNaN(price) || price <= 0) return null;
+  const now = Date.now();
+  const roundedPrice = roundPrice(symbol, price);
+  const newAlert = {
+    id: "alert_" + now + "_" + Math.floor(Math.random()*1000),
+    symbol: symbol,
+    targetType: "indicator",
+    indicatorName: strat.name,
+    stratId: strat.id,
+    price: roundedPrice,
+    condition: "indicator",
+    frequency: "once",
+    name: `${strat.name} @ ${fmtPriceWithCommas(roundedPrice, symbol)}`,
+    sound: true,
+    toast: true,
+    browserNotif: false,
+    active: true,
+    triggered: false,
+    createdAt: now,
+    lastTriggeredAt: null,
+    triggeredCount: 0
+  };
+  alertsStore.push(newAlert);
+  saveAlerts();
+  showAlertToast("Alert Created", `Alert set on ${strat.name} at ${fmtPriceWithCommas(roundedPrice, symbol)}`);
+  return newAlert;
+}
+
+// Alerts Management UI (Compact Modal)
+function updateAlertsUI(){
+  const activeCount = alertsStore.filter(a => a.active).length;
+  
+  const headerBadge = document.getElementById("alertsHeaderBadge");
+  if(headerBadge){
+    headerBadge.textContent = activeCount;
+    headerBadge.dataset.count = activeCount;
+    headerBadge.style.display = activeCount > 0 ? "inline-flex" : "none";
+  }
+  
+  const countSpan = document.getElementById("alertActiveCount");
+  if(countSpan) countSpan.textContent = activeCount;
+  
+  const listEl = document.getElementById("alertsListContainer");
+  if(!listEl) return;
+  
+  if(alertsStore.length === 0){
+    listEl.innerHTML = `<div class="empty-row" style="padding:24px;text-align:center;color:var(--text-faint);">No alerts set yet. Hover on chart and click '+' to set an alert instantly.</div>`;
+    return;
+  }
+  
+  listEl.innerHTML = "";
+  alertsStore.slice().reverse().forEach(alert => {
+    const item = document.createElement("div");
+    item.className = "alert-list-item" + (alert.triggered ? " triggered" : "");
+    const condName = {
+      crossing: "Crossing",
+      crossing_up: "Crossing Up",
+      crossing_down: "Crossing Down",
+      greater_than: ">=",
+      less_than: "<=",
+      indicator: "Indicator"
+    }[alert.condition] || alert.condition;
+    
+    const statusBadge = alert.active 
+      ? `<span style="color:var(--long);font-size:10px;font-weight:700;">● ACTIVE</span>`
+      : (alert.triggered ? `<span style="color:var(--amber);font-size:10px;font-weight:700;">● TRIGGERED</span>` : `<span style="color:var(--text-faint);font-size:10px;">● PAUSED</span>`);
+    
+    item.innerHTML = `
+      <div class="alert-list-info">
+        <div class="alert-list-title">
+          <span>${escapeHtml(alert.symbol)}</span>
+          <span style="color:#787b86;font-size:11px;">${escapeHtml(condName)}</span>
+          <span class="mono" style="color:var(--text);font-weight:700;">${fmtPriceWithCommas(alert.price, alert.symbol)}</span>
+          ${statusBadge}
+        </div>
+        <div class="alert-list-meta">
+          <span>${escapeHtml(alert.name || alert.symbol)}</span> · 
+          <span>${alert.frequency === "once" ? "Only once" : "Every time"}</span>
+          ${alert.lastTriggeredAt ? ` · Triggered: ${new Date(alert.lastTriggeredAt).toLocaleTimeString()}` : ""}
+        </div>
+      </div>
+      <div class="alert-list-actions">
+        <button class="alert-action-btn active-toggle ${alert.active ? "on" : ""}" title="${alert.active ? "Pause alert" : "Activate alert"}">
+          ${alert.active ? "Pause" : "Activate"}
+        </button>
+        <button class="alert-action-btn delete" title="Delete alert">&times;</button>
+      </div>
+    `;
+    
+    item.querySelector(".active-toggle").addEventListener("click", () => {
+      alert.active = !alert.active;
+      if(alert.active) alert.triggered = false;
+      saveAlerts();
+    });
+    item.querySelector(".delete").addEventListener("click", () => {
+      alertsStore = alertsStore.filter(a => a.id !== alert.id);
+      saveAlerts();
+    });
+    
+    listEl.appendChild(item);
+  });
+}
+
+function openAlertModal(opts = {}){
+  closeChartContextMenu();
+  closeAlertLineMenu();
+  const modal = document.getElementById("alertModalOverlay");
+  if(!modal) return;
+  
+  const symbol = opts.symbol || ui.symbol;
+  let price = opts.price;
+  if(price == null || isNaN(price) || price <= 0){
+    price = (market[symbol] && market[symbol].last) || (lastBar() ? lastBar().close : 100);
+  }
+  price = roundPrice(symbol, price);
+  
+  document.getElementById("alertSymbolInput").value = symbol;
+  document.getElementById("alertPriceInput").value = price;
+  
+  const targetSelect = document.getElementById("alertTargetType");
+  targetSelect.innerHTML = `<option value="price">${symbol} Price</option>`;
+  
+  const visibleStrats = (typeof sb !== "undefined" && Array.isArray(sb.list)) ? 
+    sb.list.filter(s => s.visible && (typeof strategyOverlayVisible === "undefined" || strategyOverlayVisible)) : [];
+  
+  visibleStrats.forEach(s => {
+    const opt = document.createElement("option");
+    opt.value = "indicator:" + s.id;
+    opt.textContent = `Indicator: ${s.name}`;
+    targetSelect.appendChild(opt);
+  });
+  
+  if(opts.targetType === "indicator" && opts.stratId){
+    targetSelect.value = "indicator:" + opts.stratId;
+    document.getElementById("alertConditionSelect").value = "indicator";
+    document.getElementById("alertNameInput").value = `${opts.indicatorName || "Indicator"} @ ${fmtPriceWithCommas(price, symbol)}`;
+  } else {
+    targetSelect.value = "price";
+    if(opts.condition) document.getElementById("alertConditionSelect").value = opts.condition;
+    document.getElementById("alertNameInput").value = `${symbol} crossing ${fmtPriceWithCommas(price, symbol)}`;
+  }
+  
+  if(opts.tab === "create"){
+    switchAlertModalTab("create");
+  } else {
+    switchAlertModalTab("manage");
+  }
+  
+  updateAlertsUI();
+  modal.style.display = "flex";
+}
+
+function closeAlertModal(){
+  const modal = document.getElementById("alertModalOverlay");
+  if(modal) modal.style.display = "none";
+}
+
+function switchAlertModalTab(tab){
+  const tabCreate = document.getElementById("alertTabCreate");
+  const tabManage = document.getElementById("alertTabManage");
+  const bodyCreate = document.getElementById("alertBodyCreate");
+  const bodyManage = document.getElementById("alertBodyManage");
+  const footCreate = document.getElementById("alertFootCreate");
+  const footManage = document.getElementById("alertFootManage");
+  
+  if(tab === "manage"){
+    tabCreate.classList.remove("active");
+    tabManage.classList.add("active");
+    bodyCreate.style.display = "none";
+    bodyManage.style.display = "flex";
+    footCreate.style.display = "none";
+    footManage.style.display = "flex";
+    updateAlertsUI();
+  } else {
+    tabManage.classList.remove("active");
+    tabCreate.classList.add("active");
+    bodyManage.style.display = "none";
+    bodyCreate.style.display = "flex";
+    footManage.style.display = "none";
+    footCreate.style.display = "flex";
+  }
+}
+
+function createAlertFromForm(){
+  const symbol = document.getElementById("alertSymbolInput").value || ui.symbol;
+  const priceVal = parseFloat(document.getElementById("alertPriceInput").value);
+  if(isNaN(priceVal) || priceVal <= 0){
+    alert("Please enter a valid price for the alert.");
+    return;
+  }
+  const price = roundPrice(symbol, priceVal);
+  const targetVal = document.getElementById("alertTargetType").value;
+  const isIndicator = targetVal.startsWith("indicator:");
+  const stratId = isIndicator ? targetVal.replace("indicator:", "") : null;
+  const stratObj = isIndicator && typeof sb !== "undefined" && Array.isArray(sb.list) ? sb.list.find(s => s.id === stratId) : null;
+  
+  const condition = document.getElementById("alertConditionSelect").value;
+  const frequency = document.getElementById("alertFrequencySelect").value;
+  const name = document.getElementById("alertNameInput").value.trim() || `${symbol} @ ${fmtPriceWithCommas(price, symbol)}`;
+  const sound = document.getElementById("alertSoundCheck").checked;
+  const toast = document.getElementById("alertToastCheck").checked;
+  const browserNotif = document.getElementById("alertBrowserCheck").checked;
+  
+  if(browserNotif && typeof Notification !== "undefined" && Notification.permission === "default"){
+    Notification.requestPermission();
+  }
+  
+  const newAlert = {
+    id: "alert_" + Date.now() + "_" + Math.floor(Math.random()*1000),
+    symbol: symbol,
+    targetType: isIndicator ? "indicator" : "price",
+    indicatorName: stratObj ? stratObj.name : "",
+    stratId: stratId,
+    price: price,
+    condition: condition,
+    frequency: frequency,
+    name: name,
+    sound: sound,
+    toast: toast,
+    browserNotif: browserNotif,
+    active: true,
+    triggered: false,
+    createdAt: Date.now(),
+    lastTriggeredAt: null,
+    triggeredCount: 0
+  };
+  
+  alertsStore.push(newAlert);
+  saveAlerts();
+  closeAlertModal();
+  showAlertToast("Alert Created", `${name} set at ${fmtPriceWithCommas(price, symbol)}`);
+}
+
+// Chart Hover, Plus Marker, and Context Menu
+let lastHoverPrice = null;
+let lastHoverX = 0;
+let lastHoverY = 0;
+let isContextMenuOpen = false;
+
+function getPriceScaleWidth(){
+  try {
+    const scaleTd = chartEl.querySelector("table tr:first-child td:last-child");
+    if(scaleTd && scaleTd.offsetWidth > 20) return scaleTd.offsetWidth;
+  } catch(e){}
+  return 60;
+}
+
+function updateChartPlusPosition(clientX, clientY){
+  if(isContextMenuOpen || activeAlertDrag) return;
+  if(typeof activeDrag !== "undefined" && activeDrag) { hideChartPlusMarker(); return; }
+  if(typeof dragTarget !== "undefined" && dragTarget) { hideChartPlusMarker(); return; }
+  if(typeof replayState !== "undefined" && replayState.selecting) { hideChartPlusMarker(); return; }
+  if(typeof tool !== "undefined" && tool) { hideChartPlusMarker(); return; }
+  
+  const rect = chartEl.getBoundingClientRect();
+  const x = clientX - rect.left;
+  const y = clientY - rect.top;
+  const pScaleWidth = getPriceScaleWidth();
+  
+  // Check if hovering near an active alert line -> change cursor to ns-resize
+  const nearAlert = findActiveAlertNearY(y, 8);
+  if(nearAlert){
+    chartEl.style.cursor = "ns-resize";
+    hideChartPlusMarker();
+    return;
+  } else {
+    if(chartEl.style.cursor === "ns-resize") chartEl.style.cursor = "";
+  }
+  
+  if(x < 12 || y < 10 || y > rect.height - 20){
+    hideChartPlusMarker();
+    return;
+  }
+  
+  const rawPrice = candleSeries.coordinateToPrice(y);
+  if(rawPrice == null || isNaN(rawPrice)){
+    hideChartPlusMarker();
+    return;
+  }
+  
+  const symbol = ui.symbol;
+  const price = roundPrice(symbol, rawPrice);
+  lastHoverPrice = price;
+  window.lastHoverPrice = price;
+  lastHoverX = clientX;
+  lastHoverY = clientY;
+  
+  const badge = document.getElementById("chartPlusBadge");
+  const marker = document.getElementById("chartPlusMarker");
+  const line = document.getElementById("chartPlusLine");
+  const tag = document.getElementById("chartPlusPriceTag");
+  
+  if(!badge || !line || !tag) return;
+  
+  // Hairline spans full plotting width from left edge up to price scale
+  line.style.left = "0px";
+  line.style.right = pScaleWidth + "px";
+  line.style.top = Math.round(y) + "px";
+  line.style.display = "block";
+  
+  // Price tag text inside badge
+  tag.textContent = fmtPriceWithCommas(price, symbol);
+  
+  // Badge is DOCKED at right price panel and only moves vertically with y!
+  badge.style.right = "2px";
+  badge.style.left = "auto";
+  badge.style.top = Math.round(y) + "px";
+  badge.style.display = "flex";
+  
+  if(marker) marker.style.display = "flex";
+}
+
+function hideChartPlusMarker(){
+  if(isContextMenuOpen) return;
+  const badge = document.getElementById("chartPlusBadge");
+  const marker = document.getElementById("chartPlusMarker");
+  const line = document.getElementById("chartPlusLine");
+  const tag = document.getElementById("chartPlusPriceTag");
+  if(badge) badge.style.display = "none";
+  if(marker) marker.style.display = "none";
+  if(line) line.style.display = "none";
+  if(tag) tag.style.display = "none";
+}
+
+let ctxActivePrice = null;
+let ctxCurrentSellType = "Limit";
+let ctxCurrentBuyType = "Stop";
+
+function openChartContextMenu(clientX, clientY, price){
+  hideChartPlusMarker();
+  closeAlertLineMenu();
+  isContextMenuOpen = true;
+  ctxActivePrice = price;
+  
+  const menu = document.getElementById("chartContextMenu");
+  if(!menu) return;
+  
+  const symbol = ui.symbol;
+  const mkt = market[symbol];
+  const ref = (mkt && mkt.last) || (lastBar() ? lastBar().close : price);
+  const pFormatted = fmtPriceWithCommas(price, symbol);
+  
+  let qtyVal = parseFloat(document.getElementById("qtyInput")?.value);
+  if(!qtyVal || isNaN(qtyVal) || qtyVal <= 0){
+    qtyVal = symbolMeta[symbol] ? (symbolMeta[symbol].qtyStep * 10 || 0.1) : 0.1;
+  }
+  const qtyFormatted = qtyVal.toFixed(symbolMeta[symbol]?.qtyPrecision || 3);
+  
+  // Option 1: Alert on instrument
+  document.getElementById("ctxAddAlertLabel").textContent = `Add alert on ${symbol} at ${pFormatted}`;
+  
+  // Option 2: Dynamic indicator alerts
+  const indContainer = document.getElementById("ctxIndicatorAlerts");
+  if(indContainer){
+    indContainer.innerHTML = "";
+    const visibleStrats = (typeof sb !== "undefined" && Array.isArray(sb.list)) ? 
+      sb.list.filter(s => s.visible && (typeof strategyOverlayVisible === "undefined" || strategyOverlayVisible)) : [];
+    
+    if(visibleStrats.length === 0){
+      indContainer.style.display = "none";
+    } else {
+      indContainer.style.display = "block";
+      visibleStrats.forEach(strat => {
+        const item = document.createElement("div");
+        item.className = "ctx-item";
+        item.innerHTML = `
+          <span class="ctx-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 1.5"/><path d="M5 3 2 6"/><path d="M22 6l-3-3"/><path d="M18 13h4M20 11v4"/></svg></span>
+          <span class="ctx-label">Add alert on ${escapeHtml(strat.name)} at ${pFormatted}</span>
+          <span class="ctx-shortcut">Alt + A</span>
+        `;
+        item.addEventListener("click", (e) => {
+          e.stopPropagation();
+          closeChartContextMenu();
+          createIndicatorAlertImmediate(symbol, strat, price);
+        });
+        indContainer.appendChild(item);
+      });
+    }
+  }
+  
+  // Option 3 & 4: Contextual orders
+  const ratio = ref > 0 ? price / ref : 1;
+  if(Math.abs(ratio - 1) < 0.0005){
+    ctxCurrentSellType = "Market";
+    ctxCurrentBuyType = "Market";
+    document.getElementById("ctxSellOrderLabel").textContent = `Sell ${qtyFormatted} ${symbol} market`;
+    document.getElementById("ctxBuyOrderLabel").textContent = `Buy ${qtyFormatted} ${symbol} market`;
+  } else if(price > ref){
+    ctxCurrentSellType = "Limit";
+    ctxCurrentBuyType = "Stop";
+    document.getElementById("ctxSellOrderLabel").textContent = `Sell ${qtyFormatted} ${symbol} @ ${pFormatted} limit`;
+    document.getElementById("ctxBuyOrderLabel").textContent = `Buy ${qtyFormatted} ${symbol} @ ${pFormatted} stop`;
+  } else {
+    ctxCurrentSellType = "Stop";
+    ctxCurrentBuyType = "Limit";
+    document.getElementById("ctxSellOrderLabel").textContent = `Sell ${qtyFormatted} ${symbol} @ ${pFormatted} stop`;
+    document.getElementById("ctxBuyOrderLabel").textContent = `Buy ${qtyFormatted} ${symbol} @ ${pFormatted} limit`;
+  }
+  
+  // Option 5: Add order
+  document.getElementById("ctxAddOrderLabel").textContent = `Add order on ${symbol} at ${pFormatted}...`;
+  
+  // Option 6: Draw horizontal line
+  document.getElementById("ctxDrawHLineLabel").textContent = `Draw horizontal line at ${pFormatted}`;
+  
+  // Position menu cleanly
+  menu.style.display = "block";
+  const mWidth = menu.offsetWidth || 270;
+  const mHeight = menu.offsetHeight || 220;
+  const chartRect = chartEl.getBoundingClientRect();
+  const pScaleWidth = getPriceScaleWidth();
+  
+  let left = clientX;
+  let top = clientY;
+  
+  // If opened via plus button or near the right price scale
+  if(clientX >= chartRect.right - pScaleWidth - 30){
+    left = chartRect.right - pScaleWidth - mWidth - 4;
+    top = Math.min(window.innerHeight - mHeight - 12, Math.max(10, clientY + 4));
+  } else {
+    if(left + mWidth > window.innerWidth - 12) left = window.innerWidth - mWidth - 12;
+    if(top + mHeight > window.innerHeight - 12) top = window.innerHeight - mHeight - 12;
+    if(left < 10) left = 10;
+    if(top < 10) top = 10;
+  }
+  menu.style.left = left + "px";
+  menu.style.top = top + "px";
+}
+
+function closeChartContextMenu(){
+  isContextMenuOpen = false;
+  const menu = document.getElementById("chartContextMenu");
+  if(menu) menu.style.display = "none";
+}
+
+// Alert Line Right-Click Context Menu
+let alertLineMenuTarget = null;
+function openAlertLineMenu(clientX, clientY, alert){
+  hideChartPlusMarker();
+  closeChartContextMenu();
+  alertLineMenuTarget = alert;
+  
+  const menu = document.getElementById("alertLineContextMenu");
+  if(!menu) return;
+  
+  const pauseLbl = document.getElementById("alcPauseLabel");
+  if(pauseLbl){
+    pauseLbl.textContent = alert.active ? "Pause Alert" : "Activate Alert";
+  }
+  
+  menu.style.display = "block";
+  const mWidth = menu.offsetWidth || 180;
+  const mHeight = menu.offsetHeight || 80;
+  let left = clientX;
+  let top = clientY;
+  if(left + mWidth > window.innerWidth - 12) left = window.innerWidth - mWidth - 12;
+  if(top + mHeight > window.innerHeight - 12) top = window.innerHeight - mHeight - 12;
+  menu.style.left = left + "px";
+  menu.style.top = top + "px";
+}
+
+function closeAlertLineMenu(){
+  alertLineMenuTarget = null;
+  const menu = document.getElementById("alertLineContextMenu");
+  if(menu) menu.style.display = "none";
+}
+
+const alcPauseBtn = document.getElementById("alcPause");
+if(alcPauseBtn){
+  alcPauseBtn.addEventListener("click", () => {
+    if(alertLineMenuTarget){
+      alertLineMenuTarget.active = !alertLineMenuTarget.active;
+      if(alertLineMenuTarget.active) alertLineMenuTarget.triggered = false;
+      saveAlerts();
+      showAlertToast("Alert Status", `Alert ${alertLineMenuTarget.active ? 'activated' : 'paused'}`);
+    }
+    closeAlertLineMenu();
+  });
+}
+
+const alcDeleteBtn = document.getElementById("alcDelete");
+if(alcDeleteBtn){
+  alcDeleteBtn.addEventListener("click", () => {
+    if(alertLineMenuTarget){
+      const delId = alertLineMenuTarget.id;
+      alertsStore = alertsStore.filter(a => a.id !== delId);
+      saveAlerts();
+      showAlertToast("Alert Deleted", "Alert removed from chart");
+    }
+    closeAlertLineMenu();
+  });
+}
+
+// Chart hover, touch, pointerdown, and contextmenu listeners
+chartEl.addEventListener("mousemove", (e) => {
+  updateChartPlusPosition(e.clientX, e.clientY);
+});
+
+chartEl.addEventListener("mouseleave", (e) => {
+  if(e.relatedTarget && (e.relatedTarget.closest("#chartPlusBadge") || e.relatedTarget.closest("#chartPlusMarker") || e.relatedTarget.closest("#chartContextMenu"))){
+    return;
+  }
+  hideChartPlusMarker();
+});
+
+const plusBadge = document.getElementById("chartPlusBadge");
+const plusBtn = document.getElementById("chartPlusMarker");
+function handlePlusClick(e){
+  e.stopPropagation();
+  e.preventDefault();
+  if(lastHoverPrice != null){
+    const rect = (plusBadge || plusBtn).getBoundingClientRect();
+    openChartContextMenu(rect.left, rect.top, lastHoverPrice);
+  }
+}
+if(plusBtn) plusBtn.addEventListener("click", handlePlusClick);
+if(plusBadge){
+  plusBadge.addEventListener("click", handlePlusClick);
+  plusBadge.addEventListener("mouseleave", (e) => {
+    if(e.relatedTarget && (e.relatedTarget === chartEl || chartEl.contains(e.relatedTarget) || e.relatedTarget.closest("#chartContextMenu"))){
+      return;
+    }
+    hideChartPlusMarker();
+  });
+}
+
+// Chart Pointerdown / Mousedown: Detect clicking on active alert line to drag
+function onChartPointerOrMouseDown(e){
+  if(e.button !== 0 && e.pointerType === "mouse") return;
+  if(typeof activeDrag !== "undefined" && activeDrag) return;
+  if(typeof replayState !== "undefined" && replayState.selecting) return;
+  if(isContextMenuOpen) return;
+  
+  const rect = chartEl.getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  const isTouch = e.pointerType === "touch";
+  const hitDist = isTouch ? 24 : 9;
+  const found = findActiveAlertNearY(y, hitDist);
+  
+  if(found){
+    e.preventDefault();
+    e.stopPropagation();
+    startAlertLineDrag(found.alert, e.pointerId || 1, y);
+    return;
+  }
+}
+chartEl.addEventListener("pointerdown", onChartPointerOrMouseDown, true);
+chartEl.addEventListener("mousedown", onChartPointerOrMouseDown, true);
+
+// Chart Right-Click: Context menu on chart or on alert line
+chartEl.addEventListener("contextmenu", (e) => {
+  if(typeof activeDrag !== "undefined" && activeDrag) return;
+  if(typeof replayState !== "undefined" && replayState.selecting) return;
+  e.preventDefault();
+  
+  const rect = chartEl.getBoundingClientRect();
+  const y = e.clientY - rect.top;
+  
+  // If right-clicked on an active alert line, open alert line actions menu
+  const nearAlert = findActiveAlertNearY(y, 10);
+  if(nearAlert){
+    openAlertLineMenu(e.clientX, e.clientY, nearAlert.alert);
+    return;
+  }
+  
+  const rawPrice = candleSeries.coordinateToPrice(y);
+  if(rawPrice != null && !isNaN(rawPrice)){
+    const price = roundPrice(ui.symbol, rawPrice);
+    openChartContextMenu(e.clientX, e.clientY, price);
+  }
+});
+
+// Mobile Tap on Chart
+chartEl.addEventListener("touchstart", (e) => {
+  if(typeof activeDrag !== "undefined" && activeDrag) return;
+  if(typeof replayState !== "undefined" && replayState.selecting) return;
+  const t = e.touches[0];
+  if(!t) return;
+  const rect = chartEl.getBoundingClientRect();
+  const y = t.clientY - rect.top;
+  
+  // If tapping near an active alert line, start alert line drag
+  const nearAlert = findActiveAlertNearY(y, 22);
+  if(nearAlert){
+    return;
+  }
+  
+  const rawPrice = candleSeries.coordinateToPrice(y);
+  if(rawPrice != null && !isNaN(rawPrice)){
+    lastHoverPrice = roundPrice(ui.symbol, rawPrice);
+    updateChartPlusPosition(t.clientX, t.clientY);
+  }
+}, { passive: true });
+
+// Close context menus on outside click
+document.addEventListener("click", (e) => {
+  if(isContextMenuOpen){
+    const menu = document.getElementById("chartContextMenu");
+    if(menu && !menu.contains(e.target) && e.target !== plusBtn){
+      closeChartContextMenu();
+    }
+  }
+  const alMenu = document.getElementById("alertLineContextMenu");
+  if(alMenu && alMenu.style.display !== "none" && !alMenu.contains(e.target)){
+    closeAlertLineMenu();
+  }
+});
+
+// Context Menu Action Listeners
+document.getElementById("ctxAddAlert").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const p = ctxActivePrice || lastHoverPrice || (market[ui.symbol]?.last || 0);
+  closeChartContextMenu();
+  // Immediately create alert without separate configuration dialog!
+  createPriceAlertImmediate(ui.symbol, p);
+});
+
+document.getElementById("ctxSellOrder").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const p = ctxActivePrice || lastHoverPrice;
+  closeChartContextMenu();
+  toggleSidebar(true);
+  ui.side = "SHORT";
+  document.querySelectorAll(".side-toggle button").forEach(b => b.classList.toggle("active", b.dataset.side === "SHORT"));
+  refreshOrderPreview();
+  showNotice(`Sell ${ctxCurrentSellType} prepared @ ${fmtPrice(ui.symbol, p)}`, false);
+});
+
+document.getElementById("ctxBuyOrder").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const p = ctxActivePrice || lastHoverPrice;
+  closeChartContextMenu();
+  toggleSidebar(true);
+  ui.side = "LONG";
+  document.querySelectorAll(".side-toggle button").forEach(b => b.classList.toggle("active", b.dataset.side === "LONG"));
+  refreshOrderPreview();
+  showNotice(`Buy ${ctxCurrentBuyType} prepared @ ${fmtPrice(ui.symbol, p)}`, false);
+});
+
+document.getElementById("ctxAddOrder").addEventListener("click", (e) => {
+  e.stopPropagation();
+  closeChartContextMenu();
+  toggleSidebar(true);
+  refreshOrderPreview();
+});
+
+document.getElementById("ctxDrawHLine").addEventListener("click", (e) => {
+  e.stopPropagation();
+  const p = ctxActivePrice || lastHoverPrice;
+  closeChartContextMenu();
+  if(p != null && p > 0){
+    addHorizontalLineAt(p);
+  }
+});
+
+// Alert Modal Listeners
+const btnHAlerts = document.getElementById("btnHeaderAlerts");
+if(btnHAlerts){
+  btnHAlerts.addEventListener("click", () => {
+    openAlertModal({ tab: "manage" });
+  });
+}
+
+document.getElementById("alertModalClose").addEventListener("click", closeAlertModal);
+document.getElementById("alertModalOverlay").addEventListener("click", (e) => {
+  if(e.target.id === "alertModalOverlay") closeAlertModal();
+});
+document.getElementById("alertTabCreate").addEventListener("click", () => switchAlertModalTab("create"));
+document.getElementById("alertTabManage").addEventListener("click", () => switchAlertModalTab("manage"));
+document.getElementById("alertBtnCancel").addEventListener("click", closeAlertModal);
+document.getElementById("alertBtnSave").addEventListener("click", createAlertFromForm);
+document.getElementById("alertBtnNewAlert").addEventListener("click", () => switchAlertModalTab("create"));
+document.getElementById("alertBtnClearTriggered").addEventListener("click", () => {
+  alertsStore = alertsStore.filter(a => a.active);
+  saveAlerts();
+});
+
+const smAlertsBtn = document.getElementById("smAlerts");
+if(smAlertsBtn){
+  smAlertsBtn.addEventListener("click", () => {
+    if(typeof toggleSideMenu === "function") toggleSideMenu(false);
+    openAlertModal({ tab: "manage" });
+  });
+}
+
+// Global Keyboard Shortcuts
+window.addEventListener("keydown", (e) => {
+  const activeEl = document.activeElement;
+  const tag = (activeEl && activeEl.tagName) ? activeEl.tagName.toLowerCase() : "";
+  const isTyping = tag === "input" || tag === "textarea" || tag === "select" || activeEl?.isContentEditable;
+  
+  if(e.key === "Escape"){
+    if(activeAlertDrag){
+      endAlertLineDrag(false); // Cancel drag and restore original price
+      return;
+    }
+    if(isContextMenuOpen){
+      e.preventDefault();
+      closeChartContextMenu();
+      return;
+    }
+    closeAlertLineMenu();
+    const alertModal = document.getElementById("alertModalOverlay");
+    if(alertModal && alertModal.style.display !== "none"){
+      e.preventDefault();
+      closeAlertModal();
+      return;
+    }
+    if(isTyping){
+      activeEl.blur();
+      return;
+    }
+  }
+  
+  if(isTyping) return;
+  
+  // Alt + A: Immediate Alert at hover / current price
+  if(e.altKey && (e.key === "a" || e.key === "A")){
+    e.preventDefault();
+    const p = lastHoverPrice || (market[ui.symbol]?.last) || (lastBar() ? lastBar().close : 0);
+    createPriceAlertImmediate(ui.symbol, p);
+    return;
+  }
+  
+  // Shift + T: Open Order Ticket
+  if(e.shiftKey && (e.key === "T" || e.key === "t")){
+    e.preventDefault();
+    toggleSidebar(true);
+    return;
+  }
+  
+  // Alt + H: Draw horizontal line
+  if(e.altKey && (e.key === "h" || e.key === "H")){
+    e.preventDefault();
+    const p = lastHoverPrice || (market[ui.symbol]?.last) || (lastBar() ? lastBar().close : 0);
+    if(p > 0){
+      addHorizontalLineAt(p);
+    }
+    return;
+  }
+});
+
+// Initialize alert lines & badge on startup
+updateAlertsUI();
+renderAlertPriceLines();
+
+// Export Context Menu & Alerts to window for external integration & testability
+window.openChartContextMenu = openChartContextMenu;
+window.closeChartContextMenu = closeChartContextMenu;
+window.openAlertModal = openAlertModal;
+window.closeAlertModal = closeAlertModal;
+window.evaluateAlerts = evaluateAlerts;
+window.addHorizontalLineAt = addHorizontalLineAt;
+window.createPriceAlertImmediate = createPriceAlertImmediate;
+window.createIndicatorAlertImmediate = createIndicatorAlertImmediate;
+window.startAlertLineDrag = startAlertLineDrag;
+window.endAlertLineDrag = endAlertLineDrag;
+window.findActiveAlertNearY = findActiveAlertNearY;
+window.updateAlertMarkerPositions = updateAlertMarkerPositions;
+Object.defineProperty(window, "alertsStore", {
+  get(){ return alertsStore; },
+  set(val){ alertsStore = val; saveAlerts(); },
+  configurable: true
+});
+Object.defineProperty(window, "alertPriceLines", {
+  get(){ return alertPriceLines; },
+  set(val){ alertPriceLines = val; },
+  configurable: true
+});
+window.alertLineMap = alertLineMap;
+window.hlStore = hlStore;
+window.saveAlerts = saveAlerts;
+window.lastAlertEvaluatedPrice = lastAlertEvaluatedPrice;
+window.getAlertsStore = () => alertsStore;
+window.setAlertsStore = (arr) => { alertsStore = arr; saveAlerts(); };
+window.market = market;
+window.ui = ui;
+
+
+
 /* ================= PAPER TRADING PANEL ================= */
 const tdate = ms => new Date(ms).toLocaleString();
 
@@ -6082,12 +8344,12 @@ function logEv(e){
 function updatePtSummary(){
   const eq = equity(), used = marginUsed();
   const rp = account.trades.reduce((s,t)=>s+t.netPnl,0), up = totalUnrealizedPnl();
-  const put = (id, txt, cls)=>{ const el = document.getElementById(id); el.textContent = txt; if(cls) el.className = cls; };
+  const put = (id, txt, cls)=>{ const el = document.getElementById(id); if(!el) return; el.textContent = txt; el.className = cls || "neutral"; };
   put("ptAcct", account.name + " · " + account.currencySymbol);
   put("sBal", fmtUsd(account.balance));
   put("sEq", fmtUsd(eq));
-  put("sRp", fmtUsd(rp), rp>=0 ? "up" : "down");
-  put("sUp", fmtUsd(up), up>=0 ? "up" : "down");
+  put("sRp", fmtUsd(rp), pnlClass(rp));
+  put("sUp", fmtUsd(up), pnlClass(up));
   put("sMar", fmtUsd(used));
   put("sAvail", fmtUsd(availableMargin()));
   put("sOrd", fmtUsd(0));
@@ -6119,7 +8381,7 @@ function renderBalHist(){
   if(!rows.length){ body.innerHTML = '<tr class="empty-row"><td colspan="4">No balance changes yet</td></tr>'; return; }
   body.innerHTML = rows.map(e=>`<tr><td style="text-align:left">${tdate(e.t)}</td>
       <td style="text-align:left;font-family:var(--sans)">${e.type==="open" ? "Trading fee · open " : "Realized P&L (after fee) · close "}${e.side} ${e.symbol}</td>
-      <td class="${e.delta>=0?'up':'down'}">${fmtUsd(e.delta)}</td><td>${fmtUsd(e.bal)}</td></tr>`).join("");
+      <td class="${pnlClass(e.delta)}">${fmtUsd(e.delta)}</td><td>${fmtUsd(e.bal)}</td></tr>`).join("");
 }
 function renderActivity(){
   const body = document.getElementById("actBody");
@@ -6131,7 +8393,7 @@ function renderActivity(){
 
 /* ---- Analytics ---- */
 const perfChart = LightweightCharts.createChart(document.getElementById("perf-chart"), {
-  layout:{ background:{color:"transparent"}, textColor:"#9598a1", fontFamily:"IBM Plex Mono, monospace", fontSize:11 },
+  layout:{ background:{color:"transparent"}, textColor:"#787b86", fontFamily:TV_CHART_FONT, fontSize:11 },
   grid:{ vertLines:{color:"#1e222d"}, horzLines:{color:"#1e222d"} },
   rightPriceScale:{ borderColor:"#2a2e39" },
   timeScale:{ borderColor:"#2a2e39", timeVisible:true }
@@ -6212,11 +8474,11 @@ function renderAnalytics(){
   }
   set("anWin", (a.w/a.n*100).toFixed(2) + "%  " + a.w + "/" + a.n);
   set("anPF", a.gl>0 ? (a.gp/a.gl).toFixed(3) : (a.gp>0 ? "∞" : "—"));
-  set("anExp", fmtUsd(a.total/a.n), a.total>=0 ? "up" : "down");
+  set("anExp", fmtUsd(a.total/a.n), pnlClass(a.total/a.n));
   set("anRR", a.avgLoss>0 ? (a.avgWin/a.avgLoss).toFixed(2) : "—");
-  set("anNet", fmtUsd(a.total), a.total>=0 ? "up" : "down");
-  set("anBest", fmtUsd(a.best), a.best>=0 ? "up" : "down");
-  set("anWorst", fmtUsd(a.worst), a.worst>=0 ? "up" : "down");
+  set("anNet", fmtUsd(a.total), pnlClass(a.total));
+  set("anBest", fmtUsd(a.best), pnlClass(a.best));
+  set("anWorst", fmtUsd(a.worst), pnlClass(a.worst));
   set("anDD", fmtUsd(a.mdd), a.mdd>0 ? "down" : "");
   perfSeries.setData(a.pts);
   perfChart.timeScale().fitContent();
@@ -6261,7 +8523,7 @@ function setPtHeight(h){
     if(ptPanel) ptPanel.classList.remove("pt-maximized");
     ptState.max = false;
     const maxBtn = document.getElementById("ptMax");
-    if(maxBtn){ maxBtn.innerHTML = "&#9633;"; maxBtn.title = "Maximize / restore"; }
+    if(maxBtn){ maxBtn.innerHTML = '<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>'; maxBtn.title = "Maximize / restore"; }
   }
   h = Math.round(Math.max(PT_MIN, Math.min(h, ptMaxH())));
   ptState.h = h; ptState.min = h <= PT_MIN+4; ptState.max = false;
@@ -6281,7 +8543,7 @@ function togglePtMin(){
   if(ptState.max){
     if(ptPanel) ptPanel.classList.remove("pt-maximized");
     ptState.max = false;
-    if(maxBtn){ maxBtn.innerHTML = "&#9633;"; maxBtn.title = "Maximize / restore"; }
+    if(maxBtn){ maxBtn.innerHTML = '<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>'; maxBtn.title = "Maximize / restore"; }
     setPtHeight(PT_MIN);
     savePt();
     return;
@@ -6298,7 +8560,7 @@ function togglePtMax(){
     // Restore from maximized mode
     if(ptPanel) ptPanel.classList.remove("pt-maximized");
     ptState.max = false;
-    if(maxBtn){ maxBtn.innerHTML = "&#9633;"; maxBtn.title = "Maximize / restore"; }
+    if(maxBtn){ maxBtn.innerHTML = '<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>'; maxBtn.title = "Maximize / restore"; }
     setPtHeight(ptState.prev || 260);
   } else {
     // Maximize to cover the complete application window
@@ -6306,7 +8568,7 @@ function togglePtMax(){
     if(ptPanel) ptPanel.classList.add("pt-maximized");
     ptState.max = true;
     ptState.min = false;
-    if(maxBtn){ maxBtn.innerHTML = "&#10557;"; maxBtn.title = "Restore"; }
+    if(maxBtn){ maxBtn.innerHTML = '<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>'; maxBtn.title = "Restore"; }
   }
   savePt();
   requestAnimationFrame(()=>{
@@ -6404,16 +8666,16 @@ function toggleSidebar(forceState){
     if(backdrop) backdrop.classList.toggle("active", isOpen);
     if(btn){
       btn.classList.toggle("active", isOpen);
-      btn.innerHTML = isOpen ? `<span style="font-size:13px;line-height:1;">&#10005;</span> Close` : `<span style="font-size:13px;line-height:1;">&#9697;</span> Order Panel`;
-      btn.title = isOpen ? "Close Order Ticket & Account Panel" : "Open Order Ticket & Account Panel";
+      btn.innerHTML = isOpen ? `<svg class="app-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg> <span>Close</span>` : `<svg class="app-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/></svg> <span>Order Panel</span>`;
+      btn.title = isOpen ? "Close Order Panel" : "Open Order Panel";
     }
   } else {
     const isCollapsed = (typeof forceState === "boolean") ? forceState : !app.classList.contains("sidebar-collapsed");
     app.classList.toggle("sidebar-collapsed", isCollapsed);
     if(btn){
       btn.classList.toggle("collapsed", isCollapsed);
-      btn.innerHTML = `<span style="font-size:13px;line-height:1;">&#9697;</span> Order Panel`;
-      btn.title = isCollapsed ? "Show Order Ticket & Account Panel (Alt+B)" : "Hide Order Ticket & Account Panel (Alt+B)";
+      btn.innerHTML = `<svg class="app-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/></svg> <span>Order Panel</span>`;
+      btn.title = isCollapsed ? "Show Order Panel (Alt+B)" : "Hide Order Panel (Alt+B)";
     }
     try { localStorage.setItem("paperExchange.sidebarCollapsed", isCollapsed ? "1" : "0"); }catch(e){}
   }
@@ -6439,7 +8701,7 @@ function closeMobileDrawer(){
   if(backdrop) backdrop.classList.remove("active");
   if(btn){
     btn.classList.remove("active");
-    btn.innerHTML = `<span style="font-size:13px;line-height:1;">&#9697;</span> Order Panel`;
+    btn.innerHTML = `<svg class="app-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/></svg> <span>Order Panel</span>`;
   }
 }
 
@@ -6476,13 +8738,13 @@ function toggleWideChart(forceState){
   const wideBtn = document.getElementById("btnWideChart");
   if(wideBtn){
     wideBtn.classList.toggle("active", isWide);
-    wideBtn.innerHTML = isWide ? `&#10557; Restore` : `&#x26F6; Wide Chart`;
+    wideBtn.innerHTML = isWide ? `<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg> <span>Restore</span>` : `<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg> <span>Wide Chart</span>`;
     wideBtn.title = isWide ? "Exit Wide Chart Mode (Restore Panels) [Alt+W]" : "Enter Wide Chart Mode (Maximize Chart) [Alt+W]";
   }
   const headerWideBtn = document.getElementById("btnHeaderWideChart");
   if(headerWideBtn){
     headerWideBtn.classList.toggle("active", isWide);
-    headerWideBtn.innerHTML = isWide ? `<span style="font-size:13px;line-height:1;">&#10557;</span> Restore` : `<span style="font-size:13px;line-height:1;">&#x26F6;</span> Wide`;
+    headerWideBtn.innerHTML = isWide ? `<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg> <span class="btn-text">Restore</span>` : `<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg> <span class="btn-text">Wide</span>`;
     headerWideBtn.title = isWide ? "Exit Wide Chart Mode [Alt+W]" : "Enter Wide Chart Mode [Alt+W]";
   }
 
@@ -6813,6 +9075,9 @@ function replayStepForward(){
   });
 
   checkReplaySlTp(ui.symbol, nextBar);
+  if(typeof evaluateAlerts === "function"){
+    evaluateAlerts(ui.symbol, nextBar.close, nextBar.high, nextBar.low);
+  }
 
   if(typeof renderPositionOverlay === "function") renderPositionOverlay();
   if(typeof drawOrderLinesForCurrentSymbol === "function") drawOrderLinesForCurrentSymbol();
@@ -7200,7 +9465,7 @@ function toggleTbCollapsed(force){
   const isCollapsed = (typeof force === "boolean") ? force : !floatTb.classList.contains("tb-collapsed");
   floatTb.classList.toggle("tb-collapsed", isCollapsed);
   if(btn){
-    btn.innerHTML = isCollapsed ? "&#9654;" : "&#9664;";
+    btn.innerHTML = isCollapsed ? `<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>` : `<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>`;
     btn.title = isCollapsed ? "Expand Drawing Tools" : "Collapse Tools";
   }
 }
@@ -7351,6 +9616,9 @@ setupSideMenuItem("smDrawingTools", ()=>{
 setupSideMenuItem("smIndicators", ()=>{
   const lBtn = document.getElementById("layersBtn");
   if(lBtn) lBtn.click();
+});
+setupSideMenuItem("smAlerts", ()=>{
+  openAlertModal();
 });
 setupSideMenuItem("smAccount", ()=>{
   toggleSidebar(true);
@@ -8064,7 +10332,8 @@ const SB_TEMPLATE = [
   "if ta.crossunder(fast, slow)",
   '    strategy.close("Long")'
 ].join("\n");
-const sb = { list:[], sel:null, nav:"builder", search:"" };
+var sb = window.sb || { list:[], sel:null, nav:"builder", search:"" };
+window.sb = sb;
 const sbq = id => document.getElementById(id);
 const sbCode = sbq("sbCode");
 const sbHighlight = sbq("sbHighlight");
@@ -8109,8 +10378,8 @@ function sbRenderList(){
   box.innerHTML = rows.map(s=>`<div class="sb-item${s.id===sb.sel?" sel":""}" data-id="${s.id}">
     <span class="sb-dot" style="background:${s.color}"></span>
     <span class="sb-name" title="${escapeHtml(s.name)}">${escapeHtml(s.name)}</span>
-    <button class="sb-ico${s.fav?" on":""}" data-act="fav" title="Pin / favorite">&#9733;</button>
-    <button class="sb-ico${s.visible?" on":""}" data-act="vis" title="Show / hide on chart">&#128065;</button>
+    <button class="sb-ico${s.fav?" on":""}" data-act="fav" title="Pin / favorite">${s.fav ? '<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' : '<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'}</button>
+    <button class="sb-ico${s.visible?" on":""}" data-act="vis" title="Show / hide on chart">${s.visible ? '<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>' : '<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>'}</button>
     <button class="sb-chip${s.enBacktest?" on":""}" data-act="bt" title="Enabled for backtest">BT</button>
     <button class="sb-chip${s.enPaper?" on":""}" data-act="pt" title="Enabled for paper trading">PT</button>
   </div>`).join("");
@@ -8233,7 +10502,7 @@ function sbCompileCurrent(){
   const s = sbCur();
   if(!s){
     sbq("sbCompileBadge").className = "sb-badge ok";
-    sbq("sbCompileBadge").textContent = "✓ Ready";
+    sbq("sbCompileBadge").innerHTML = '<svg class="app-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg> Ready';
     sbq("sbConsoleBody").innerHTML = '<div class="sb-err-item ok">No strategy selected</div>';
     return;
   }
@@ -8248,14 +10517,14 @@ function sbCompileCurrent(){
 
   if(res.success){
     badge.className = "sb-badge ok";
-    badge.textContent = "✓ Compiled";
+    badge.innerHTML = '<svg class="app-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg> Compiled';
     countEl.textContent = "0 errors";
-    body.innerHTML = `<div class="sb-err-item ok">✓ Pine Script compiled successfully. Generated ${res.signals.length} signals on current chart history.</div>`;
+    body.innerHTML = `<div class="sb-err-item ok"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:5px;"><polyline points="20 6 9 17 4 12"/></svg> Pine Script compiled successfully. Generated ${res.signals.length} signals on current chart history.</div>`;
     // Update inputs UI
     sbRenderInputs(s, MXPine.extractInputs(code));
   } else {
     badge.className = "sb-badge err";
-    badge.textContent = `✗ ${currentErrors.length} error${currentErrors.length>1?'s':''}`;
+    badge.innerHTML = `<svg class="app-icon" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:3px;"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg> ${currentErrors.length} error${currentErrors.length>1?'s':''}`;
     countEl.textContent = `${currentErrors.length} error${currentErrors.length>1?'s':''}`;
     body.innerHTML = currentErrors.map((err, i) => `
       <div class="sb-err-item err" data-idx="${i}">
@@ -8505,7 +10774,8 @@ if(sbOpenAccAnalyticsBtn){
 }
 
 /* ================= PART 4: STRATEGY VISUALIZATION & CHART INTEGRATION ================= */
-let strategyOverlayVisible = true;
+var strategyOverlayVisible = true;
+window.strategyOverlayVisible = strategyOverlayVisible;
 let activeStrategyPriceLines = [];
 
 function clearStrategyPriceLines(){
@@ -8663,8 +10933,8 @@ function sbRenderLayers(){
       <span class="nm">${escapeHtml(s.name)}</span>
       <span class="pos-pill ${posCls}">${posSide}</span>
       <span class="strat-pnl ${pnlCls}">${metrics ? fmtUsd(netPnl) : ""}</span>
-      <button data-act="vis" title="Hide strategy from chart" class="active">&#128065;</button>
-      <button data-act="cfg" title="Configure strategy">&#9881;</button>
+      <button data-act="vis" title="Hide strategy from chart" class="active"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      <button data-act="cfg" title="Configure strategy"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
 
       <!-- Hover Position & Performance Details -->
       <div class="strat-chip-details">
@@ -8710,7 +10980,7 @@ function sbRenderLayers(){
         </label>
         <button class="sb-chip${s.enBacktest ? " on" : ""}" data-act="bt" title="Enabled for backtest">BT</button>
         <button class="sb-chip${s.enPaper ? " on" : ""}" data-act="pt" title="Enabled for paper trading">PT</button>
-        <button class="sb-ico" data-act="cfg" title="Configure">&#9881;</button>
+        <button class="sb-ico" data-act="cfg" title="Configure"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
       </div>
       ${s.visible && trades.length ? `
         <div class="lp-trades-pop" data-id="${s.id}">
@@ -8770,7 +11040,7 @@ if(toggleOverlayDrawingsBtn){
   toggleOverlayDrawingsBtn.addEventListener("click", () => {
     strategyOverlayVisible = !strategyOverlayVisible;
     toggleOverlayDrawingsBtn.classList.toggle("hidden", !strategyOverlayVisible);
-    toggleOverlayDrawingsBtn.innerHTML = strategyOverlayVisible ? "&#128065; Drawings" : "&#128065; Drawings (Off)";
+    toggleOverlayDrawingsBtn.innerHTML = strategyOverlayVisible ? `<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg> <span>Drawings</span>` : `<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg> <span>Drawings (Off)</span>`;
     updateStrategyOverlays();
   });
 }
@@ -9327,7 +11597,7 @@ function initBtEquityChart(){
   const el = document.getElementById("btEquityChart");
   if(!el || btEquityChartInst) return;
   btEquityChartInst = LightweightCharts.createChart(el, {
-    layout: { background:{color:"transparent"}, textColor:"#9598a1", fontFamily:"IBM Plex Mono, monospace", fontSize:10 },
+    layout: { background:{color:"transparent"}, textColor:"#787b86", fontFamily:TV_CHART_FONT, fontSize:10 },
     grid: { vertLines:{color:"#1e222d"}, horzLines:{color:"#1e222d"} },
     rightPriceScale: { borderColor:"#2a2e39" },
     timeScale: { borderColor:"#2a2e39", timeVisible:true, secondsVisible:false }
@@ -9431,7 +11701,7 @@ async function runStrategyBacktest(){
 
     lastBacktestResult = res;
     renderBacktestResults(res);
-    statusEl.textContent = `✓ Complete: ${res.trades.length} trades simulated`;
+    statusEl.innerHTML = `<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="20 6 9 17 4 12"/></svg> Complete: ${res.trades.length} trades simulated`;
   } catch(err){
     console.error("Backtest error:", err);
     statusEl.textContent = "Error: " + err.message;
@@ -9691,7 +11961,7 @@ function initAnalyticsCharts(){
   const eqEl = document.getElementById("anStratEquityChart");
   if(eqEl && !anStratEquityChartInst){
     anStratEquityChartInst = LightweightCharts.createChart(eqEl, {
-      layout: { background:{color:"transparent"}, textColor:"#9598a1", fontFamily:"IBM Plex Mono, monospace", fontSize:10 },
+      layout: { background:{color:"transparent"}, textColor:"#787b86", fontFamily:TV_CHART_FONT, fontSize:10 },
       grid: { vertLines:{color:"#1e222d"}, horzLines:{color:"#1e222d"} },
       rightPriceScale: { borderColor:"#2a2e39" },
       timeScale: { borderColor:"#2a2e39", timeVisible:true, secondsVisible:false }
@@ -9710,7 +11980,7 @@ function initAnalyticsCharts(){
   const ddEl = document.getElementById("anStratDrawdownChart");
   if(ddEl && !anStratDrawdownChartInst){
     anStratDrawdownChartInst = LightweightCharts.createChart(ddEl, {
-      layout: { background:{color:"transparent"}, textColor:"#9598a1", fontFamily:"IBM Plex Mono, monospace", fontSize:10 },
+      layout: { background:{color:"transparent"}, textColor:"#787b86", fontFamily:TV_CHART_FONT, fontSize:10 },
       grid: { vertLines:{color:"#1e222d"}, horzLines:{color:"#1e222d"} },
       rightPriceScale: { borderColor:"#2a2e39" },
       timeScale: { borderColor:"#2a2e39", timeVisible:true, secondsVisible:false }
@@ -10286,7 +12556,7 @@ function renderLongShortComparative(trades){
           <tr><td>Win Rate Percentage</td><td class="${lS.wr>=50?'up':'down'}">${lS.wr.toFixed(2)}%</td><td class="${sS.wr>=50?'up':'down'}">${sS.wr.toFixed(2)}%</td></tr>
           <tr><td>Gross Profit Generated</td><td class="up">${fmtUsd(lS.gp)}</td><td class="up">${fmtUsd(sS.gp)}</td></tr>
           <tr><td>Gross Loss Incurred</td><td class="down">${fmtUsd(-lS.gl)}</td><td class="down">${fmtUsd(-sS.gl)}</td></tr>
-          <tr><td>Net Realized Profit</td><td class="${lS.net>=0?'up':'down'}">${fmtUsd(lS.net)}</td><td class="${sS.net>=0?'up':'down'}">${fmtUsd(sS.net)}</td></tr>
+          <tr><td>Net Realized Profit</td><td class="${pnlClass(lS.net)}">${fmtUsd(lS.net)}</td><td class="${pnlClass(sS.net)}">${fmtUsd(sS.net)}</td></tr>
           <tr><td>Profit Factor Ratio</td><td>${isFinite(lS.pf)?lS.pf.toFixed(3):'∞'}</td><td>${isFinite(sS.pf)?sS.pf.toFixed(3):'∞'}</td></tr>
         </tbody>
       </table>
@@ -10433,10 +12703,10 @@ function renderStreaksAndFriction(trades, initialCap, grossProfit, fees, slippag
         <div class="an-bar-seg" style="width:${fundPct}%;background:#b388ff;" title="Funding Drag: ${fmtUsd(funding)}"></div>
       </div>
       <div style="display:flex;justify-content:space-between;font-size:11px;font-family:var(--mono);color:var(--text-dim);flex-wrap:wrap;gap:8px;">
-        <span><span style="color:var(--long);">&#9632;</span> Net Profit: ${fmtUsd(netPnl)}</span>
-        <span><span style="color:var(--short);">&#9632;</span> Fees: ${fmtUsd(fees)}</span>
-        <span><span style="color:var(--amber);">&#9632;</span> Slippage: ${fmtUsd(slippage)}</span>
-        <span><span style="color:#b388ff;">&#9632;</span> Funding: ${fmtUsd(funding)}</span>
+        <span><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:var(--long);vertical-align:middle;margin-right:4px;"></span> Net Profit: ${fmtUsd(netPnl)}</span>
+        <span><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:var(--short);vertical-align:middle;margin-right:4px;"></span> Fees: ${fmtUsd(fees)}</span>
+        <span><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:var(--amber);vertical-align:middle;margin-right:4px;"></span> Slippage: ${fmtUsd(slippage)}</span>
+        <span><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:#b388ff;vertical-align:middle;margin-right:4px;"></span> Funding: ${fmtUsd(funding)}</span>
         <span>Friction Drag: <b class="down">${((totalFriction / baseDenom)*100).toFixed(1)}%</b> of Gross</span>
       </div>
     `;
@@ -11274,7 +13544,7 @@ function initRobCharts(){
   const oosEl = document.getElementById("robOosChart");
   if(oosEl && !robOosChartInst){
     robOosChartInst = LightweightCharts.createChart(oosEl, {
-      layout: { background:{color:"transparent"}, textColor:"#9598a1", fontFamily:"IBM Plex Mono, monospace", fontSize:10 },
+      layout: { background:{color:"transparent"}, textColor:"#787b86", fontFamily:TV_CHART_FONT, fontSize:10 },
       grid: { vertLines:{color:"#1e222d"}, horzLines:{color:"#1e222d"} },
       rightPriceScale: { borderColor:"#2a2e39" },
       timeScale: { borderColor:"#2a2e39", timeVisible:true, secondsVisible:false }
@@ -11293,7 +13563,7 @@ function initRobCharts(){
   const mcEl = document.getElementById("robMcChart");
   if(mcEl && !robMcChartInst){
     robMcChartInst = LightweightCharts.createChart(mcEl, {
-      layout: { background:{color:"transparent"}, textColor:"#9598a1", fontFamily:"IBM Plex Mono, monospace", fontSize:10 },
+      layout: { background:{color:"transparent"}, textColor:"#787b86", fontFamily:TV_CHART_FONT, fontSize:10 },
       grid: { vertLines:{color:"#1e222d"}, horzLines:{color:"#1e222d"} },
       rightPriceScale: { borderColor:"#2a2e39" },
       timeScale: { borderColor:"#2a2e39", timeVisible:true, secondsVisible:false }
@@ -11724,21 +13994,21 @@ function robEvaluateWarnings(strat, trades, splitRes, wfaRes, mcRes){
   if(tCount < 30){
     warnings.push({
       type: "danger",
-      icon: "⚠️",
+      icon: `<svg class="app-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>`,
       title: "Critical Sample-Size Warning (< 30 trades)",
       text: `Strategy only generated ${tCount} trades. Statistical significance is unreliable. Results may be driven by random market noise rather than durable edge.`
     });
   } else if(tCount < 60){
     warnings.push({
       type: "warning",
-      icon: "⚡",
+      icon: `<svg class="app-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`,
       title: "Moderate Sample Size (30 - 60 trades)",
       text: `Strategy generated ${tCount} trades. While usable, 100+ trades across diverse calendar cycles is recommended for institutional confidence.`
     });
   } else {
     warnings.push({
       type: "ok",
-      icon: "✓",
+      icon: `<svg class="app-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`,
       title: "Adequate Statistical Sample Size",
       text: `Sample contains ${tCount} closed trades, meeting the criteria for statistical hypothesis testing.`
     });
@@ -11760,14 +14030,14 @@ function robEvaluateWarnings(strat, trades, splitRes, wfaRes, mcRes){
   if(repaintingRisks.length > 0){
     warnings.push({
       type: "danger",
-      icon: "⛔",
+      icon: `<svg class="app-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" x2="19.07" y1="4.93" y2="19.07"/></svg>`,
       title: "Potential Repainting or Look-Ahead Vulnerability",
       text: repaintingRisks.join(" ") + " Verify signals execute on candle close."
     });
   } else {
     warnings.push({
       type: "ok",
-      icon: "✓",
+      icon: `<svg class="app-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`,
       title: "Zero Repainting Patterns Detected",
       text: "Pine script compiler AST confirms sequential historical referencing without forward-looking bias."
     });
@@ -11779,13 +14049,13 @@ function robEvaluateWarnings(strat, trades, splitRes, wfaRes, mcRes){
     const ret = splitRes.oosRetention;
     if(ret >= 75){
       score += 25;
-      warnings.push({ type: "ok", icon: "✓", title: "Robust Out-of-Sample Retention", text: `OOS retention is ${ret.toFixed(0)}%. The strategy performed consistently on unseen test data.` });
+      warnings.push({ type: "ok", icon: `<svg class="app-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></svg>`, title: "Robust Out-of-Sample Retention", text: `OOS retention is ${ret.toFixed(0)}%. The strategy performed consistently on unseen test data.` });
     } else if(ret >= 40){
       score += 10;
-      warnings.push({ type: "warning", icon: "⚡", title: "Moderate Out-of-Sample Degradation", text: `OOS retention dropped to ${ret.toFixed(0)}% of training returns.` });
+      warnings.push({ type: "warning", icon: `<svg class="app-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`, title: "Moderate Out-of-Sample Degradation", text: `OOS retention dropped to ${ret.toFixed(0)}% of training returns.` });
     } else {
       score -= 20;
-      warnings.push({ type: "danger", icon: "⚠️", title: "Severe Overfitting Warning", text: `Strategy lost over 60% of performance on unseen test data (OOS Retention: ${ret.toFixed(0)}%). High curve-fitting probability.` });
+      warnings.push({ type: "danger", icon: `<svg class="app-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>`, title: "Severe Overfitting Warning", text: `Strategy lost over 60% of performance on unseen test data (OOS Retention: ${ret.toFixed(0)}%). High curve-fitting probability.` });
     }
   }
 
@@ -12424,12 +14694,12 @@ const MXLiveStrategyEngine = (function(){
         entryHtml = `$${fmtPrice(inst.symbol, pos.entry)}`;
         const upnl = pos.unrealizedPnl || 0;
         const upnlPct = pos.unrealizedPnlPct || 0;
-        const upnlCls = upnl >= 0 ? "up" : "down";
+        const upnlCls = pnlClass(upnl);
         upnlHtml = `<b class="${upnlCls}">${fmtUsd(upnl)}</b> <span class="${upnlCls} faint">(${fmtPct(upnlPct)})</span>`;
       }
 
       const rpnl = inst.realizedPnl || 0;
-      const rpnlCls = rpnl >= 0 ? "up" : "down";
+      const rpnlCls = pnlClass(rpnl);
       const rpnlHtml = `<b class="${rpnlCls}">${fmtUsd(rpnl)}</b>`;
 
       const closedTrades = inst.trades || [];
@@ -12455,7 +14725,7 @@ const MXLiveStrategyEngine = (function(){
         ? `<button class="mini-btn" data-act="closepos" data-id="${inst.id}" title="Market close current position" style="background:rgba(255,92,108,0.15); color:var(--short); border-color:var(--short);">Close Pos</button>`
         : ``;
 
-      const delBtn = `<button class="mini-btn" data-act="del" data-id="${inst.id}" title="Delete engine" style="color:var(--text-faint); font-weight:700;">✕</button>`;
+      const delBtn = `<button class="mini-btn" data-act="del" data-id="${inst.id}" title="Delete engine" style="color:var(--text-faint); font-weight:700; display:inline-flex; align-items:center; justify-content:center; padding:3px 6px;"><svg class="app-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>`;
 
       return `<tr data-inst-id="${inst.id}">
         <td style="padding:6px 10px;">${statusPill}</td>
@@ -13029,7 +15299,7 @@ const MXDashboard = (function(){
     if(compareChartInst) return;
 
     compareChartInst = LightweightCharts.createChart(el, {
-      layout: { background: { color: "transparent" }, textColor: "#9598a1", fontFamily: "IBM Plex Mono, monospace", fontSize: 11 },
+      layout: { background: { color: "transparent" }, textColor: "#787b86", fontFamily: TV_CHART_FONT, fontSize: 11 },
       grid: { vertLines: { color: "#1e222d" }, horzLines: { color: "#1e222d" } },
       rightPriceScale: { borderColor: "#2a2e39" },
       timeScale: { borderColor: "#2a2e39", timeVisible: true }
@@ -13112,7 +15382,7 @@ const MXDashboard = (function(){
     const netEl = document.getElementById("dashKpiNetPnl");
     if(netEl){
       netEl.textContent = fmtUsd(net);
-      netEl.className = "dash-kpi-val " + (net >= 0 ? "up" : "down");
+      netEl.className = "dash-kpi-val " + pnlClass(net);
     }
 
     const wrEl = document.getElementById("dashKpiWinRate");
@@ -13161,7 +15431,7 @@ const MXDashboard = (function(){
       const stratPaperTrades = allPaperTrades.filter(t => t.strategyId === s.id || t.strategyName === s.name);
       const paperRealized = stratPaperTrades.reduce((sum, t) => sum + (t.netPnl || 0), 0);
       const paperRealizedHtml = stratPaperTrades.length > 0
-        ? `<b class="${paperRealized >= 0 ? 'up' : 'down'}">${fmtUsd(paperRealized)}</b> <span class="faint">(${stratPaperTrades.length})</span>`
+        ? `<b class="${pnlClass(paperRealized)}">${fmtUsd(paperRealized)}</b> <span class="faint">(${stratPaperTrades.length})</span>`
         : `<span class="faint">—</span>`;
 
       let btReturnHtml = `<span class="faint">—</span>`;
@@ -13309,7 +15579,7 @@ const MXDashboard = (function(){
         <td style="padding:6px 10px;color:var(--text-dim);">${dt}</td>
         <td style="padding:6px 10px;text-align:right;">
           <button class="mini-btn" data-preset-act="load" data-id="${p.id}" title="Load preset into Strategy Tester">Load in Tester</button>
-          <button class="mini-btn" data-preset-act="del" data-id="${p.id}" title="Delete preset" style="color:var(--short);font-weight:700;">✕</button>
+          <button class="mini-btn" data-preset-act="del" data-id="${p.id}" title="Delete preset" style="color:var(--short);font-weight:700;display:inline-flex;align-items:center;justify-content:center;padding:3px 6px;"><svg class="app-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
         </td>
       </tr>`;
     }).join("");
