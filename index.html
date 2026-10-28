@@ -187,10 +187,7 @@ header{
 #price-chart{flex:1;min-height:320px;cursor:crosshair;}
 #price-chart.picking{cursor:copy;}
 .chart-pnl-badge{
-  position:absolute;top:54px;left:12px;z-index:5;
-  background:rgba(24,27,36,.92);border:1px solid var(--line);border-radius:var(--radius);
-  padding:6px 10px;font-family:var(--mono);font-size:12px;font-weight:700;
-  pointer-events:none;display:none;backdrop-filter:blur(4px);box-shadow:0 4px 14px rgba(0,0,0,.35);
+  display:none !important;
 }
 .chart-pnl-badge .lbl{color:var(--text-dim);font-weight:600;margin-right:8px;font-family:var(--sans);font-size:11px;}
 .pick-hint{
@@ -212,6 +209,262 @@ header{
 .chart-trade-btns button[data-side="LONG"]:hover{background:var(--long);color:#ffffff;border-color:var(--long);}
 .chart-trade-btns button[data-side="SHORT"]{color:var(--short);border-color:rgba(242,54,69,.4);}
 .chart-trade-btns button[data-side="SHORT"]:hover{background:var(--short);color:#ffffff;border-color:var(--short);}
+
+/* ================= QUICK TRADE CONTROLS (TRADINGVIEW STYLE) ================= */
+.quick-trade-bar {
+  position: absolute;
+  top: 56px;
+  left: 12px;
+  z-index: 9;
+  display: inline-flex;
+  align-items: stretch;
+  height: 34px;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+  user-select: none;
+  font-family: var(--sans);
+  pointer-events: auto;
+}
+
+.quick-trade-btn {
+  width: 66px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: filter 0.12s ease, transform 0.08s ease;
+  line-height: 1.15;
+}
+.quick-trade-btn:active {
+  transform: scale(0.97);
+}
+
+.quick-sell-btn {
+  background: #F23645;
+  border-top-left-radius: 4px;
+  border-bottom-left-radius: 4px;
+}
+.quick-sell-btn:hover {
+  background: #e02f3d;
+  filter: brightness(1.08);
+}
+
+.quick-buy-btn {
+  background: #2962ff;
+  border-top-right-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+.quick-buy-btn:hover {
+  background: #1e53e5;
+  filter: brightness(1.08);
+}
+
+.quick-btn-price {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+
+.quick-btn-label {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  opacity: 0.95;
+}
+
+.quick-qty-wrapper {
+  position: relative;
+  height: 100%;
+}
+
+.quick-qty-badge {
+  min-width: 52px;
+  height: 100%;
+  background: #1e222d;
+  border-top: 1px solid #363a45;
+  border-bottom: 1px solid #363a45;
+  border-left: 1px solid #2a2e39;
+  border-right: 1px solid #2a2e39;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  padding: 0 6px;
+  line-height: 1.15;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.quick-qty-badge:hover, .quick-qty-badge.active {
+  background: #2a2e39;
+  border-color: #4a4e5a;
+}
+
+.quick-qty-spread {
+  font-family: var(--mono);
+  font-size: 9px;
+  color: #787b86;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.quick-qty-val {
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.quick-pos-pill {
+  display: none !important;
+}
+
+/* Quantity Popup Menu */
+.quick-qty-popup {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  background: #181b24;
+  border: 1px solid #363a45;
+  border-radius: 8px;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.7);
+  padding: 12px;
+  z-index: 100;
+  display: none;
+  pointer-events: auto;
+}
+.quick-qty-popup.open {
+  display: block;
+}
+
+.quick-qty-popup-header {
+  font-size: 12px;
+  font-weight: 600;
+  color: #787b86;
+  margin-bottom: 8px;
+}
+
+.quick-qty-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.quick-qty-input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  background: #131722;
+  border: 1px solid #363a45;
+  border-radius: 5px;
+  color: #ffffff;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 8px;
+  text-align: right;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+.quick-qty-input:focus {
+  border-color: #2962ff;
+}
+
+.quick-qty-step-btn {
+  width: 30px;
+  height: 32px;
+  background: #1e222d;
+  border: 1px solid #363a45;
+  border-radius: 5px;
+  color: #d1d4dc;
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.quick-qty-step-btn:hover {
+  background: #2a2e39;
+  color: #ffffff;
+}
+.quick-qty-step-btn:active {
+  transform: scale(0.95);
+}
+
+.quick-preset-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.quick-preset-btn {
+  height: 28px;
+  background: #1e222d;
+  border: 1px solid #363a45;
+  border-radius: 4px;
+  color: #d1d4dc;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.quick-preset-btn:hover {
+  background: #2a2e39;
+  border-color: #4a4e5a;
+  color: #ffffff;
+}
+.quick-preset-btn.active {
+  background: rgba(41, 98, 255, 0.2);
+  border-color: #2962ff;
+  color: #ffffff;
+}
+
+/* Mobile responsive styles */
+@media (max-width: 880px) {
+  .quick-trade-bar {
+    top: 52px;
+    left: 8px;
+    height: 30px;
+  }
+  .quick-trade-btn {
+    width: 56px;
+  }
+  .quick-btn-price {
+    font-size: 10px;
+  }
+  .quick-btn-label {
+    font-size: 8.5px;
+  }
+  .quick-qty-badge {
+    min-width: 44px;
+    padding: 0 4px;
+  }
+  .quick-qty-val {
+    font-size: 11px;
+  }
+  .quick-qty-popup {
+    width: 185px;
+    left: 20px;
+    transform: none;
+  }
+}
 
 .side-col{
   background:var(--bg-1);
@@ -1335,6 +1588,7 @@ tbody tr:hover{background:var(--bg-2);}
     top:88px !important;
     font-size:10.5px !important;
     padding:4px 10px !important;
+    pointer-events:none !important;
   }
   .replay-control-bar{
     padding:3px 6px !important;
@@ -1576,7 +1830,7 @@ tbody tr:hover{background:var(--bg-2);}
 .range-bar .sep{width:1px;height:16px;background:var(--line);margin:0 4px;}
 .range-bar .info{margin-left:auto;font-size:11px;color:var(--text-dim);font-family:var(--mono);}
 #liveBtn{display:none;color:var(--long);border:1px solid rgba(8,153,129,.4);background:rgba(8,153,129,.1);}
-.hist-notice{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;max-width:70%;background:rgba(245,158,11,.16);border:1px solid var(--amber);color:var(--amber);padding:7px 14px;border-radius:var(--radius);font-size:11.5px;font-weight:700;display:none;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35);}
+.hist-notice{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:6;max-width:70%;background:rgba(245,158,11,.16);border:1px solid var(--amber);color:var(--amber);padding:7px 14px;border-radius:var(--radius);font-size:11.5px;font-weight:700;display:none;pointer-events:none;box-shadow:0 4px 14px rgba(0,0,0,.35);}
 .field input[type=datetime-local]{width:100%;background:var(--bg-0);border:1px solid var(--line);border-radius:var(--radius);color:var(--text);padding:7px 8px;font-family:var(--mono);font-size:12px;color-scheme:dark;}
 .field input[type=datetime-local]:focus{outline:none;border-color:var(--focus);}
 
@@ -2581,7 +2835,7 @@ tbody tr:hover{background:var(--bg-2);}
 .chart-plus-line{
   position:absolute;
   left:0;
-  right:65px;
+  right:88px;
   height:0;
   border-top:1px dashed rgba(120, 123, 134, 0.65);
   pointer-events:none;
@@ -2590,29 +2844,41 @@ tbody tr:hover{background:var(--bg-2);}
 }
 .chart-plus-badge{
   position:absolute;
-  right:2px;
+  right:0px;
   z-index:25;
   transform:translateY(-50%);
   display:flex;
+  flex-direction:row;
   align-items:center;
-  background:#2a2e39;
-  border:1px solid #434651;
-  border-radius:4px;
-  height:20px;
-  padding:0 5px 0 3px;
-  gap:4px;
-  box-shadow:0 2px 6px rgba(0,0,0,0.35);
-  user-select:none;
-  pointer-events:auto;
-  cursor:pointer;
+  pointer-events:none;
+  border-radius:3px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.4);
 }
 .chart-plus-marker{
+  width:22px;
+  height:22px;
+  box-sizing:border-box;
+  background:#1e222d;
+  border:1px solid #434651;
+  border-right:1px solid #363a45;
+  border-radius:3px 0 0 3px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  transition:background 0.15s ease, border-color 0.15s ease;
+  user-select:none;
+  padding:0;
+  flex-shrink:0;
+  pointer-events:auto;
+  color:#d1d4dc;
+}
+.chart-plus-marker .plus-circle{
   width:14px;
   height:14px;
   border-radius:50%;
-  background:transparent;
-  border:1px solid #787b86;
-  color:#d1d4dc;
+  border:1.5px solid #d1d4dc;
+  color:#ffffff;
   font-family:var(--sans);
   font-size:11px;
   font-weight:700;
@@ -2620,27 +2886,36 @@ tbody tr:hover{background:var(--bg-2);}
   display:flex;
   align-items:center;
   justify-content:center;
-  cursor:pointer;
-  transition:all 0.15s ease;
-  user-select:none;
-  padding:0;
+  pointer-events:none;
+  transition:transform 0.12s ease;
 }
-.chart-plus-marker:hover,
-.chart-plus-badge:hover .chart-plus-marker{
+.chart-plus-marker:hover{
   background:#363a45;
-  border-color:#d1d4dc;
-  color:#ffffff;
+  border-color:#787b86;
+}
+.chart-plus-marker:hover .plus-circle{
+  border-color:#ffffff;
   transform:scale(1.15);
 }
 .chart-plus-price-tag{
+  height:22px;
+  box-sizing:border-box;
+  background:#1e222d;
+  border:1px solid #434651;
+  border-left:none;
+  border-radius:0 3px 3px 0;
   font-family:var(--mono);
-  font-size:11px;
-  font-weight:600;
-  color:#d1d4dc;
+  font-size:11.5px;
+  font-weight:700;
+  color:#ffffff;
   letter-spacing:-0.2px;
   white-space:nowrap;
   user-select:none;
   pointer-events:none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 4px;
 }
 .chart-alert-markers-container{
   position:absolute;
@@ -2992,6 +3267,77 @@ tbody tr:hover{background:var(--bg-2);}
   border-color:rgba(8,153,129,0.4);
   background:rgba(8,153,129,0.12);
 }
+.alert-action-btn.edit:hover{
+  border-color:var(--blue);
+  color:var(--blue);
+  background:rgba(41,98,255,0.12);
+}
+.alert-desktop-notif-bar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:10px 16px;
+  background:#161922;
+  border-bottom:1px solid #2a2e39;
+  gap:10px;
+}
+.alert-notif-status-info{
+  display:flex;
+  flex-direction:column;
+  gap:2px;
+  min-width:0;
+  flex:1;
+}
+.alert-notif-status-badge{
+  font-size:12px;
+  font-weight:700;
+  color:#ffffff;
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.alert-notif-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  display:inline-block;
+  background:#787b86;
+  flex-shrink:0;
+}
+.alert-notif-dot.granted{
+  background:#089981;
+  box-shadow:0 0 6px rgba(8,153,129,0.7);
+}
+.alert-notif-dot.default{
+  background:#f59e0b;
+}
+.alert-notif-dot.denied{
+  background:#f23645;
+}
+.alert-notif-status-subtext{
+  font-size:10.5px;
+  color:#787b86;
+  line-height:1.3;
+}
+.alert-notif-actions{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  flex-shrink:0;
+}
+@media(max-width:480px){
+  .alert-form-row{
+    grid-template-columns:1fr;
+  }
+  .alert-desktop-notif-bar{
+    flex-direction:column;
+    align-items:flex-start;
+  }
+  .alert-notif-actions{
+    width:100%;
+    justify-content:flex-end;
+  }
+}
 
 /* ---- Alert In-App Toast ---- */
 #alertToastContainer{
@@ -3088,9 +3434,43 @@ tbody tr:hover{background:var(--bg-2);}
     <div class="chart-position-strip" id="chartPositionStrip" style="display:none;"></div>
     <div class="chart-drag-handle" id="chartSlHandle" style="display:none;"></div>
     <div class="chart-drag-handle" id="chartTpHandle" style="display:none;"></div>
-    <div class="chart-pnl-badge" id="chartPnlBadge"><span class="lbl">Open P&amp;L</span><span id="chartPnlValue">—</span></div>
+    <div class="chart-pnl-badge" id="chartPnlBadge" style="display:none !important;"></div>
     <div class="pick-hint" id="pickHint">Click a price on the chart to set it</div>
         <div class="chart-legend" id="chartLegend"></div>
+    <!-- TradingView-Style Quick Trade Bar -->
+    <div class="quick-trade-bar" id="quickTradeBar" role="region" aria-label="Quick Trade Controls">
+      <button class="quick-trade-btn quick-sell-btn" id="quickSellBtn" title="Quick Market Sell (Short)" aria-label="Quick Market Sell">
+        <span class="quick-btn-price" id="quickSellPrice">—</span>
+        <span class="quick-btn-label">SELL</span>
+      </button>
+      <div class="quick-qty-wrapper" id="quickQtyWrapper">
+        <button class="quick-qty-badge" id="quickTradeQtyBtn" title="Click to adjust quantity" aria-label="Order Quantity" aria-haspopup="true">
+          <span class="quick-qty-spread" id="quickSpreadVal">0.0</span>
+          <span class="quick-qty-val" id="quickQtyVal">1</span>
+        </button>
+        <div class="quick-qty-popup" id="quickQtyPopup" role="dialog" aria-label="Select Quantity">
+          <div class="quick-qty-popup-header">Quantity</div>
+          <div class="quick-qty-input-group">
+            <input type="number" id="quickQtyInput" class="quick-qty-input" min="0" step="any" value="1" aria-label="Quantity value">
+            <button class="quick-qty-step-btn" id="quickQtyMinus" title="Decrease quantity" aria-label="Decrease quantity">−</button>
+            <button class="quick-qty-step-btn" id="quickQtyPlus" title="Increase quantity" aria-label="Increase quantity">+</button>
+          </div>
+          <div class="quick-preset-grid" id="quickPresetGrid">
+            <button type="button" class="quick-preset-btn" data-qty="1">1</button>
+            <button type="button" class="quick-preset-btn" data-qty="5">5</button>
+            <button type="button" class="quick-preset-btn" data-qty="25">25</button>
+            <button type="button" class="quick-preset-btn" data-qty="100">100</button>
+            <button type="button" class="quick-preset-btn" data-qty="500">500</button>
+            <button type="button" class="quick-preset-btn" data-qty="1000">1000</button>
+          </div>
+        </div>
+      </div>
+      <button class="quick-trade-btn quick-buy-btn" id="quickBuyBtn" title="Quick Market Buy (Long)" aria-label="Quick Market Buy">
+        <span class="quick-btn-price" id="quickBuyPrice">—</span>
+        <span class="quick-btn-label">BUY</span>
+      </button>
+    </div>
+    <div class="quick-pos-pill" id="quickPosPill" style="display:none !important;"></div>
         <div class="strat-chips" id="stratChips"></div>
         <div class="layers-pop" id="layersPop"></div>
     <div class="float-tb" id="floatTb">
@@ -3114,8 +3494,8 @@ tbody tr:hover{background:var(--bg-2);}
     <div class="hist-notice" id="histNotice" title="Click to dismiss"></div>
     <div id="chartPlusLine" class="chart-plus-line" style="display:none;"></div>
     <div id="chartPlusBadge" class="chart-plus-badge" style="display:none;" title="Add Alert or Order">
-      <button id="chartPlusMarker" class="chart-plus-marker" title="Add Alert or Order" aria-label="Add Alert or Order">+</button>
-      <span id="chartPlusPriceTag" class="chart-plus-price-tag">—</span>
+      <button id="chartPlusMarker" class="chart-plus-marker" title="Add Alert or Order" aria-label="Add Alert or Order"><span class="plus-circle">+</span></button>
+      <div id="chartPlusPriceTag" class="chart-plus-price-tag">—</div>
     </div>
     <div id="chartAlertMarkersContainer" class="chart-alert-markers-container"></div>
     <div id="chartAlertDragHandle" class="chart-alert-drag-handle" style="display:none;"><span class="alert-drag-icon">🔔</span><span class="alert-drag-title">Alert:</span><span class="alert-drag-price mono" id="alertDragPriceText">—</span><span class="alert-drag-hint">Drag to adjust</span></div>
@@ -4751,6 +5131,10 @@ tbody tr:hover{background:var(--bg-2);}
 
 <!-- Alert Line Context Menu -->
 <div id="alertLineContextMenu" class="chart-ctx-menu" style="display:none; min-width:170px;">
+  <div class="ctx-item" id="alcEdit">
+    <span class="ctx-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>
+    <span class="ctx-label">Edit Alert...</span>
+  </div>
   <div class="ctx-item" id="alcPause">
     <span class="ctx-icon">⏸️</span>
     <span class="ctx-label" id="alcPauseLabel">Pause Alert</span>
@@ -4774,6 +5158,20 @@ tbody tr:hover{background:var(--bg-2);}
     <div class="alert-modal-tabs">
       <button class="alert-modal-tab active" id="alertTabCreate">Create Alert</button>
       <button class="alert-modal-tab" id="alertTabManage">Active Alerts (<span id="alertActiveCount">0</span>)</button>
+    </div>
+    <!-- Desktop Notifications Status Bar -->
+    <div class="alert-desktop-notif-bar" id="alertDesktopNotifBar">
+      <div class="alert-notif-status-info">
+        <div class="alert-notif-status-badge" id="alertNotifStatusBadge">
+          <span class="alert-notif-dot default" id="alertNotifDot"></span>
+          <span id="alertNotifStatusText">Desktop Notifications</span>
+        </div>
+        <div class="alert-notif-status-subtext" id="alertNotifStatusSubtext">Get native system notifications when tab is in background or minimized.</div>
+      </div>
+      <div class="alert-notif-actions" id="alertNotifActions">
+        <button type="button" class="sb-btn" id="btnEnableDesktopNotifs" style="font-size:11px;padding:4px 10px;font-weight:600;">Enable Notifications</button>
+        <button type="button" class="sb-btn" id="btnTestDesktopNotif" style="font-size:11px;padding:4px 10px;display:none;">Send Test</button>
+      </div>
     </div>
     <div class="alert-modal-body" id="alertBodyCreate">
       <div class="alert-form-row">
@@ -5100,6 +5498,7 @@ try {
   chart.timeScale().subscribeVisibleLogicalRangeChange(()=>{
     if(typeof renderPositionOverlay === "function") renderPositionOverlay();
     if(typeof updateAlertMarkerPositions === "function") updateAlertMarkerPositions();
+    if(typeof updateChartPlusOnScaleChange === "function") updateChartPlusOnScaleChange();
   });
 } catch(e){}
 
@@ -5118,6 +5517,8 @@ new ResizeObserver(()=>{
   const h = Math.max(chartEl.clientHeight || 0, 320);
   chart.applyOptions({ width: w, height: h });
   if(typeof renderPositionOverlay === "function") renderPositionOverlay();
+  if(typeof updateAlertMarkerPositions === "function") updateAlertMarkerPositions();
+  if(typeof updateChartPlusOnScaleChange === "function") updateChartPlusOnScaleChange();
 }).observe(chartEl);
 new ResizeObserver(()=>{
   const el = document.getElementById("equity-chart");
@@ -5185,7 +5586,7 @@ let noticeTimer = null;
 function showNotice(msg, replace = false){
   noticeEl.textContent = (!replace && noticeEl.textContent) ? noticeEl.textContent + "  ·  " + msg : msg;
   noticeEl.style.display = "block";
-  clearTimeout(noticeTimer); noticeTimer = setTimeout(hideNotice, 10000);
+  clearTimeout(noticeTimer); noticeTimer = setTimeout(hideNotice, 4000);
 }
 function hideNotice(){ noticeEl.textContent=""; noticeEl.style.display="none"; }
 noticeEl.addEventListener("click", hideNotice);
@@ -5367,6 +5768,7 @@ async function refreshChart(opts){
       document.getElementById("dataStart").textContent = s ? "Data since " + fmtDate(s) : "";
     });
     drawOrderLinesForCurrentSymbol();
+    if(typeof renderAlertPriceLines === "function") renderAlertPriceLines();
     if(typeof chart !== "undefined" && chart && chart.priceScale){
       try{ chart.priceScale("right").applyOptions({ autoScale: true }); }catch(e){}
     }
@@ -5814,6 +6216,12 @@ function placeOrder(){
   clearOrderForm();
   updateAll();
   showNotice(`${p.side} ${p.qty} ${p.symbol} opened at ${fmtPrice(p.symbol, p.entryEst)}`);
+  if(chart && chart.applyOptions){
+    chart.applyOptions({
+      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+      handleScale: { axisPressedMouseMove: { time: true, price: true }, axisDoubleClickReset: { time: true, price: true }, mouseWheel: true, pinch: true }
+    });
+  }
 }
 
 function closePosition(symbol, fraction, reason, override){
@@ -6126,14 +6534,7 @@ function renderPositionOverlay(){
 
 function updateChartPnlBadge(){
   const badge = document.getElementById("chartPnlBadge");
-  const valEl = document.getElementById("chartPnlValue");
-  const pos = account.positions[ui.symbol];
-  if(!pos){ badge.style.display = "none"; return; }
-  const pnl = unrealizedPnl(ui.symbol);
-  const pct = pos.margin>0 ? (pnl/pos.margin*100) : 0;
-  valEl.textContent = `${fmtUsd(pnl)} (${fmtPct(pct)}) · ${pos.side} ${pos.leverage}x`;
-  valEl.className = pnlClass(pnl);
-  badge.style.display = "block";
+  if(badge) badge.style.display = "none";
 }
 
 let previewSlLine=null, previewTpLine=null;
@@ -6313,28 +6714,55 @@ function initDragHandles(){
 
 // Chart element direct line-drag listener
 chartEl.addEventListener("pointerdown", (e)=>{
-  if(e.target.closest("#chartPositionStrip") || e.target.closest("#chartSlHandle") || e.target.closest("#chartTpHandle") || e.target.closest("#floatTb") || e.target.closest(".chart-legend")) return;
+  if(e.target.closest("#chartPositionStrip") || e.target.closest("#chartSlHandle") || e.target.closest("#chartTpHandle") || e.target.closest("#floatTb") || e.target.closest(".chart-legend") || e.target.closest("#quickTradeBar") || e.target.closest("#quickPosPill") || e.target.closest("#quickQtyPopup")) return;
   const pos = account.positions[ui.symbol];
-  if(!pos) return;
-  const rect = chartEl.getBoundingClientRect();
-  const y = e.clientY - rect.top;
-  const HIT = (e.pointerType === "touch") ? 26 : 10;
-  if(pos.sl != null && candleSeries){
-    const slY = candleSeries.priceToCoordinate(pos.sl);
-    if(slY != null && Math.abs(slY - y) <= HIT){
-      e.preventDefault(); e.stopPropagation();
-      const slH = document.getElementById("chartSlHandle");
-      startLineDrag("sl", e.pointerId, slH);
-      return;
+  if(pos){
+    const rect = chartEl.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const HIT = (e.pointerType === "touch") ? 26 : 10;
+    if(pos.sl != null && candleSeries){
+      const slY = candleSeries.priceToCoordinate(pos.sl);
+      if(slY != null && Math.abs(slY - y) <= HIT){
+        e.preventDefault(); e.stopPropagation();
+        const slH = document.getElementById("chartSlHandle");
+        startLineDrag("sl", e.pointerId, slH);
+        return;
+      }
+    }
+    if(pos.tp != null && candleSeries){
+      const tpY = candleSeries.priceToCoordinate(pos.tp);
+      if(tpY != null && Math.abs(tpY - y) <= HIT){
+        e.preventDefault(); e.stopPropagation();
+        const tpH = document.getElementById("chartTpHandle");
+        startLineDrag("tp", e.pointerId, tpH);
+        return;
+      }
     }
   }
-  if(pos.tp != null && candleSeries){
-    const tpY = candleSeries.priceToCoordinate(pos.tp);
-    if(tpY != null && Math.abs(tpY - y) <= HIT){
-      e.preventDefault(); e.stopPropagation();
-      const tpH = document.getElementById("chartTpHandle");
-      startLineDrag("tp", e.pointerId, tpH);
-      return;
+
+  // Ensure chart canvas dragging (both horizontal and vertical) works smoothly without requiring price scale touch first
+  if(e.button === 0 && (!window._activeDrag && typeof activeDrag === "undefined" || !activeDrag)){
+    if(typeof chart !== "undefined" && chart && chart.priceScale){
+      try {
+        const pScale = chart.priceScale("right");
+        if(pScale && pScale.options && pScale.options().autoScale){
+          pScale.applyOptions({ autoScale: false });
+        }
+      } catch(err){}
+    }
+  }
+}, true);
+
+chartEl.addEventListener("mousedown", (e)=>{
+  if(e.target.closest("#chartPositionStrip") || e.target.closest("#chartSlHandle") || e.target.closest("#chartTpHandle") || e.target.closest("#floatTb") || e.target.closest(".chart-legend") || e.target.closest("#quickTradeBar") || e.target.closest("#quickPosPill") || e.target.closest("#quickQtyPopup")) return;
+  if(e.button === 0 && (!window._activeDrag && typeof activeDrag === "undefined" || !activeDrag)){
+    if(typeof chart !== "undefined" && chart && chart.priceScale){
+      try {
+        const pScale = chart.priceScale("right");
+        if(pScale && pScale.options && pScale.options().autoScale){
+          pScale.applyOptions({ autoScale: false });
+        }
+      } catch(err){}
     }
   }
 }, true);
@@ -6407,9 +6835,12 @@ function endLineDrag(commit = true){
     try { drag.handleEl.releasePointerCapture(drag.pointerId); } catch(e){}
   }
 
-  // Restore chart scroll / scale options to their previous state
+  // Restore chart scroll / scale options to their fully enabled state
   if(chart && chart.applyOptions){
-    chart.applyOptions(drag.prevOptions || { handleScroll: true, handleScale: true });
+    chart.applyOptions({
+      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
+      handleScale: { axisPressedMouseMove: { time: true, price: true }, axisDoubleClickReset: { time: true, price: true }, mouseWheel: true, pinch: true }
+    });
   }
 
   const p = account.positions[ui.symbol];
@@ -6496,7 +6927,7 @@ window.addEventListener("pointercancel", ()=> endLineDrag(false));
 
 chartEl.addEventListener("click",(e)=>{
   if(!pickMode || dragTarget) return;
-  if(e.target.closest("#chartPositionStrip") || e.target.closest("#chartSlHandle") || e.target.closest("#chartTpHandle") || e.target.closest("#floatTb") || e.target.closest(".chart-legend")) return;
+  if(e.target.closest("#chartPositionStrip") || e.target.closest("#chartSlHandle") || e.target.closest("#chartTpHandle") || e.target.closest("#floatTb") || e.target.closest(".chart-legend") || e.target.closest("#quickTradeBar") || e.target.closest("#quickPosPill")) return;
   const rect = chartEl.getBoundingClientRect();
   const y = e.clientY - rect.top;
   const price = candleSeries.coordinateToPrice(y);
@@ -6542,6 +6973,8 @@ function updatePriceStrip(){
   }else{
     chgEl.textContent = "";
   }
+  if(typeof updateQuickTradePrices === "function") updateQuickTradePrices();
+  if(typeof updateQuickTradePositionPill === "function") updateQuickTradePositionPill();
 }
 
 function updateAccountPanel(){
@@ -6710,6 +7143,7 @@ function updateAccountAndPositions(){
   updatePositionsTable();
   updateLivePositionLine();
   updateChartPnlBadge();
+  if(typeof updateQuickTradePositionPill === "function") updateQuickTradePositionPill();
   sampleEquity(false);
 }
 
@@ -6735,6 +7169,8 @@ try {
   window.endLineDrag = endLineDrag;
   window.unrealizedPnl = unrealizedPnl;
   window.computeOrderPreview = computeOrderPreview;
+  window.closePosition = closePosition;
+  window.placeOrder = placeOrder;
   Object.defineProperty(window, '_activeDrag', { get: () => activeDrag, set: v => { activeDrag = v; }, configurable: true });
 } catch(e) {}
 
@@ -6796,6 +7232,12 @@ document.getElementById("symbolTabs").addEventListener("click", async (e)=>{
   }
   if(typeof closeChartContextMenu === "function"){
     closeChartContextMenu();
+  }
+  if(typeof updateQuickTradePrices === "function"){
+    updateQuickTradePrices();
+  }
+  if(typeof updateQuickTradePositionPill === "function"){
+    updateQuickTradePositionPill();
   }
 });
 
@@ -6943,6 +7385,266 @@ document.getElementById("newAcctCreate").addEventListener("click", async ()=>{
   await switchAccount(acc.id);
   populateAccountSelect();
 });
+
+/* ================= QUICK TRADE CONTROLS (TRADINGVIEW STYLE) ================= */
+let quickTradeQty = 1;
+try {
+  const saved = localStorage.getItem("paperExchange.quickTradeQty");
+  if(saved && !isNaN(parseFloat(saved)) && parseFloat(saved) > 0){
+    quickTradeQty = parseFloat(saved);
+  }
+} catch(e) {}
+
+function getQuickTradeQty(){
+  const val = parseFloat(quickTradeQty);
+  if(isNaN(val) || val <= 0){
+    const qIn = parseFloat(document.getElementById("qtyInput")?.value);
+    if(!isNaN(qIn) && qIn > 0) return qIn;
+    const meta = symbolMeta[ui.symbol] || {};
+    return meta.qtyStep ? (ui.symbol === "BTCUSDT" ? 0.1 : 1) : 1;
+  }
+  return val;
+}
+
+function setQuickTradeQty(val, syncOrderPanel = true){
+  const num = parseFloat(val);
+  if(isNaN(num) || num <= 0) return;
+  const meta = symbolMeta[ui.symbol] || {};
+  const prec = meta.qtyPrecision ?? 3;
+  const formattedStr = num.toFixed(prec);
+  const cleanVal = parseFloat(formattedStr);
+  quickTradeQty = cleanVal;
+
+  try {
+    localStorage.setItem("paperExchange.quickTradeQty", String(cleanVal));
+  } catch(e) {}
+
+  const qValEl = document.getElementById("quickQtyVal");
+  if(qValEl) qValEl.textContent = cleanVal;
+
+  const qInEl = document.getElementById("quickQtyInput");
+  if(qInEl && document.activeElement !== qInEl) qInEl.value = cleanVal;
+
+  document.querySelectorAll("#quickPresetGrid .quick-preset-btn").forEach(btn => {
+    btn.classList.toggle("active", parseFloat(btn.dataset.qty) === cleanVal);
+  });
+
+  if(syncOrderPanel){
+    const orderQtyIn = document.getElementById("qtyInput");
+    if(orderQtyIn && parseFloat(orderQtyIn.value) !== cleanVal){
+      orderQtyIn.value = cleanVal;
+      if(typeof refreshOrderPreview === "function") refreshOrderPreview();
+    }
+  }
+}
+
+function updateQuickTradePrices(){
+  const sellPriceEl = document.getElementById("quickSellPrice");
+  const buyPriceEl = document.getElementById("quickBuyPrice");
+  const spreadEl = document.getElementById("quickSpreadVal");
+  if(!sellPriceEl || !buyPriceEl) return;
+
+  const symbol = ui.symbol;
+  const mkt = market[symbol] || {};
+  const meta = symbolMeta[symbol] || {};
+  const prec = meta.pricePrecision ?? 2;
+  const isReplayActive = (typeof replayState !== "undefined" && replayState.active && symbol === ui.symbol);
+  const lastBar = (typeof H !== "undefined" && H.bars && H.bars.length) ? H.bars[H.bars.length - 1] : null;
+
+  const refPrice = isReplayActive ? (lastBar ? lastBar.close : 0) : (mkt.last || (lastBar ? lastBar.close : 0));
+  const bidPrice = isReplayActive ? refPrice : (mkt.bid || mkt.last || refPrice || 0);
+  const askPrice = isReplayActive ? refPrice : (mkt.ask || mkt.last || refPrice || 0);
+  const spread = (askPrice && bidPrice && askPrice >= bidPrice) ? (askPrice - bidPrice) : 0;
+
+  sellPriceEl.textContent = bidPrice ? fmtPrice(symbol, bidPrice) : "—";
+  buyPriceEl.textContent = askPrice ? fmtPrice(symbol, askPrice) : "—";
+  if(spreadEl) spreadEl.textContent = spread.toFixed(prec);
+}
+
+function updateQuickTradePositionPill(){
+  const pill = document.getElementById("quickPosPill");
+  if(pill) pill.style.display = "none";
+}
+
+function executeQuickOrder(side){
+  // side: "BUY" (Long) or "SELL" (Short)
+  const normSide = side.toUpperCase() === "BUY" ? "LONG" : "SHORT";
+  ui.side = normSide;
+
+  // Sync side toggle buttons in Order panel
+  document.querySelectorAll(".side-toggle button").forEach(b => {
+    b.classList.toggle("active", b.dataset.side === normSide);
+  });
+
+  // Ensure current quick trade quantity is in qtyInput
+  const qty = getQuickTradeQty();
+  const qtyIn = document.getElementById("qtyInput");
+  if(qtyIn) qtyIn.value = qty;
+
+  // Compute order preview using existing application validation
+  const p = computeOrderPreview();
+  if(!p.valid){
+    if(p.reason) showNotice(p.reason);
+    return false;
+  }
+
+  // Execute order using existing placeOrder pathway
+  placeOrder();
+
+  // Restore qtyInput to quickTradeQty so user can make subsequent quick trades immediately
+  if(qtyIn) qtyIn.value = qty;
+  setQuickTradeQty(qty, false);
+  updateQuickTradePositionPill();
+  return true;
+}
+
+function openQuickQtyPopup(){
+  const popup = document.getElementById("quickQtyPopup");
+  const badge = document.getElementById("quickTradeQtyBtn");
+  if(!popup) return;
+  popup.classList.add("open");
+  if(badge) badge.classList.add("active");
+  const input = document.getElementById("quickQtyInput");
+  if(input){
+    input.value = getQuickTradeQty();
+    input.focus();
+    input.select();
+  }
+}
+
+function closeQuickQtyPopup(){
+  const popup = document.getElementById("quickQtyPopup");
+  const badge = document.getElementById("quickTradeQtyBtn");
+  if(!popup) return;
+  popup.classList.remove("open");
+  if(badge) badge.classList.remove("active");
+}
+
+function toggleQuickQtyPopup(){
+  const popup = document.getElementById("quickQtyPopup");
+  if(popup && popup.classList.contains("open")){
+    closeQuickQtyPopup();
+  } else {
+    openQuickQtyPopup();
+  }
+}
+
+function initQuickTrade(){
+  const bar = document.getElementById("quickTradeBar");
+  const pill = document.getElementById("quickPosPill");
+  if(!bar || bar.dataset.initialized) return;
+  bar.dataset.initialized = "true";
+
+  // Prevent dragging chart when interacting with Quick Trade bar
+  ["pointerdown", "mousedown", "touchstart"].forEach(ev => {
+    bar.addEventListener(ev, e => e.stopPropagation());
+  });
+
+  const sellBtn = document.getElementById("quickSellBtn");
+  const buyBtn = document.getElementById("quickBuyBtn");
+  if(sellBtn) sellBtn.addEventListener("click", () => executeQuickOrder("SELL"));
+  if(buyBtn) buyBtn.addEventListener("click", () => executeQuickOrder("BUY"));
+
+  const qtyBadge = document.getElementById("quickTradeQtyBtn");
+  if(qtyBadge) qtyBadge.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleQuickQtyPopup();
+  });
+
+  const minusBtn = document.getElementById("quickQtyMinus");
+  if(minusBtn) minusBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const curr = getQuickTradeQty();
+    const meta = symbolMeta[ui.symbol] || {};
+    const step = curr <= 0.1 ? (meta.qtyStep || 0.001) : (curr <= 1 ? 0.1 : (curr <= 10 ? 1 : 5));
+    const next = Math.max(meta.qtyStep || 0.001, curr - step);
+    setQuickTradeQty(parseFloat(next.toFixed(meta.qtyPrecision ?? 3)));
+  });
+
+  const plusBtn = document.getElementById("quickQtyPlus");
+  if(plusBtn) plusBtn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const curr = getQuickTradeQty();
+    const meta = symbolMeta[ui.symbol] || {};
+    const step = curr < 0.1 ? (meta.qtyStep || 0.001) : (curr < 1 ? 0.1 : (curr < 10 ? 1 : 5));
+    const next = curr + step;
+    setQuickTradeQty(parseFloat(next.toFixed(meta.qtyPrecision ?? 3)));
+  });
+
+  const presetGrid = document.getElementById("quickPresetGrid");
+  if(presetGrid) presetGrid.addEventListener("click", (e) => {
+    const btn = e.target.closest(".quick-preset-btn");
+    if(!btn) return;
+    e.stopPropagation();
+    const val = parseFloat(btn.dataset.qty);
+    if(!isNaN(val) && val > 0){
+      setQuickTradeQty(val);
+      closeQuickQtyPopup();
+    }
+  });
+
+  const qtyInput = document.getElementById("quickQtyInput");
+  if(qtyInput){
+    qtyInput.addEventListener("input", (e) => {
+      const val = parseFloat(e.target.value);
+      if(!isNaN(val) && val > 0){
+        setQuickTradeQty(val, true);
+      }
+    });
+    qtyInput.addEventListener("keydown", (e) => {
+      if(e.key === "Enter"){
+        e.preventDefault();
+        closeQuickQtyPopup();
+      } else if(e.key === "Escape"){
+        closeQuickQtyPopup();
+      }
+    });
+  }
+
+  // Click outside to close popup
+  document.addEventListener("click", (e) => {
+    const wrap = document.getElementById("quickQtyWrapper");
+    if(wrap && !wrap.contains(e.target)){
+      closeQuickQtyPopup();
+    }
+  });
+
+  // Escape to close popup
+  document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape"){
+      closeQuickQtyPopup();
+    }
+  });
+
+  // Synchronize two-way with Order Panel's qtyInput
+  const orderQtyInput = document.getElementById("qtyInput");
+  if(orderQtyInput){
+    orderQtyInput.addEventListener("input", () => {
+      const val = parseFloat(orderQtyInput.value);
+      if(!isNaN(val) && val > 0){
+        setQuickTradeQty(val, false);
+      }
+    });
+  }
+
+  setQuickTradeQty(getQuickTradeQty(), false);
+  updateQuickTradePrices();
+  updateQuickTradePositionPill();
+}
+
+try {
+  window.executeQuickOrder = executeQuickOrder;
+  window.setQuickTradeQty = setQuickTradeQty;
+  window.getQuickTradeQty = getQuickTradeQty;
+  window.updateQuickTradePrices = updateQuickTradePrices;
+  window.updateQuickTradePositionPill = updateQuickTradePositionPill;
+  window.openQuickQtyPopup = openQuickQtyPopup;
+  window.closeQuickQtyPopup = closeQuickQtyPopup;
+  window.toggleQuickQtyPopup = toggleQuickQtyPopup;
+  window.initQuickTrade = initQuickTrade;
+} catch(e) {}
+
+
 
 /* ================= TV-STYLE: legend, floating toolbar, tools, clock ================= */
 const SYM_NAMES = {BTCUSDT:"Bitcoin / TetherUS Perpetual", ETHUSDT:"Ethereum / TetherUS Perpetual"};
@@ -7359,7 +8061,22 @@ function endAlertLineDrag(commit = true){
   if(handle) handle.style.display = "none";
   
   if(chart && chart.applyOptions){
-    chart.applyOptions(drag.prevOptions || { handleScroll: true, handleScale: true });
+    try {
+      chart.applyOptions({
+        handleScroll: {
+          mouseWheel: true,
+          pressedMouseMove: true,
+          horzTouchDrag: true,
+          vertTouchDrag: true
+        },
+        handleScale: {
+          axisPressedMouseMove: { time: true, price: true },
+          axisDoubleClickReset: { time: true, price: true },
+          mouseWheel: true,
+          pinch: true
+        }
+      });
+    } catch(e){}
   }
   
   if(commit && drag.currentPrice && drag.currentPrice !== drag.origPrice){
@@ -7429,15 +8146,30 @@ window.addEventListener("pointercancel", (e) => {
   }
 });
 
+// Alerts Storage & State
+// Pure raster 64x64 PNG logo Base64 for 100% native Windows Toast notification compatibility
+const MORE_EXCHANGE_LOGO_PNG_DATA_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAABX0lEQVR4nO3bPQ6CQBCGYU9iYWfhpbz/HTAxsTFimJnvZ9kdEkph3ieBRFgul+R2vT22kfZsxyljZSjuACuEe2grgntYK4J7SCuCezgrgnsoO4J7ICuAexg7gmuA+3N770sCfOKdCDaA73gXggVgL96BMFy8BWG0eDWCBCAar0SgA2TjVQhUgGq8AoEGgIpnI1AA0PFMBDgAK56FAAVgxzMQYACqeDQCBEAdj0QoA7jiUQglAHc8AiENUBl4b3MgpAAY8S6EMAAz3oEQAqheqwqAKMJhgOpQSoAIQgP0JdA3wdgP2AjK+DQAC0EdXwJA3RgRe6Wh/wxVD+BEQMzeD0RQB1IiIGfuh6LoAzIRGLP2ixHWgZEIzBn75Sj7BBUExWy9QEJ1ogiCcqbh1gnJ43uZXC+U7KWyvVh6RYT+XmDlr0Z+xq+C8Dd+doRD8bMihOJnQ0jFzwBRDj8TSrbjBRYdY4PW8DkRAAAAAElFTkSuQmCC";
+const MORE_EXCHANGE_LOGO_DATA_URI = MORE_EXCHANGE_LOGO_PNG_DATA_URI;
+
+let editingAlertId = null;
+
 // Real-time tick evaluation
 let lastAlertEvaluatedPrice = {};
 
 function evaluateAlerts(symbol, currentPrice, high, low){
+  // Historical bar replay must NEVER trigger live alerts or mutate active alerts
+  if(typeof replayState !== "undefined" && replayState.active) return;
   if(!currentPrice || isNaN(currentPrice) || currentPrice <= 0) return;
+  
   const prev = lastAlertEvaluatedPrice[symbol] || currentPrice;
   lastAlertEvaluatedPrice[symbol] = currentPrice;
   
+  // Calculate intrabar range including high and low if provided
+  const h = (high != null && !isNaN(high) && high > 0) ? Math.max(high, currentPrice, prev) : Math.max(currentPrice, prev);
+  const l = (low != null && !isNaN(low) && low > 0) ? Math.min(low, currentPrice, prev) : Math.min(currentPrice, prev);
+  
   let changed = false;
+  const now = Date.now();
   
   alertsStore.forEach(alert => {
     if(!alert.active || alert.symbol !== symbol) return;
@@ -7447,23 +8179,33 @@ function evaluateAlerts(symbol, currentPrice, high, low){
     const cond = alert.condition;
     
     if(cond === "crossing"){
-      hit = (prev < targetPrice && currentPrice >= targetPrice) || (prev > targetPrice && currentPrice <= targetPrice);
+      hit = (prev < targetPrice && currentPrice >= targetPrice) ||
+            (prev > targetPrice && currentPrice <= targetPrice) ||
+            (targetPrice >= l && targetPrice <= h && (prev < targetPrice || prev > targetPrice));
     } else if(cond === "crossing_up"){
-      hit = (prev < targetPrice && currentPrice >= targetPrice);
+      hit = (prev < targetPrice && (currentPrice >= targetPrice || h >= targetPrice));
     } else if(cond === "crossing_down"){
-      hit = (prev > targetPrice && currentPrice <= targetPrice);
+      hit = (prev > targetPrice && (currentPrice <= targetPrice || l <= targetPrice));
     } else if(cond === "greater_than"){
-      hit = (currentPrice >= targetPrice);
+      hit = (currentPrice >= targetPrice || h >= targetPrice);
     } else if(cond === "less_than"){
-      hit = (currentPrice <= targetPrice);
+      hit = (currentPrice <= targetPrice || l <= targetPrice);
     } else if(cond === "indicator"){
-      hit = (prev < targetPrice && currentPrice >= targetPrice) || (prev > targetPrice && currentPrice <= targetPrice);
+      hit = (prev < targetPrice && currentPrice >= targetPrice) ||
+            (prev > targetPrice && currentPrice <= targetPrice) ||
+            (targetPrice >= l && targetPrice <= h && (prev < targetPrice || prev > targetPrice));
     }
     
     if(hit){
+      // For every_time frequency, debounce to avoid rapid tick-spam within 30 seconds
+      if(alert.frequency === "every_time" && alert.lastTriggeredAt && (now - alert.lastTriggeredAt < 30000)){
+        return;
+      }
+      
       triggerAlert(alert, currentPrice);
-      alert.lastTriggeredAt = Date.now();
+      alert.lastTriggeredAt = now;
       alert.triggeredCount = (alert.triggeredCount || 0) + 1;
+      
       if(alert.frequency === "once"){
         alert.active = false;
         alert.triggered = true;
@@ -7478,17 +8220,20 @@ function evaluateAlerts(symbol, currentPrice, high, low){
 }
 
 function triggerAlert(alert, currentPrice){
-  const title = `Price Alert: ${alert.symbol}`;
+  const title = `More Exchange — Alert on ${alert.symbol}`;
   const condText = {
-    crossing: "crossing",
-    crossing_up: "crossing up",
-    crossing_down: "crossing down",
-    greater_than: "greater than",
-    less_than: "less than",
+    crossing: "crossed",
+    crossing_up: "crossed up",
+    crossing_down: "crossed down",
+    greater_than: ">=",
+    less_than: "<=",
     indicator: "indicator signal"
   }[alert.condition] || "triggered";
   
-  const desc = `${alert.name || alert.symbol} ${condText} at ${fmtPriceWithCommas(currentPrice, alert.symbol)}`;
+  const priceFmt = fmtPriceWithCommas(alert.price, alert.symbol);
+  const curPriceFmt = fmtPriceWithCommas(currentPrice, alert.symbol);
+  const desc = `${alert.name || alert.symbol} ${condText} at ${priceFmt} (Market: ${curPriceFmt})`;
+  const desktopMsg = `${alert.symbol} ${condText} ${priceFmt}`;
   
   if(alert.sound !== false){
     playAlertChime();
@@ -7496,10 +8241,150 @@ function triggerAlert(alert, currentPrice){
   if(alert.toast !== false){
     showAlertToast(title, desc);
   }
-  if(alert.browserNotif && typeof Notification !== "undefined" && Notification.permission === "granted"){
+  
+  // Native Browser Desktop Notification
+  if(alert.browserNotif !== false && typeof Notification !== "undefined" && Notification.permission === "granted"){
     try {
-      new Notification(title, { body: desc });
+      const notif = new Notification(title, {
+        body: desktopMsg,
+        icon: MORE_EXCHANGE_LOGO_DATA_URI,
+        tag: "mx-alert-" + alert.id + "-" + Math.floor(Date.now() / 15000),
+        requireInteraction: false
+      });
+      notif.onclick = () => {
+        try {
+          window.focus();
+          if(typeof ui !== "undefined" && ui.symbol !== alert.symbol && typeof setSymbol === "function"){
+            setSymbol(alert.symbol);
+          }
+        } catch(e){}
+        try { notif.close(); } catch(e){}
+      };
+    } catch(e){
+      console.warn("Desktop notification failed:", e);
+    }
+  }
+}
+
+function sendTestDesktopNotification(){
+  if(typeof Notification === "undefined"){
+    showAlertToast("Unsupported", "Desktop notifications are not supported in this browser.");
+    return;
+  }
+  if(Notification.permission === "denied"){
+    showAlertToast("Notifications Blocked", "Please unblock notifications in your browser site settings.");
+    return;
+  }
+  if(Notification.permission === "default"){
+    Notification.requestPermission().then(perm => {
+      updateDesktopNotificationUI();
+      if(perm === "granted"){
+        sendTestDesktopNotification();
+      } else {
+        showAlertToast("Permission Required", "Desktop notification permission was not granted.");
+      }
+    });
+    return;
+  }
+  
+  try {
+    const curP = (market[ui.symbol] && market[ui.symbol].last) || 2352.1;
+    const pFmt = fmtPriceWithCommas(curP, ui.symbol);
+    const notif = new Notification(`More Exchange — Alert on ${ui.symbol}`, {
+      body: `${ui.symbol} crossed ${pFmt} (Desktop notifications active!)`,
+      icon: MORE_EXCHANGE_LOGO_DATA_URI,
+      tag: "mx-test-" + Date.now(),
+      requireInteraction: false
+    });
+    notif.onclick = () => {
+      try { window.focus(); } catch(e){}
+      try { notif.close(); } catch(e){}
+    };
+    playAlertChime();
+    showAlertToast("Test Notification Sent", "Native desktop notification dispatched to OS.");
+  } catch(e){
+    showAlertToast("Error", "Failed to dispatch desktop notification: " + e.message);
+  }
+}
+
+function updateDesktopNotificationUI(){
+  const badge = document.getElementById("alertNotifStatusBadge");
+  const dot = document.getElementById("alertNotifDot");
+  const text = document.getElementById("alertNotifStatusText");
+  const subtext = document.getElementById("alertNotifStatusSubtext");
+  const btnEnable = document.getElementById("btnEnableDesktopNotifs");
+  const btnTest = document.getElementById("btnTestDesktopNotif");
+  const check = document.getElementById("alertBrowserCheck");
+  
+  if(!badge || typeof Notification === "undefined"){
+    if(subtext) subtext.textContent = "Desktop notifications are not supported in this browser environment.";
+    if(btnEnable) btnEnable.style.display = "none";
+    if(btnTest) btnTest.style.display = "none";
+    return;
+  }
+  
+  const perm = Notification.permission;
+  if(perm === "granted"){
+    if(dot) dot.className = "alert-notif-dot granted";
+    if(text) text.textContent = "Desktop Notifications: Enabled";
+    if(subtext) subtext.innerHTML = "You will receive native system notifications even when this tab is in the background or minimized. <span style='color:var(--text-dim);'>(Ensure Windows <b>Focus Assist / Do Not Disturb</b> is off to allow pop-up toast banners)</span>";
+    if(btnEnable) btnEnable.style.display = "none";
+    if(btnTest) btnTest.style.display = "inline-flex";
+    if(check && !check.dataset.userModified){
+      check.checked = true;
+      check.disabled = false;
+    }
+  } else if(perm === "denied"){
+    if(dot) dot.className = "alert-notif-dot denied";
+    if(text) text.textContent = "Desktop Notifications: Blocked";
+    if(subtext) subtext.innerHTML = 'Blocked by browser. In address bar, click the <b>Site Settings / Padlock</b> icon & set <b>Notifications</b> to <b>Allow</b>.';
+    if(btnEnable) btnEnable.style.display = "none";
+    if(btnTest) btnTest.style.display = "none";
+    if(check){
+      check.checked = false;
+      check.disabled = true;
+    }
+  } else {
+    // default
+    if(dot) dot.className = "alert-notif-dot default";
+    if(text) text.textContent = "Desktop Notifications: Off";
+    if(subtext) subtext.textContent = "Enable to receive TradingView-style desktop alerts when you are viewing other apps or tabs.";
+    if(btnEnable){
+      btnEnable.style.display = "inline-flex";
+      btnEnable.textContent = "Enable Notifications";
+    }
+    if(btnTest) btnTest.style.display = "none";
+    if(check && !check.dataset.userModified){
+      check.checked = false;
+      check.disabled = false;
+    }
+  }
+}
+
+// Clean up interaction state to guarantee immediate chart interactivity after placing an alert
+function ensureChartInteractivity(){
+  hideChartPlusMarker();
+  activeAlertDrag = null;
+  if(chart && chart.applyOptions){
+    try {
+      chart.applyOptions({
+        handleScroll: {
+          mouseWheel: true,
+          pressedMouseMove: true,
+          horzTouchDrag: true,
+          vertTouchDrag: true
+        },
+        handleScale: {
+          axisPressedMouseMove: { time: true, price: true },
+          axisDoubleClickReset: { time: true, price: true },
+          mouseWheel: true,
+          pinch: true
+        }
+      });
     } catch(e){}
+  }
+  if(chartEl && chartEl.style.cursor === "ns-resize"){
+    chartEl.style.cursor = "";
   }
 }
 
@@ -7523,6 +8408,7 @@ function createPriceAlertImmediate(symbol, price){
     return null;
   }
   
+  const isGranted = (typeof Notification !== "undefined" && Notification.permission === "granted");
   const newAlert = {
     id: "alert_" + now + "_" + Math.floor(Math.random()*1000),
     symbol: symbol,
@@ -7535,7 +8421,7 @@ function createPriceAlertImmediate(symbol, price){
     name: `${symbol} @ ${fmtPriceWithCommas(roundedPrice, symbol)}`,
     sound: true,
     toast: true,
-    browserNotif: false,
+    browserNotif: true,
     active: true,
     triggered: false,
     createdAt: now,
@@ -7545,6 +8431,7 @@ function createPriceAlertImmediate(symbol, price){
   
   alertsStore.push(newAlert);
   saveAlerts();
+  ensureChartInteractivity();
   showAlertToast("Alert Created", `Alert set on ${symbol} at ${fmtPriceWithCommas(roundedPrice, symbol)} (crossing)`);
   return newAlert;
 }
@@ -7553,6 +8440,7 @@ function createIndicatorAlertImmediate(symbol, strat, price){
   if(!price || isNaN(price) || price <= 0) return null;
   const now = Date.now();
   const roundedPrice = roundPrice(symbol, price);
+  const isGranted = (typeof Notification !== "undefined" && Notification.permission === "granted");
   const newAlert = {
     id: "alert_" + now + "_" + Math.floor(Math.random()*1000),
     symbol: symbol,
@@ -7565,7 +8453,7 @@ function createIndicatorAlertImmediate(symbol, strat, price){
     name: `${strat.name} @ ${fmtPriceWithCommas(roundedPrice, symbol)}`,
     sound: true,
     toast: true,
-    browserNotif: false,
+    browserNotif: true,
     active: true,
     triggered: false,
     createdAt: now,
@@ -7574,6 +8462,7 @@ function createIndicatorAlertImmediate(symbol, strat, price){
   };
   alertsStore.push(newAlert);
   saveAlerts();
+  ensureChartInteractivity();
   showAlertToast("Alert Created", `Alert set on ${strat.name} at ${fmtPriceWithCommas(roundedPrice, symbol)}`);
   return newAlert;
 }
@@ -7628,10 +8517,12 @@ function updateAlertsUI(){
         <div class="alert-list-meta">
           <span>${escapeHtml(alert.name || alert.symbol)}</span> · 
           <span>${alert.frequency === "once" ? "Only once" : "Every time"}</span>
+          ${alert.browserNotif ? ' · <span style="color:#2962ff;">🔔 Desktop</span>' : ''}
           ${alert.lastTriggeredAt ? ` · Triggered: ${new Date(alert.lastTriggeredAt).toLocaleTimeString()}` : ""}
         </div>
       </div>
       <div class="alert-list-actions">
+        <button class="alert-action-btn edit" title="Edit alert">Edit</button>
         <button class="alert-action-btn active-toggle ${alert.active ? "on" : ""}" title="${alert.active ? "Pause alert" : "Activate alert"}">
           ${alert.active ? "Pause" : "Activate"}
         </button>
@@ -7639,6 +8530,9 @@ function updateAlertsUI(){
       </div>
     `;
     
+    item.querySelector(".edit").addEventListener("click", () => {
+      openAlertModalForEdit(alert);
+    });
     item.querySelector(".active-toggle").addEventListener("click", () => {
       alert.active = !alert.active;
       if(alert.active) alert.triggered = false;
@@ -7653,11 +8547,53 @@ function updateAlertsUI(){
   });
 }
 
+function openAlertModalForEdit(alert){
+  if(!alert) return;
+  editingAlertId = alert.id;
+  
+  openAlertModal({
+    symbol: alert.symbol,
+    price: alert.price,
+    condition: alert.condition,
+    tab: "create",
+    isEditing: true
+  });
+  
+  const titleText = document.getElementById("alertModalTitleText");
+  if(titleText) titleText.textContent = `Edit Price Alert (${alert.symbol})`;
+  
+  const btnSave = document.getElementById("alertBtnSave");
+  if(btnSave) btnSave.textContent = "Save Changes";
+  
+  const freqSelect = document.getElementById("alertFrequencySelect");
+  if(freqSelect) freqSelect.value = alert.frequency || "once";
+  
+  const nameInput = document.getElementById("alertNameInput");
+  if(nameInput) nameInput.value = alert.name || "";
+  
+  const soundCheck = document.getElementById("alertSoundCheck");
+  if(soundCheck) soundCheck.checked = alert.sound !== false;
+  
+  const toastCheck = document.getElementById("alertToastCheck");
+  if(toastCheck) toastCheck.checked = alert.toast !== false;
+  
+  const browserCheck = document.getElementById("alertBrowserCheck");
+  if(browserCheck) browserCheck.checked = alert.browserNotif !== false;
+}
+
 function openAlertModal(opts = {}){
   closeChartContextMenu();
   closeAlertLineMenu();
   const modal = document.getElementById("alertModalOverlay");
   if(!modal) return;
+  
+  if(!opts.isEditing){
+    editingAlertId = null;
+    const titleText = document.getElementById("alertModalTitleText");
+    if(titleText) titleText.textContent = "Create Price Alert";
+    const btnSave = document.getElementById("alertBtnSave");
+    if(btnSave) btnSave.textContent = "Create Alert";
+  }
   
   const symbol = opts.symbol || ui.symbol;
   let price = opts.price;
@@ -7689,8 +8625,12 @@ function openAlertModal(opts = {}){
   } else {
     targetSelect.value = "price";
     if(opts.condition) document.getElementById("alertConditionSelect").value = opts.condition;
-    document.getElementById("alertNameInput").value = `${symbol} crossing ${fmtPriceWithCommas(price, symbol)}`;
+    if(!opts.isEditing){
+      document.getElementById("alertNameInput").value = `${symbol} crossing ${fmtPriceWithCommas(price, symbol)}`;
+    }
   }
+  
+  updateDesktopNotificationUI();
   
   if(opts.tab === "create"){
     switchAlertModalTab("create");
@@ -7703,8 +8643,14 @@ function openAlertModal(opts = {}){
 }
 
 function closeAlertModal(){
+  editingAlertId = null;
+  const titleText = document.getElementById("alertModalTitleText");
+  if(titleText) titleText.textContent = "Create Price Alert";
+  const btnSave = document.getElementById("alertBtnSave");
+  if(btnSave) btnSave.textContent = "Create Alert";
   const modal = document.getElementById("alertModalOverlay");
   if(modal) modal.style.display = "none";
+  ensureChartInteractivity();
 }
 
 function switchAlertModalTab(tab){
@@ -7737,7 +8683,7 @@ function createAlertFromForm(){
   const symbol = document.getElementById("alertSymbolInput").value || ui.symbol;
   const priceVal = parseFloat(document.getElementById("alertPriceInput").value);
   if(isNaN(priceVal) || priceVal <= 0){
-    alert("Please enter a valid price for the alert.");
+    showAlertToast("Error", "Please enter a valid price for the alert.");
     return;
   }
   const price = roundPrice(symbol, priceVal);
@@ -7754,7 +8700,27 @@ function createAlertFromForm(){
   const browserNotif = document.getElementById("alertBrowserCheck").checked;
   
   if(browserNotif && typeof Notification !== "undefined" && Notification.permission === "default"){
-    Notification.requestPermission();
+    Notification.requestPermission().then(() => updateDesktopNotificationUI());
+  }
+  
+  if(editingAlertId){
+    const alert = alertsStore.find(a => a.id === editingAlertId);
+    if(alert){
+      alert.symbol = symbol;
+      alert.price = price;
+      alert.condition = condition;
+      alert.frequency = frequency;
+      alert.name = name;
+      alert.sound = sound;
+      alert.toast = toast;
+      alert.browserNotif = browserNotif;
+      alert.active = true;
+      alert.triggered = false;
+      saveAlerts();
+      closeAlertModal();
+      showAlertToast("Alert Updated", `Alert updated to ${fmtPriceWithCommas(price, symbol)}`);
+      return;
+    }
   }
   
   const newAlert = {
@@ -7792,9 +8758,13 @@ let isContextMenuOpen = false;
 function getPriceScaleWidth(){
   try {
     const scaleTd = chartEl.querySelector("table tr:first-child td:last-child");
-    if(scaleTd && scaleTd.offsetWidth > 20) return scaleTd.offsetWidth;
+    if(scaleTd && scaleTd.offsetWidth > 20){
+      const scaleRect = scaleTd.getBoundingClientRect();
+      const colRect = chartEl.getBoundingClientRect();
+      return Math.round(colRect.right - scaleRect.left);
+    }
   } catch(e){}
-  return 60;
+  return 66;
 }
 
 function updateChartPlusPosition(clientX, clientY){
@@ -7809,8 +8779,9 @@ function updateChartPlusPosition(clientX, clientY){
   const y = clientY - rect.top;
   const pScaleWidth = getPriceScaleWidth();
   
-  // Check if hovering near an active alert line -> change cursor to ns-resize
-  const nearAlert = findActiveAlertNearY(y, 8);
+  // Only change cursor to ns-resize if near the right-edge marker handle!
+  const isNearRightEdge = (x >= rect.width - pScaleWidth - 50);
+  const nearAlert = isNearRightEdge ? findActiveAlertNearY(y, 8) : null;
   if(nearAlert){
     chartEl.style.cursor = "ns-resize";
     hideChartPlusMarker();
@@ -7842,19 +8813,25 @@ function updateChartPlusPosition(clientX, clientY){
   const line = document.getElementById("chartPlusLine");
   const tag = document.getElementById("chartPlusPriceTag");
   
-  if(!badge || !line || !tag) return;
+  if(!badge || !line) return;
   
-  // Hairline spans full plotting width from left edge up to price scale
+  const markerWidth = 22;
+  
+  // Line spans full plotting width from left edge up to the left edge of plus marker
   line.style.left = "0px";
-  line.style.right = pScaleWidth + "px";
+  line.style.right = (pScaleWidth + markerWidth) + "px";
   line.style.top = Math.round(y) + "px";
   line.style.display = "block";
   
-  // Price tag text inside badge
-  tag.textContent = fmtPriceWithCommas(price, symbol);
+  // Price tag covers the price scale area
+  if(tag){
+    tag.textContent = fmtPriceWithCommas(price, symbol);
+    tag.style.width = pScaleWidth + "px";
+    tag.style.display = "flex";
+  }
   
-  // Badge is DOCKED at right price panel and only moves vertically with y!
-  badge.style.right = "2px";
+  // Badge is docked at right: 0px. Marker sits on the left (outside price scale), Tag sits on the right (inside price scale)!
+  badge.style.right = "0px";
   badge.style.left = "auto";
   badge.style.top = Math.round(y) + "px";
   badge.style.display = "flex";
@@ -7872,6 +8849,32 @@ function hideChartPlusMarker(){
   if(marker) marker.style.display = "none";
   if(line) line.style.display = "none";
   if(tag) tag.style.display = "none";
+}
+
+function updateChartPlusOnScaleChange(){
+  if(!candleSeries || lastHoverPrice == null) return;
+  const badge = document.getElementById("chartPlusBadge");
+  const line = document.getElementById("chartPlusLine");
+  const tag = document.getElementById("chartPlusPriceTag");
+  if(!badge || badge.style.display === "none") return;
+  try {
+    const y = candleSeries.priceToCoordinate(lastHoverPrice);
+    if(y != null && y >= 0 && y <= chartEl.clientHeight){
+      const pScaleWidth = getPriceScaleWidth();
+      const markerWidth = 22;
+      if(line){
+        line.style.top = Math.round(y) + "px";
+        line.style.right = (pScaleWidth + markerWidth) + "px";
+      }
+      if(tag){
+        tag.style.width = pScaleWidth + "px";
+      }
+      badge.style.top = Math.round(y) + "px";
+      badge.style.right = "0px";
+    } else {
+      hideChartPlusMarker();
+    }
+  } catch(e){}
 }
 
 let ctxActivePrice = null;
@@ -7983,6 +8986,7 @@ function closeChartContextMenu(){
   isContextMenuOpen = false;
   const menu = document.getElementById("chartContextMenu");
   if(menu) menu.style.display = "none";
+  ensureChartInteractivity();
 }
 
 // Alert Line Right-Click Context Menu
@@ -8015,6 +9019,16 @@ function closeAlertLineMenu(){
   alertLineMenuTarget = null;
   const menu = document.getElementById("alertLineContextMenu");
   if(menu) menu.style.display = "none";
+}
+
+const alcEditBtn = document.getElementById("alcEdit");
+if(alcEditBtn){
+  alcEditBtn.addEventListener("click", () => {
+    if(alertLineMenuTarget){
+      openAlertModalForEdit(alertLineMenuTarget);
+    }
+    closeAlertLineMenu();
+  });
 }
 
 const alcPauseBtn = document.getElementById("alcPause");
@@ -8061,13 +9075,12 @@ function handlePlusClick(e){
   e.stopPropagation();
   e.preventDefault();
   if(lastHoverPrice != null){
-    const rect = (plusBadge || plusBtn).getBoundingClientRect();
+    const rect = plusBtn ? plusBtn.getBoundingClientRect() : (plusBadge ? plusBadge.getBoundingClientRect() : { left: lastHoverX, top: lastHoverY });
     openChartContextMenu(rect.left, rect.top, lastHoverPrice);
   }
 }
 if(plusBtn) plusBtn.addEventListener("click", handlePlusClick);
 if(plusBadge){
-  plusBadge.addEventListener("click", handlePlusClick);
   plusBadge.addEventListener("mouseleave", (e) => {
     if(e.relatedTarget && (e.relatedTarget === chartEl || chartEl.contains(e.relatedTarget) || e.relatedTarget.closest("#chartContextMenu"))){
       return;
@@ -8084,6 +9097,12 @@ function onChartPointerOrMouseDown(e){
   if(isContextMenuOpen) return;
   
   const rect = chartEl.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const pScaleWidth = getPriceScaleWidth();
+  
+  // Chart dragging and panning across the main chart canvas must NEVER be intercepted!
+  if(x < rect.width - pScaleWidth - 50) return;
+  
   const y = e.clientY - rect.top;
   const isTouch = e.pointerType === "touch";
   const hitDist = isTouch ? 24 : 9;
@@ -8096,8 +9115,8 @@ function onChartPointerOrMouseDown(e){
     return;
   }
 }
-chartEl.addEventListener("pointerdown", onChartPointerOrMouseDown, true);
-chartEl.addEventListener("mousedown", onChartPointerOrMouseDown, true);
+chartEl.addEventListener("pointerdown", onChartPointerOrMouseDown);
+chartEl.addEventListener("mousedown", onChartPointerOrMouseDown);
 
 // Chart Right-Click: Context menu on chart or on alert line
 chartEl.addEventListener("contextmenu", (e) => {
@@ -8106,10 +9125,13 @@ chartEl.addEventListener("contextmenu", (e) => {
   e.preventDefault();
   
   const rect = chartEl.getBoundingClientRect();
+  const x = e.clientX - rect.left;
   const y = e.clientY - rect.top;
+  const pScaleWidth = getPriceScaleWidth();
   
-  // If right-clicked on an active alert line, open alert line actions menu
-  const nearAlert = findActiveAlertNearY(y, 10);
+  // If right-clicked near right-edge active alert line, open alert line actions menu
+  const isNearRight = (x >= rect.width - pScaleWidth - 50);
+  const nearAlert = isNearRight ? findActiveAlertNearY(y, 10) : null;
   if(nearAlert){
     openAlertLineMenu(e.clientX, e.clientY, nearAlert.alert);
     return;
@@ -8227,6 +9249,42 @@ document.getElementById("alertBtnClearTriggered").addEventListener("click", () =
   saveAlerts();
 });
 
+const btnEnableDesktopNotifs = document.getElementById("btnEnableDesktopNotifs");
+if(btnEnableDesktopNotifs){
+  btnEnableDesktopNotifs.addEventListener("click", () => {
+    if(typeof Notification !== "undefined"){
+      Notification.requestPermission().then(perm => {
+        updateDesktopNotificationUI();
+        if(perm === "granted"){
+          alertsStore.forEach(a => { a.browserNotif = true; });
+          saveAlerts();
+          showAlertToast("Notifications Enabled", "Desktop notifications are now active!");
+          sendTestDesktopNotification();
+        } else if(perm === "denied"){
+          showAlertToast("Notifications Blocked", "Please unblock notifications in your browser site settings.");
+        }
+      });
+    }
+  });
+}
+
+const btnTestDesktopNotif = document.getElementById("btnTestDesktopNotif");
+if(btnTestDesktopNotif){
+  btnTestDesktopNotif.addEventListener("click", () => {
+    sendTestDesktopNotification();
+  });
+}
+
+const alertBrowserCheck = document.getElementById("alertBrowserCheck");
+if(alertBrowserCheck){
+  alertBrowserCheck.addEventListener("change", () => {
+    alertBrowserCheck.dataset.userModified = "true";
+    if(alertBrowserCheck.checked && typeof Notification !== "undefined" && Notification.permission === "default"){
+      Notification.requestPermission().then(() => updateDesktopNotificationUI());
+    }
+  });
+}
+
 const smAlertsBtn = document.getElementById("smAlerts");
 if(smAlertsBtn){
   smAlertsBtn.addEventListener("click", () => {
@@ -8297,15 +9355,29 @@ updateAlertsUI();
 renderAlertPriceLines();
 
 // Export Context Menu & Alerts to window for external integration & testability
+window.getPriceScaleWidth = getPriceScaleWidth;
+window.updateChartPlusPosition = updateChartPlusPosition;
+window.hideChartPlusMarker = hideChartPlusMarker;
 window.openChartContextMenu = openChartContextMenu;
 window.closeChartContextMenu = closeChartContextMenu;
+window.openAlertLineMenu = openAlertLineMenu;
+window.closeAlertLineMenu = closeAlertLineMenu;
 window.openAlertModal = openAlertModal;
+window.openAlertModalForEdit = openAlertModalForEdit;
 window.closeAlertModal = closeAlertModal;
 window.evaluateAlerts = evaluateAlerts;
+window.triggerAlert = triggerAlert;
+window.sendTestDesktopNotification = sendTestDesktopNotification;
+window.updateDesktopNotificationUI = updateDesktopNotificationUI;
+window.MORE_EXCHANGE_LOGO_DATA_URI = MORE_EXCHANGE_LOGO_DATA_URI;
+window.MORE_EXCHANGE_LOGO_PNG_DATA_URI = MORE_EXCHANGE_LOGO_PNG_DATA_URI;
+window.ensureChartInteractivity = ensureChartInteractivity;
+window.updateChartPlusOnScaleChange = updateChartPlusOnScaleChange;
 window.addHorizontalLineAt = addHorizontalLineAt;
 window.createPriceAlertImmediate = createPriceAlertImmediate;
 window.createIndicatorAlertImmediate = createIndicatorAlertImmediate;
 window.startAlertLineDrag = startAlertLineDrag;
+window.handleAlertDragMove = handleAlertDragMove;
 window.endAlertLineDrag = endAlertLineDrag;
 window.findActiveAlertNearY = findActiveAlertNearY;
 window.updateAlertMarkerPositions = updateAlertMarkerPositions;
@@ -15793,6 +16865,7 @@ async function init(){
   try {
     populateAccountSelect();
     updateAll();
+    if(typeof initQuickTrade === "function") initQuickTrade();
   } catch(e) {
     console.warn("Immediate account update error:", e);
   }
