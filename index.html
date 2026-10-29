@@ -7,7 +7,8 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>More Exchange — BTC/ETH Futures Simulator</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%232962ff%22 stroke-width=%222%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22><path d=%22M6 3h12l4 6-10 13L2 9Z%22/></svg>">
+<link rel="icon" type="image/svg+xml" href="app-icon.svg">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='bgDark' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%23090D16'/%3E%3Cstop offset='100%25' stop-color='%23172033'/%3E%3C/linearGradient%3E%3ClinearGradient id='ribbonLeft' x1='0%25' y1='100%25' x2='100%25' y2='0%25'%3E%3Cstop offset='0%25' stop-color='%232563EB'/%3E%3Cstop offset='100%25' stop-color='%2338BDF8'/%3E%3C/linearGradient%3E%3ClinearGradient id='ribbonRight' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%2334D399'/%3E%3Cstop offset='100%25' stop-color='%23059669'/%3E%3C/linearGradient%3E%3Cfilter id='dropShadow' x='-15%25' y='-15%25' width='130%25' height='130%25'%3E%3CfeDropShadow dx='0' dy='14' stdDeviation='16' flood-color='%23000000' flood-opacity='0.45'/%3E%3C/filter%3E%3C/defs%3E%3Crect width='512' height='512' rx='118' fill='url(%23bgDark)'/%3E%3Crect x='4' y='4' width='504' height='504' rx='114' fill='none' stroke='%23ffffff' stroke-opacity='0.08' stroke-width='4'/%3E%3Cg filter='url(%23dropShadow)'%3E%3Cpath d='M 120 372 L 120 180 C 120 144, 164 130, 188 156 L 256 230 L 310 172' fill='none' stroke='url(%23ribbonLeft)' stroke-width='52' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpolygon points='352,126 266,144 334,212' fill='url(%23ribbonLeft)'/%3E%3Cpath d='M 392 140 L 392 332 C 392 368, 348 382, 324 356 L 256 282 L 202 340' fill='none' stroke='url(%23ribbonRight)' stroke-width='52' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cpolygon points='160,386 246,368 178,300' fill='url(%23ribbonRight)'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -938,13 +939,13 @@ tbody tr:hover{background:var(--bg-2);}
   color:#ffffff;
 }
 
-/* ---- Mobile Side Menu Drawer (Screen 4) ---- */
+/* ---- Mobile Side Menu Bottom-Sheet Grid ---- */
 .side-menu-backdrop{
   position:fixed;
   inset:0;
-  background:rgba(10,14,20,0.65);
-  backdrop-filter:blur(2px);
-  -webkit-backdrop-filter:blur(2px);
+  background:transparent; /* No blur, no dimming so chart behind remains visible and sharp */
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
   z-index:95;
   display:none;
 }
@@ -953,53 +954,95 @@ tbody tr:hover{background:var(--bg-2);}
 }
 .mobile-side-menu{
   position:fixed;
-  top:0;
+  left:0;
   right:0;
   bottom:0;
-  width:min(320px, 86vw);
-  background:var(--bg-1);
-  border-left:1px solid var(--line);
-  box-shadow:-10px 0 40px rgba(0,0,0,0.8);
+  top:auto;
+  width:100%;
+  max-height:56dvh;
+  height:auto;
+  background:#161922;
+  border-top:1px solid var(--line);
+  border-left:none;
+  border-right:none;
+  border-bottom:none;
+  border-radius:16px 16px 0 0;
+  box-shadow:0 -10px 40px rgba(0,0,0,0.85);
   z-index:96;
   display:flex;
   flex-direction:column;
-  transform:translateX(102%);
-  transition:transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow-y:auto;
-  -webkit-overflow-scrolling:touch;
+  transform:translateY(105%);
+  transition:transform 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow:hidden;
+  touch-action:pan-y;
 }
 .mobile-side-menu.open{
-  transform:translateX(0);
+  transform:translateY(0);
+}
+.side-menu-drag-handle{
+  width:36px;
+  height:4px;
+  background:rgba(255,255,255,0.22);
+  border-radius:2px;
+  margin:8px auto 2px auto;
+  flex-shrink:0;
+  cursor:grab;
 }
 .side-menu-head{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  padding:14px 16px;
-  border-bottom:1px solid var(--line);
-  background:var(--bg-2);
+  padding:4px 16px 8px 16px;
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  background:transparent;
+  flex-shrink:0;
 }
 .side-menu-head .brand{
   font-size:13px;
   font-weight:800;
   color:#ffffff;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  letter-spacing:0.3px;
 }
 .side-menu-close{
   background:transparent;
   border:none;
   color:var(--text-dim);
-  font-size:22px;
+  font-size:20px;
   line-height:1;
-  padding:2px 6px;
+  padding:4px 6px;
   cursor:pointer;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  border-radius:4px;
 }
-.side-menu-close:hover{
+.side-menu-close:hover, .side-menu-close:active{
   color:#ffffff;
+  background:rgba(255,255,255,0.08);
 }
 .side-menu-list{
-  display:flex;
-  flex-direction:column;
-  padding:6px 0;
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:10px 4px;
+  padding:12px 10px calc(14px + env(safe-area-inset-bottom, 0px));
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  flex:1;
+}
+@media (max-width:340px){
+  .side-menu-list{
+    grid-template-columns:repeat(3, 1fr);
+    gap:8px 3px;
+    padding:10px 6px calc(14px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (min-width:881px){
+  #mobileSideMenu, #sideMenuBackdrop{
+    display:none !important;
+  }
 }
 /* ---- Professional TradingView-Style Lucide Icon System ---- */
 .app-icon{
@@ -1062,44 +1105,57 @@ tbody tr:hover{background:var(--bg-2);}
 
 .sm-item{
   display:flex;
+  flex-direction:column;
   align-items:center;
-  gap:12px;
-  padding:11px 16px;
+  justify-content:center;
+  text-align:center;
+  gap:6px;
+  padding:8px 2px;
   background:transparent;
   border:none;
-  border-bottom:1px solid rgba(255,255,255,0.03);
+  border-radius:8px;
   color:var(--text);
-  font-size:12.5px;
-  font-weight:600;
-  text-align:left;
+  font-size:11px;
+  font-weight:500;
   cursor:pointer;
   width:100%;
+  user-select:none;
+  transition:background 0.12s ease, color 0.12s ease, transform 0.08s ease;
 }
 .sm-item:hover, .sm-item:active{
-  background:rgba(255,255,255,0.05);
+  background:rgba(255,255,255,0.06);
   color:#ffffff;
+  transform:translateY(-1px);
 }
 .sm-item .sm-icon{
-  width:22px;
-  height:22px;
+  width:32px;
+  height:32px;
   display:inline-flex;
   align-items:center;
   justify-content:center;
   flex-shrink:0;
   color:var(--text-dim);
+  background:rgba(255,255,255,0.035);
+  border-radius:8px;
+  transition:color 0.12s ease, background 0.12s ease;
 }
 .sm-item:hover .sm-icon, .sm-item:active .sm-icon{
-  color:#ffffff;
+  color:var(--blue, #2962ff);
+  background:rgba(41,98,255,0.14);
 }
 .sm-item .sm-title{
-  flex:1;
+  font-size:11px;
+  font-weight:500;
+  line-height:1.2;
+  color:var(--text);
+  text-align:center;
+  word-break:normal;
+  overflow-wrap:break-word;
+  display:block;
+  max-width:100%;
 }
 .sm-item .sm-arr{
-  color:var(--text-faint);
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  flex-shrink:0;
+  display:none !important;
 }
 .header-menu-btn{
   background:transparent;
@@ -1128,27 +1184,110 @@ tbody tr:hover{background:var(--bg-2);}
 @media (max-width:880px){
   #app{
     grid-template-columns:1fr !important;
-    grid-template-rows:auto 1fr var(--bottom-h, 215px) !important;
+    grid-template-rows:auto 1fr 0px !important;
     height:100%;
     height:100dvh;
     padding-bottom:calc(46px + 42px + var(--sab, 0px)) !important;
   }
+  /* Completely hide persistent Paper Trading strip on mobile when not open */
+  .bottom-col:not(.mobile-pt-open){
+    display:none !important;
+  }
+  /* Mobile Dedicated Paper Trading Panel (Full-Window / Sheet) */
+  #ptPanel.mobile-pt-open{
+    display:flex !important;
+    position:fixed !important;
+    left:0 !important;
+    right:0 !important;
+    top:0 !important;
+    bottom:0 !important;
+    width:100% !important;
+    height:100% !important;
+    height:100dvh !important;
+    z-index:95 !important;
+    background:var(--bg-1) !important;
+    flex-direction:column !important;
+    padding-top:max(6px, var(--sat, 0px)) !important;
+    padding-bottom:max(8px, var(--sab, 0px)) !important;
+    padding-left:max(6px, var(--sal, 0px)) !important;
+    padding-right:max(6px, var(--sar, 0px)) !important;
+    box-sizing:border-box !important;
+    animation:mobilePtSlideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    overflow:hidden !important;
+  }
+  @keyframes mobilePtSlideUp{
+    from{ transform:translateY(100%); opacity:0.8; }
+    to{ transform:translateY(0); opacity:1; }
+  }
+  /* Restored state (clean bottom sheet) */
+  #ptPanel.mobile-pt-open.mobile-pt-restored{
+    top:auto !important;
+    bottom:0 !important;
+    height:72dvh !important;
+    border-radius:14px 14px 0 0 !important;
+    border-top:1px solid var(--line-hover) !important;
+    box-shadow:0 -10px 40px rgba(0, 0, 0, 0.75) !important;
+  }
+  #ptPanel.mobile-pt-open .pt-resize{
+    display:none !important;
+  }
+  #ptPanel.mobile-pt-open .pt-titlebar{
+    height:40px !important;
+    min-height:40px !important;
+    padding:0 10px !important;
+    background:var(--bg-2) !important;
+    border-bottom:1px solid var(--line) !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:space-between !important;
+    user-select:none !important;
+    flex-shrink:0 !important;
+  }
+  #ptPanel.mobile-pt-open .pt-body{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    display:flex !important;
+    flex-direction:column !important;
+    overflow:hidden !important;
+  }
+  #ptPanel.mobile-pt-open .pt-views{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+  }
+  #ptPanel.mobile-pt-open .pt-table-wrap{
+    max-height:none !important;
+    flex:1 1 auto !important;
+  }
   #app.wide-chart-mode{
     grid-template-rows:auto 1fr 0px !important;
     grid-template-columns:1fr !important;
-    padding-bottom:var(--sab, 0px) !important;
+    padding-bottom:calc(42px + var(--sab, 0px)) !important;
   }
   #app.wide-chart-mode .bottom-col{
     display:none !important;
   }
-  #app.wide-chart-mode .mobile-bottom-nav{
+  #app.wide-chart-mode .mobile-bottom-nav,
+  #app.wide-chart-mode ~ .mobile-bottom-nav{
     display:none !important;
   }
-  #app.wide-chart-mode .mobile-chart-strip{
-    display:none !important;
+  #app.wide-chart-mode .mobile-chart-strip,
+  #app.wide-chart-mode ~ .mobile-chart-strip{
+    display:flex !important;
+    bottom:var(--sab, 0px) !important;
   }
   #app.wide-chart-mode .side-col:not(.mobile-open){
     display:none !important;
+  }
+  /* Completely remove the floating Wide Chart restore pill on mobile view */
+  .wide-chart-restore-pill,
+  #wideChartRestorePill,
+  #app.wide-chart-mode .wide-chart-restore-pill{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
   }
   .mobile-bottom-nav{
     display:flex;
@@ -1178,20 +1317,26 @@ tbody tr:hover{background:var(--bg-2);}
     border-bottom:1px solid #131722;
     z-index:79;
     align-items:center;
-    justify-content:space-between;
-    padding:0 12px;
-    padding-left:max(12px, var(--sal));
-    padding-right:max(12px, var(--sar));
+    justify-content:flex-start;
+    gap:0;
+    padding:0 8px;
+    padding-left:max(8px, var(--sal));
+    padding-right:max(8px, var(--sar));
     box-sizing:border-box;
     user-select:none;
     -webkit-user-select:none;
     pointer-events:auto;
   }
+  /* Section A: Fixed Left Section */
   .tv-drum-pickers{
     display:flex;
     align-items:center;
-    gap:16px;
+    gap:14px;
     flex-shrink:0;
+    position:relative;
+    z-index:4;
+    background:#000000;
+    padding-right:6px;
   }
   .tv-drum-picker{
     height:38px;
@@ -1246,12 +1391,57 @@ tbody tr:hover{background:var(--bg-2);}
     opacity:0.75;
     line-height:1;
   }
-  .tv-tools-group{
+
+  /* Section B: Scrollable Tools Region with Edge Fades */
+  .tv-scrollable-tools-wrap{
+    position:relative;
+    flex:1 1 auto;
+    min-width:0;
+    height:100%;
     display:flex;
     align-items:center;
-    gap:2px;
-    flex-shrink:0;
+    overflow:hidden;
   }
+  .tv-tools-group.tv-tools-scrollable{
+    display:flex;
+    align-items:center;
+    gap:4px;
+    flex:1 1 auto;
+    height:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    flex-wrap:nowrap;
+    white-space:nowrap;
+    scroll-behavior:smooth;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-x;
+    scrollbar-width:none;
+    -ms-overflow-style:none;
+    padding:0 6px;
+  }
+  .tv-tools-group.tv-tools-scrollable::-webkit-scrollbar{
+    display:none;
+  }
+  .tv-tools-fade{
+    position:absolute;
+    top:0;
+    bottom:0;
+    width:22px;
+    pointer-events:none;
+    z-index:3;
+    transition:opacity 0.18s ease;
+  }
+  .tv-tools-fade-left{
+    left:0;
+    background:linear-gradient(to right, #000000 15%, rgba(0, 0, 0, 0));
+    opacity:0;
+  }
+  .tv-tools-fade-right{
+    right:0;
+    background:linear-gradient(to left, #000000 15%, rgba(0, 0, 0, 0));
+    opacity:0;
+  }
+
   .tv-tool-btn{
     background:transparent;
     border:none;
@@ -1268,6 +1458,7 @@ tbody tr:hover{background:var(--bg-2);}
     transition:background-color .15s ease, opacity .15s ease, color .15s ease;
     position:relative;
     touch-action:manipulation;
+    flex-shrink:0;
   }
   .tv-tool-btn:active{
     background:rgba(255, 255, 255, 0.12);
@@ -1290,6 +1481,47 @@ tbody tr:hover{background:var(--bg-2);}
     border-radius:50%;
     pointer-events:none;
   }
+  .tv-strip-divider{
+      margin:0 2px !important;
+    }
+  }
+
+  @media (max-width: 325px){
+    .mobile-chart-strip{
+      padding:0 4px !important;
+    }
+    .tv-drum-pickers{
+      gap:6px !important;
+    }
+    .tv-drum-item.tv-drum-active{
+      font-size:13px !important;
+    }
+    .tv-drum-item.tv-drum-prev,
+    .tv-drum-item.tv-drum-next{
+      font-size:9.5px !important;
+    }
+    .tv-tool-btn{
+      width:25px !important;
+      height:25px !important;
+    }
+    .tv-tool-btn svg{
+      width:18px !important;
+      height:18px !important;
+    }
+    .tv-app-logo-btn{
+      width:25px !important;
+      height:25px !important;
+    }
+    .tv-app-logo-icon{
+      width:19px !important;
+      height:19px !important;
+      border-radius:4px !important;
+    }
+    .tv-strip-divider{
+      display:none !important;
+    }
+  }
+
   .tv-strip-divider{
     width:1px;
     height:18px;
@@ -1594,6 +1826,8 @@ tbody tr:hover{background:var(--bg-2);}
   .bottom-col{
     grid-column:1 / -1 !important;
     min-height:0;
+    overflow:hidden !important;
+    position:relative !important;
   }
   .pt-summary{
     padding:6px 10px;
@@ -2121,6 +2355,14 @@ tbody tr:hover{background:var(--bg-2);}
   #app.wide-chart-mode{
     grid-template-rows:auto 1fr 0px !important;
   }
+  .wide-chart-restore-pill,
+  #wideChartRestorePill,
+  #app.wide-chart-mode .wide-chart-restore-pill{
+    display:none !important;
+    visibility:hidden !important;
+    opacity:0 !important;
+    pointer-events:none !important;
+  }
 }
 .range-bar{display:flex;align-items:center;gap:6px;padding:4px 12px;border-top:1px solid var(--line);background:var(--bg-1);flex-wrap:wrap;}
 .range-btns{display:flex;gap:2px;}
@@ -2628,14 +2870,15 @@ tbody tr:hover{background:var(--bg-2);}
   color:var(--blue);
 }
 
-.pt-resize{position:absolute;top:0;left:0;right:0;height:5px;cursor:ns-resize;z-index:20;}
+.pt-resize{position:absolute;top:0;left:0;right:0;height:7px;cursor:ns-resize;z-index:20;touch-action:none;}
 .pt-resize:hover,.pt-resize.drag{background:rgba(41,98,255,.6);}
-.pt-titlebar{display:flex;align-items:center;justify-content:space-between;flex:0 0 36px;height:36px;padding:0 10px 0 14px;background:var(--bg-2);border-bottom:1px solid var(--line);cursor:ns-resize;user-select:none;}
-.pt-name{font-weight:800;font-size:12.5px;display:flex;align-items:center;gap:7px;color:#ffffff;letter-spacing:.2px;}
+.pt-titlebar{position:sticky !important;top:0 !important;z-index:15 !important;flex-shrink:0 !important;display:flex;align-items:center;justify-content:space-between;flex:0 0 36px;height:36px;padding:0 10px 0 14px;background:var(--bg-2);border-bottom:1px solid var(--line);cursor:ns-resize;user-select:none;touch-action:none;}
+.pt-name{font-weight:800;font-size:12.5px;display:flex;align-items:center;gap:7px;color:#ffffff;letter-spacing:.2px;pointer-events:none;}
 .pt-name .pt-mark{color:var(--long);font-size:10px;}
-.pt-win{display:flex;gap:3px;}
-.pt-win button{background:transparent;border:none;color:var(--text-dim);width:28px;height:24px;border-radius:3px;font-size:14px;line-height:1;}
+.pt-win{display:flex;align-items:center;gap:4px;flex-shrink:0;z-index:16;}
+.pt-win button{background:transparent;border:none;color:var(--text-dim);min-width:32px;min-height:32px;width:32px;height:32px;border-radius:4px;font-size:14px;line-height:1;display:inline-flex;align-items:center;justify-content:center;touch-action:manipulation;cursor:pointer;pointer-events:auto;}
 .pt-win button:hover{background:var(--bg-3);color:#ffffff;}
+.pt-win button:active{background:rgba(255,255,255,0.15);}
 .pt-body{flex:1;min-height:0;display:flex;flex-direction:column;}
 .pt-summary{display:flex;align-items:center;gap:24px;padding:8px 14px;background:var(--bg-1);border-bottom:1px solid var(--line-soft);overflow-x:auto;white-space:nowrap;flex:0 0 auto;}
 .pt-acct{background:var(--bg-2);border:1px solid var(--line);border-radius:var(--radius);padding:5px 10px;font-weight:700;font-size:12px;color:#ffffff;}
@@ -3700,7 +3943,24 @@ tbody tr:hover{background:var(--bg-2);}
 <div id="app">
 
   <header>
-    <div class="brand"><span class="mark"><svg class="app-icon fill-curr" width="10" height="10" viewBox="0 0 24 24"><polygon points="12 2 22 12 12 22 2 12"/></svg></span>MORE EXCHANGE</div>
+    <div class="brand"><span class="mark app-brand-mark">
+      <svg class="app-icon-me" width="20" height="20" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="hdrBgDark" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#090D16"/><stop offset="100%" stop-color="#172033"/></linearGradient>
+          <linearGradient id="hdrRibbonLeft" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2563EB"/><stop offset="100%" stop-color="#38BDF8"/></linearGradient>
+          <linearGradient id="hdrRibbonRight" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#34D399"/><stop offset="100%" stop-color="#059669"/></linearGradient>
+          <filter id="hdrDropShadow" x="-15%" y="-15%" width="130%" height="130%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#000000" flood-opacity="0.45"/></filter>
+        </defs>
+        <rect width="512" height="512" rx="118" fill="url(#hdrBgDark)"/>
+        <rect x="4" y="4" width="504" height="504" rx="114" fill="none" stroke="#ffffff" stroke-opacity="0.15" stroke-width="6"/>
+        <g filter="url(#hdrDropShadow)">
+          <path d="M 120 372 L 120 180 C 120 144, 164 130, 188 156 L 256 230 L 310 172" fill="none" stroke="url(#hdrRibbonLeft)" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+          <polygon points="352,126 266,144 334,212" fill="url(#hdrRibbonLeft)"/>
+          <path d="M 392 140 L 392 332 C 392 368, 348 382, 324 356 L 256 282 L 202 340" fill="none" stroke="url(#hdrRibbonRight)" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+          <polygon points="160,386 246,368 178,300" fill="url(#hdrRibbonRight)"/>
+        </g>
+      </svg>
+    </span>MORE EXCHANGE</div>
     <div class="symbol-tabs" id="symbolTabs">
       <button data-symbol="BTCUSDT" class="active">BTCUSDT</button>
       <button data-symbol="ETHUSDT">ETHUSDT</button>
@@ -3935,10 +4195,19 @@ tbody tr:hover{background:var(--bg-2);}
     <div class="bottom-col" id="ptPanel">
     <div class="pt-resize" id="ptResize" title="Drag to resize"></div>
     <div class="pt-titlebar" id="ptTitle">
-      <div class="pt-name"><span class="pulse-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--long);margin-right:5px;"></span>Paper Trading</div>
+      <div class="pt-name" style="display:flex; align-items:center; gap:6px;">
+        <button id="ptMobileBack" class="pt-mobile-back-btn" title="Back to Chart" aria-label="Back to Chart">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="pulse-dot" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--long);flex-shrink:0;"></span>
+        <span>Paper Trading</span>
+      </div>
       <div class="pt-win">
-        <button id="ptMin" title="Minimize / restore"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" x2="19" y1="12" y2="12"/></svg></button>
-        <button id="ptMax" title="Maximize / restore"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg></button>
+        <button id="ptMin" title="Minimize to Chart" aria-label="Minimize to Chart"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" x2="19" y1="12" y2="12"/></svg></button>
+        <button id="ptMax" title="Maximize / Restore" aria-label="Maximize / Restore"><svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg></button>
+        <button id="ptClose" class="pt-mobile-close-btn" title="Close Paper Trading" aria-label="Close Paper Trading">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
       </div>
     </div>
     <div class="pt-body" id="ptBody">
@@ -4255,8 +4524,8 @@ tbody tr:hover{background:var(--bg-2);}
 
 <!-- Mobile Chart Control Strip (TradingView-Inspired, Screens <= 880px) -->
 <div class="mobile-chart-strip" id="mobileChartStrip" role="toolbar" aria-label="Mobile Chart Control Strip">
-  <!-- Left: Vertical Drum Pickers for Symbol & Timeframe -->
-  <div class="tv-drum-pickers">
+  <!-- Section A: Fixed Left Section (Instrument & Timeframe Pickers) -->
+  <div class="tv-drum-pickers" id="tvFixedDrums">
     <!-- Symbol Vertical Drum Picker -->
     <div class="tv-drum-picker tv-drum-symbol" id="tvDrumSymbol" role="button" aria-label="Switch Symbol" tabindex="0">
       <div class="tv-drum-track">
@@ -4276,53 +4545,91 @@ tbody tr:hover{background:var(--bg-2);}
     </div>
   </div>
 
-  <!-- Right: TradingView Tools Group -->
-  <div class="tv-tools-group" role="group" aria-label="Chart Tools">
-    <!-- 1. Drawing Tool (Pencil with underline) -->
-    <button type="button" class="tv-tool-btn" id="tvBtnDrawing" title="Drawing Tools" aria-label="Drawing Tools">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
-        <path d="m14 6 3 3"/>
-        <path d="M3 21.5c2.5 0 4-2 6.5-2s4 2 6.5 1"/>
-      </svg>
-    </button>
+  <!-- Section B: Horizontally Scrollable Chart Tools Region with Edge Fades -->
+  <div class="tv-scrollable-tools-wrap" id="tvToolsWrap">
+    <!-- Left subtle dark fade overlay (indicates hidden tools to the left) -->
+    <div class="tv-tools-fade tv-tools-fade-left" id="tvToolsFadeLeft" aria-hidden="true"></div>
 
-    <!-- 2. Indicators Tool (Two Zigzag waves) -->
-    <button type="button" class="tv-tool-btn" id="tvBtnIndicators" title="Indicators & Layers" aria-label="Indicators & Layers">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M4 17l4.5-4.5 4.5 4.5"/>
-        <path d="M10 11l4.5-4.5 4.5 4.5"/>
-      </svg>
-    </button>
+    <!-- Horizontally scrollable row -->
+    <div class="tv-tools-group tv-tools-scrollable" id="tvToolsGroup" role="group" aria-label="Chart Tools">
+      
+      <!-- 1. More Exchange App Icon (Opens Paper Trading) -->
+      <button type="button" class="tv-tool-btn tv-app-logo-btn" id="tvBtnAppLogo" title="Paper Trading" aria-label="Paper Trading">
+        <svg class="tv-app-logo-icon" width="24" height="24" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="stripBgDark" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#090D16"/><stop offset="100%" stop-color="#172033"/></linearGradient>
+            <linearGradient id="stripRibbonLeft" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2563EB"/><stop offset="100%" stop-color="#38BDF8"/></linearGradient>
+            <linearGradient id="stripRibbonRight" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#34D399"/><stop offset="100%" stop-color="#059669"/></linearGradient>
+            <filter id="stripDropShadow" x="-15%" y="-15%" width="130%" height="130%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#000000" flood-opacity="0.45"/></filter>
+          </defs>
+          <rect width="512" height="512" rx="118" fill="url(#stripBgDark)"/>
+          <rect x="4" y="4" width="504" height="504" rx="114" fill="none" stroke="#ffffff" stroke-opacity="0.18" stroke-width="8"/>
+          <g filter="url(#stripDropShadow)">
+            <path d="M 120 372 L 120 180 C 120 144, 164 130, 188 156 L 256 230 L 310 172" fill="none" stroke="url(#stripRibbonLeft)" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+            <polygon points="352,126 266,144 334,212" fill="url(#stripRibbonLeft)"/>
+            <path d="M 392 140 L 392 332 C 392 368, 348 382, 324 356 L 256 282 L 202 340" fill="none" stroke="url(#stripRibbonRight)" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+            <polygon points="160,386 246,368 178,300" fill="url(#stripRibbonRight)"/>
+          </g>
+        </svg>
+      </button>
 
-    <!-- 3. More Options Tool (3 dots with red badge) -->
-    <button type="button" class="tv-tool-btn" id="tvBtnMore" title="More Options" aria-label="More Options">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-        <circle cx="5" cy="12" r="1.8" fill="none" stroke="currentColor"/>
-        <circle cx="12" cy="12" r="1.8" fill="none" stroke="currentColor"/>
-        <circle cx="19" cy="12" r="1.8" fill="none" stroke="currentColor"/>
-      </svg>
-      <span class="tv-dot-badge" aria-hidden="true"></span>
-    </button>
+      <!-- 2. Drawing Tool (Pencil) -->
+      <button type="button" class="tv-tool-btn" id="tvBtnDrawing" title="Drawing Tools" aria-label="Drawing Tools">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+          <path d="m14 6 3 3"/>
+          <path d="M3 21.5c2.5 0 4-2 6.5-2s4 2 6.5 1"/>
+        </svg>
+      </button>
 
-    <!-- 4. Vertical Divider -->
-    <div class="tv-strip-divider" aria-hidden="true"></div>
+      <!-- 3. Indicators Tool (Zigzag waves) -->
+      <button type="button" class="tv-tool-btn" id="tvBtnIndicators" title="Indicators & Layers" aria-label="Indicators & Layers">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 17l4.5-4.5 4.5 4.5"/>
+          <path d="M10 11l4.5-4.5 4.5 4.5"/>
+        </svg>
+      </button>
 
-    <!-- 5. Undo Tool -->
-    <button type="button" class="tv-tool-btn tv-tool-disabled" id="tvBtnUndo" title="Undo" aria-label="Undo">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M9 14 4 9l5-5"/>
-        <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/>
-      </svg>
-    </button>
+      <!-- 4. Wide Chart / Full Screen Tool (Relocated from outside) -->
+      <button type="button" class="tv-tool-btn" id="tvBtnWideChart" title="Wide Chart (Maximize Chart)" aria-label="Wide Chart">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/>
+        </svg>
+      </button>
 
-    <!-- 6. Redo Tool -->
-    <button type="button" class="tv-tool-btn tv-tool-disabled" id="tvBtnRedo" title="Redo" aria-label="Redo">
-      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="m15 14 5-5-5-5"/>
-        <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/>
-      </svg>
-    </button>
+      <!-- 5. More Options Tool (3 dots with red badge) -->
+      <button type="button" class="tv-tool-btn" id="tvBtnMore" title="More Options" aria-label="More Options">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="5" cy="12" r="1.8" fill="none" stroke="currentColor"/>
+          <circle cx="12" cy="12" r="1.8" fill="none" stroke="currentColor"/>
+          <circle cx="19" cy="12" r="1.8" fill="none" stroke="currentColor"/>
+        </svg>
+        <span class="tv-dot-badge" aria-hidden="true"></span>
+      </button>
+
+      <!-- 6. Vertical Divider -->
+      <div class="tv-strip-divider" aria-hidden="true"></div>
+
+      <!-- 7. Undo Tool -->
+      <button type="button" class="tv-tool-btn tv-tool-disabled" id="tvBtnUndo" title="Undo" aria-label="Undo">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 14 4 9l5-5"/>
+          <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/>
+        </svg>
+      </button>
+
+      <!-- 8. Redo Tool -->
+      <button type="button" class="tv-tool-btn tv-tool-disabled" id="tvBtnRedo" title="Redo" aria-label="Redo">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m15 14 5-5-5-5"/>
+          <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/>
+        </svg>
+      </button>
+
+    </div>
+
+    <!-- Right subtle dark fade overlay (indicates hidden tools to the right) -->
+    <div class="tv-tools-fade tv-tools-fade-right" id="tvToolsFadeRight" aria-hidden="true"></div>
   </div>
 </div>
 
@@ -4352,9 +4659,27 @@ tbody tr:hover{background:var(--bg-2);}
 
 <!-- Mobile Side Menu Drawer (All Features - Screen 4) -->
 <div class="side-menu-backdrop" id="sideMenuBackdrop"></div>
-<aside class="mobile-side-menu" id="mobileSideMenu" aria-label="Main Menu Drawer">
+<aside class="mobile-side-menu" id="mobileSideMenu" aria-label="Main Menu Sheet">
+  <div class="side-menu-drag-handle" id="sideMenuDragHandle" aria-hidden="true"></div>
   <div class="side-menu-head">
-    <div class="brand"><span class="mark"><svg class="app-icon fill-curr" width="11" height="11" viewBox="0 0 24 24"><polygon points="12 2 22 12 12 22 2 12"/></svg></span> MORE EXCHANGE</div>
+    <div class="brand"><span class="mark app-brand-mark">
+      <svg class="app-icon-me" width="20" height="20" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="sheetBgDark" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#090D16"/><stop offset="100%" stop-color="#172033"/></linearGradient>
+          <linearGradient id="sheetRibbonLeft" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stop-color="#2563EB"/><stop offset="100%" stop-color="#38BDF8"/></linearGradient>
+          <linearGradient id="sheetRibbonRight" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#34D399"/><stop offset="100%" stop-color="#059669"/></linearGradient>
+          <filter id="sheetDropShadow" x="-15%" y="-15%" width="130%" height="130%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#000000" flood-opacity="0.45"/></filter>
+        </defs>
+        <rect width="512" height="512" rx="118" fill="url(#sheetBgDark)"/>
+        <rect x="4" y="4" width="504" height="504" rx="114" fill="none" stroke="#ffffff" stroke-opacity="0.15" stroke-width="6"/>
+        <g filter="url(#sheetDropShadow)">
+          <path d="M 120 372 L 120 180 C 120 144, 164 130, 188 156 L 256 230 L 310 172" fill="none" stroke="url(#sheetRibbonLeft)" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+          <polygon points="352,126 266,144 334,212" fill="url(#sheetRibbonLeft)"/>
+          <path d="M 392 140 L 392 332 C 392 368, 348 382, 324 356 L 256 282 L 202 340" fill="none" stroke="url(#sheetRibbonRight)" stroke-width="52" stroke-linecap="round" stroke-linejoin="round"/>
+          <polygon points="160,386 246,368 178,300" fill="url(#sheetRibbonRight)"/>
+        </g>
+      </svg>
+    </span> MORE EXCHANGE</div>
     <button class="side-menu-close" id="sideMenuClose" title="Close Menu" aria-label="Close Menu"><svg class="app-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
   </div>
   <div class="side-menu-list">
@@ -7744,6 +8069,31 @@ function updateTvMobileStripUI(){
 window.updateTvMobileStripUI = updateTvMobileStripUI;
 window.updateTvUndoRedoState = updateTvUndoRedoState;
 
+function animateDrumRoll(drumEl, direction, onUpdate){
+  if(!drumEl) { onUpdate(); return; }
+  const track = drumEl.querySelector(".tv-drum-track");
+  if(!track) { onUpdate(); return; }
+  try { if(navigator.vibrate) navigator.vibrate(8); } catch(e){}
+  
+  track.style.transition = "transform 0.16s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.16s ease";
+  track.style.transform = direction < 0 ? "translateY(-15px)" : "translateY(15px)";
+  track.style.opacity = "0.25";
+
+  setTimeout(() => {
+    onUpdate();
+    track.style.transition = "none";
+    track.style.transform = direction < 0 ? "translateY(13px)" : "translateY(-13px)";
+    track.style.opacity = "0.35";
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        track.style.transition = "transform 0.22s cubic-bezier(0.18, 0.9, 0.22, 1), opacity 0.22s ease";
+        track.style.transform = "translateY(0)";
+        track.style.opacity = "1";
+      });
+    });
+  }, 130);
+}
+
 function initMobileChartStrip(){
   const strip = document.getElementById("mobileChartStrip");
   if(!strip) return;
@@ -7753,130 +8103,176 @@ function initMobileChartStrip(){
   strip.addEventListener("mousedown", e => e.stopPropagation());
   strip.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
 
-  // Attach Symbol Drum interactions (swipe + tap)
+  let isSymBusy = false;
+  let isTfBusy = false;
+
+  // Attach Symbol Drum interactions (smooth real-time touch + barrel roll)
   const drumSym = document.getElementById("tvDrumSymbol");
   if(drumSym){
     let symStartY = 0, isSymDrag = false;
+    const track = drumSym.querySelector(".tv-drum-track");
+
     drumSym.addEventListener("touchstart", (e) => {
+      if(isSymBusy) return;
       if(e.touches.length === 1){
         symStartY = e.touches[0].clientY;
         isSymDrag = false;
+        if(track) track.style.transition = "none";
       }
     }, { passive: true });
 
     drumSym.addEventListener("touchmove", (e) => {
+      if(isSymBusy) return;
       if(e.touches.length === 1){
         const dy = e.touches[0].clientY - symStartY;
-        if(Math.abs(dy) > 10){
+        if(Math.abs(dy) > 6){
           isSymDrag = true;
+          if(track){
+            const damp = dy * 0.42;
+            track.style.transform = `translateY(${damp}px)`;
+            track.style.opacity = `${Math.max(0.4, 1 - Math.abs(dy) / 60)}`;
+          }
         }
       }
     }, { passive: true });
 
     drumSym.addEventListener("touchend", (e) => {
+      if(isSymBusy) return;
       if(isSymDrag && e.changedTouches.length === 1){
         const dy = e.changedTouches[0].clientY - symStartY;
         const curSym = (typeof ui !== "undefined" && ui.symbol) ? ui.symbol.toUpperCase() : "BTCUSDT";
         const symIdx = TV_SYM_LIST.indexOf(curSym);
         const validSymIdx = symIdx >= 0 ? symIdx : 0;
-        const track = drumSym.querySelector(".tv-drum-track");
-        if(track){
-          track.style.transform = dy < 0 ? "translateY(-5px)" : "translateY(5px)";
-          setTimeout(() => { track.style.transform = "translateY(0)"; }, 150);
-        }
-        if(dy < -10){
-          const nextSym = TV_SYM_LIST[(validSymIdx + 1) % TV_SYM_LIST.length];
-          switchSymbol(nextSym);
-        } else if(dy > 10){
-          const prevSym = TV_SYM_LIST[(validSymIdx - 1 + TV_SYM_LIST.length) % TV_SYM_LIST.length];
-          switchSymbol(prevSym);
+        
+        if(Math.abs(dy) > 10){
+          isSymBusy = true;
+          const direction = dy < 0 ? -1 : 1;
+          const targetSym = direction < 0 
+            ? TV_SYM_LIST[(validSymIdx + 1) % TV_SYM_LIST.length]
+            : TV_SYM_LIST[(validSymIdx - 1 + TV_SYM_LIST.length) % TV_SYM_LIST.length];
+          
+          animateDrumRoll(drumSym, direction, () => {
+            switchSymbol(targetSym);
+          });
+          setTimeout(() => { isSymBusy = false; }, 320);
+        } else if(track){
+          track.style.transition = "transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.18s ease";
+          track.style.transform = "translateY(0)";
+          track.style.opacity = "1";
         }
       }
     }, { passive: true });
 
     drumSym.addEventListener("click", (e) => {
-      if(isSymDrag) return;
+      if(isSymDrag || isSymBusy) return;
       e.preventDefault();
       e.stopPropagation();
+      isSymBusy = true;
       const prevEl = e.target.closest("#tvDrumSymPrev");
       const curSym = (typeof ui !== "undefined" && ui.symbol) ? ui.symbol.toUpperCase() : "BTCUSDT";
       const symIdx = TV_SYM_LIST.indexOf(curSym);
       const validSymIdx = symIdx >= 0 ? symIdx : 0;
-      const track = drumSym.querySelector(".tv-drum-track");
-      if(track){
-        track.style.transform = prevEl ? "translateY(4px)" : "translateY(-4px)";
-        setTimeout(() => { track.style.transform = "translateY(0)"; }, 150);
-      }
-      if(prevEl){
-        const prevSym = TV_SYM_LIST[(validSymIdx - 1 + TV_SYM_LIST.length) % TV_SYM_LIST.length];
-        switchSymbol(prevSym);
-      } else {
-        const nextSym = TV_SYM_LIST[(validSymIdx + 1) % TV_SYM_LIST.length];
-        switchSymbol(nextSym);
-      }
+      const direction = prevEl ? 1 : -1;
+      const targetSym = direction > 0
+        ? TV_SYM_LIST[(validSymIdx - 1 + TV_SYM_LIST.length) % TV_SYM_LIST.length]
+        : TV_SYM_LIST[(validSymIdx + 1) % TV_SYM_LIST.length];
+
+      animateDrumRoll(drumSym, direction, () => {
+        switchSymbol(targetSym);
+      });
+      setTimeout(() => { isSymBusy = false; }, 320);
     });
   }
 
-  // Attach Timeframe Drum interactions (swipe + tap)
+  // Attach Timeframe Drum interactions (smooth real-time touch + barrel roll)
   const drumTf = document.getElementById("tvDrumTf");
   if(drumTf){
     let tfStartY = 0, isTfDrag = false;
+    const track = drumTf.querySelector(".tv-drum-track");
+
     drumTf.addEventListener("touchstart", (e) => {
+      if(isTfBusy) return;
       if(e.touches.length === 1){
         tfStartY = e.touches[0].clientY;
         isTfDrag = false;
+        if(track) track.style.transition = "none";
       }
     }, { passive: true });
 
     drumTf.addEventListener("touchmove", (e) => {
+      if(isTfBusy) return;
       if(e.touches.length === 1){
         const dy = e.touches[0].clientY - tfStartY;
-        if(Math.abs(dy) > 10){
+        if(Math.abs(dy) > 6){
           isTfDrag = true;
+          if(track){
+            const damp = dy * 0.42;
+            track.style.transform = `translateY(${damp}px)`;
+            track.style.opacity = `${Math.max(0.4, 1 - Math.abs(dy) / 60)}`;
+          }
         }
       }
     }, { passive: true });
 
     drumTf.addEventListener("touchend", (e) => {
+      if(isTfBusy) return;
       if(isTfDrag && e.changedTouches.length === 1){
         const dy = e.changedTouches[0].clientY - tfStartY;
         const curTf = (typeof ui !== "undefined" && ui.tf) ? ui.tf : "15m";
         const tfIdx = TV_TF_LIST.indexOf(curTf);
         const validTfIdx = tfIdx >= 0 ? tfIdx : 2;
-        const track = drumTf.querySelector(".tv-drum-track");
-        if(track){
-          track.style.transform = dy < 0 ? "translateY(-5px)" : "translateY(5px)";
-          setTimeout(() => { track.style.transform = "translateY(0)"; }, 150);
-        }
-        if(dy < -10){
-          const nextTf = TV_TF_LIST[(validTfIdx + 1) % TV_TF_LIST.length];
-          switchTimeframe(nextTf);
-        } else if(dy > 10){
-          const prevTf = TV_TF_LIST[(validTfIdx - 1 + TV_TF_LIST.length) % TV_TF_LIST.length];
-          switchTimeframe(prevTf);
+
+        if(Math.abs(dy) > 10){
+          isTfBusy = true;
+          const direction = dy < 0 ? -1 : 1;
+          const targetTf = direction < 0
+            ? TV_TF_LIST[(validTfIdx + 1) % TV_TF_LIST.length]
+            : TV_TF_LIST[(validTfIdx - 1 + TV_TF_LIST.length) % TV_TF_LIST.length];
+
+          animateDrumRoll(drumTf, direction, () => {
+            switchTimeframe(targetTf);
+          });
+          setTimeout(() => { isTfBusy = false; }, 320);
+        } else if(track){
+          track.style.transition = "transform 0.18s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.18s ease";
+          track.style.transform = "translateY(0)";
+          track.style.opacity = "1";
         }
       }
     }, { passive: true });
 
     drumTf.addEventListener("click", (e) => {
-      if(isTfDrag) return;
+      if(isTfDrag || isTfBusy) return;
       e.preventDefault();
       e.stopPropagation();
+      isTfBusy = true;
       const prevEl = e.target.closest("#tvDrumTfPrev");
       const curTf = (typeof ui !== "undefined" && ui.tf) ? ui.tf : "15m";
       const tfIdx = TV_TF_LIST.indexOf(curTf);
       const validTfIdx = tfIdx >= 0 ? tfIdx : 2;
-      const track = drumTf.querySelector(".tv-drum-track");
-      if(track){
-        track.style.transform = prevEl ? "translateY(4px)" : "translateY(-4px)";
-        setTimeout(() => { track.style.transform = "translateY(0)"; }, 150);
-      }
-      if(prevEl){
-        const prevTf = TV_TF_LIST[(validTfIdx - 1 + TV_TF_LIST.length) % TV_TF_LIST.length];
-        switchTimeframe(prevTf);
+      const direction = prevEl ? 1 : -1;
+      const targetTf = direction > 0
+        ? TV_TF_LIST[(validTfIdx - 1 + TV_TF_LIST.length) % TV_TF_LIST.length]
+        : TV_TF_LIST[(validTfIdx + 1) % TV_TF_LIST.length];
+
+      animateDrumRoll(drumTf, direction, () => {
+        switchTimeframe(targetTf);
+      });
+      setTimeout(() => { isTfBusy = false; }, 320);
+    });
+  }
+
+  // Official More Exchange App Icon Button (Between Timeframe and Drawing Tool): Opens Paper Trading
+  const btnAppLogo = document.getElementById("tvBtnAppLogo");
+  if(btnAppLogo){
+    btnAppLogo.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if(isMobileView()){
+        openMobilePtPanel();
       } else {
-        const nextTf = TV_TF_LIST[(validTfIdx + 1) % TV_TF_LIST.length];
-        switchTimeframe(nextTf);
+        const pt = document.getElementById("ptPanel");
+        if(pt && ptState.min && typeof togglePtMin === "function") togglePtMin();
       }
     });
   }
@@ -7917,6 +8313,39 @@ function initMobileChartStrip(){
   }
 
   // 3. More Options Tool (3 dots with red badge)
+  // Wide Chart Mobile Tool Button
+  const tvWide = document.getElementById("tvBtnWideChart");
+  if(tvWide){
+    tvWide.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if(typeof toggleWideChart === "function"){
+        toggleWideChart();
+      }
+    });
+  }
+
+  // Horizontal Scroll Edge Fades for Mobile Chart Tools
+  const toolsGroup = document.getElementById("tvToolsGroup");
+  if(toolsGroup){
+    function updateToolsFades(){
+      const fLeft = document.getElementById("tvToolsFadeLeft");
+      const fRight = document.getElementById("tvToolsFadeRight");
+      const scrollLeft = toolsGroup.scrollLeft;
+      const maxScroll = toolsGroup.scrollWidth - toolsGroup.clientWidth;
+      if(fLeft){
+        fLeft.style.opacity = scrollLeft > 2 ? "1" : "0";
+      }
+      if(fRight){
+        fRight.style.opacity = (maxScroll > 2 && scrollLeft < maxScroll - 2) ? "1" : "0";
+      }
+    }
+    toolsGroup.addEventListener("scroll", updateToolsFades, { passive: true });
+    window.addEventListener("resize", updateToolsFades);
+    setTimeout(updateToolsFades, 200);
+    setTimeout(updateToolsFades, 1000);
+  }
+
   const btnMore = document.getElementById("tvBtnMore");
   if(btnMore){
     btnMore.addEventListener("click", (e) => {
@@ -8539,7 +8968,13 @@ try{
   const p = JSON.parse(localStorage.getItem(TB_KEY)||"null");
   if(p && typeof p.x === "number" && typeof p.y === "number") placeTb(p.x, p.y);
 }catch(e){}
-window.addEventListener("resize", ()=>{ if(tb && tb.style.transform==="none") placeTb(tb.offsetLeft, tb.offsetTop); });
+window.addEventListener("resize", ()=>{
+  if(!isMobileView()){
+    const ptPanel = document.getElementById("ptPanel");
+    if(ptPanel){
+      ptPanel.classList.remove("mobile-pt-open", "mobile-pt-maximized", "mobile-pt-restored");
+    }
+  } if(tb && tb.style.transform==="none") placeTb(tb.offsetLeft, tb.offsetTop); });
 if(grip && tb && tbHost){
   grip.addEventListener("pointerdown",(e)=>{
     e.preventDefault();
@@ -9549,6 +9984,14 @@ function updateChartPlusPosition(clientX, clientY){
   const x = clientX - rect.left;
   const y = clientY - rect.top;
   const pScaleWidth = getPriceScaleWidth();
+
+  // On mobile view (<= 880px), do not auto-display plus marker across the candle area.
+  // The user holds touch to inspect candles with the crosshair ("dashed plus").
+  // Plus marker on mobile should only appear if explicitly interacting near the right price scale!
+  if(window.innerWidth <= 880 && x < rect.width - pScaleWidth - 30){
+    hideChartPlusMarker();
+    return;
+  }
   
   // Only change cursor to ns-resize if near the right-edge marker handle!
   const isNearRightEdge = (x >= rect.width - pScaleWidth - 50);
@@ -9840,11 +10283,20 @@ chartEl.addEventListener("mouseleave", (e) => {
   hideChartPlusMarker();
 });
 
+let lastChartTouchTime = 0;
+chartEl.addEventListener("touchstart", () => { lastChartTouchTime = Date.now(); }, { passive: true });
+chartEl.addEventListener("touchmove", () => { lastChartTouchTime = Date.now(); }, { passive: true });
+chartEl.addEventListener("touchend", () => { lastChartTouchTime = Date.now(); }, { passive: true });
+
 const plusBadge = document.getElementById("chartPlusBadge");
 const plusBtn = document.getElementById("chartPlusMarker");
 function handlePlusClick(e){
   e.stopPropagation();
   e.preventDefault();
+  // On mobile view (<= 880px), suppress accidental clicks following chart touch gestures / holds
+  if(window.innerWidth <= 880 && (Date.now() - lastChartTouchTime < 400)){
+    return;
+  }
   if(lastHoverPrice != null){
     const rect = plusBtn ? plusBtn.getBoundingClientRect() : (plusBadge ? plusBadge.getBoundingClientRect() : { left: lastHoverX, top: lastHoverY });
     openChartContextMenu(rect.left, rect.top, lastHoverPrice);
@@ -9894,6 +10346,13 @@ chartEl.addEventListener("contextmenu", (e) => {
   if(typeof activeDrag !== "undefined" && activeDrag) return;
   if(typeof replayState !== "undefined" && replayState.selecting) return;
   e.preventDefault();
+  
+  // On mobile view (<= 880px) or touch, touch hold / long press emits a synthetic 'contextmenu' event.
+  // The user holds their touch to activate and inspect candles with the crosshair ("dashed plus").
+  // Never open the context menu automatically on mobile touch hold!
+  if(window.innerWidth <= 880 || (e.pointerType && e.pointerType === "touch")){
+    return;
+  }
   
   const rect = chartEl.getBoundingClientRect();
   const x = e.clientX - rect.left;
@@ -10365,7 +10824,12 @@ document.getElementById("ptTabs").addEventListener("click",(e)=>{
 const appEl = document.getElementById("app");
 const PT_KEY = "paperExchange.ptpanel.v1", PT_MIN = 35;
 const ptState = { h:260, prev:260, min:false, max:false };
-function ptMaxH(){ return Math.max(PT_MIN, window.innerHeight - 44 - 140); }
+function ptMaxH(){
+  if(window.innerWidth <= 880){
+    return Math.max(PT_MIN, window.innerHeight - 88 - 44 - 180);
+  }
+  return Math.max(PT_MIN, window.innerHeight - 44 - 140);
+}
 
 function setPtHeight(h){
   if(ptState.max){
@@ -10378,6 +10842,8 @@ function setPtHeight(h){
   h = Math.round(Math.max(PT_MIN, Math.min(h, ptMaxH())));
   ptState.h = h; ptState.min = h <= PT_MIN+4; ptState.max = false;
   appEl.style.setProperty("--bottom-h", h + "px");
+  const panel = document.getElementById("ptPanel");
+  if(panel) panel.scrollTop = 0;
   if(typeof tb !== "undefined" && tb && tb.style && tb.style.transform==="none") placeTb(tb.offsetLeft, tb.offsetTop);
   if(chart && chartEl){
     chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
@@ -10387,7 +10853,54 @@ function setPtHeight(h){
 
 function savePt(){ try{ localStorage.setItem(PT_KEY, JSON.stringify({h:ptState.h, prev:ptState.prev, max:ptState.max})); }catch(e){} }
 
+function isMobileView(){
+  return window.innerWidth <= 880;
+}
+
+function openMobilePtPanel(targetTab){
+  if(targetTab){
+    const tabBtn = document.querySelector(`.pt-tabs button[data-tab="${targetTab}"]`);
+    if(tabBtn) tabBtn.click();
+  }
+  const ptPanel = document.getElementById("ptPanel");
+  if(ptPanel){
+    ptPanel.classList.add("mobile-pt-open");
+    if(!ptPanel.classList.contains("mobile-pt-restored")){
+      ptPanel.classList.add("mobile-pt-maximized");
+    }
+  }
+  const maxBtn = document.getElementById("ptMax");
+  if(maxBtn){
+    const isRestored = ptPanel && ptPanel.classList.contains("mobile-pt-restored");
+    maxBtn.innerHTML = isRestored
+      ? '<svg class="app-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>'
+      : '<svg class="app-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>';
+    maxBtn.title = isRestored ? "Maximize" : "Restore";
+  }
+  renderPtActive();
+  if(ptTab === "analytics") requestAnimationFrame(fitAnalytics);
+}
+window.openMobilePtPanel = openMobilePtPanel;
+
+function closeMobilePtPanel(){
+  const ptPanel = document.getElementById("ptPanel");
+  if(ptPanel){
+    ptPanel.classList.remove("mobile-pt-open");
+  }
+  requestAnimationFrame(()=>{
+    if(chart && chartEl){
+      chart.applyOptions({ width: chartEl.clientWidth, height: chartEl.clientHeight });
+    }
+    window.dispatchEvent(new Event("resize"));
+  });
+}
+window.closeMobilePtPanel = closeMobilePtPanel;
+
 function togglePtMin(){
+  if(isMobileView()){
+    closeMobilePtPanel();
+    return;
+  }
   const ptPanel = document.getElementById("ptPanel");
   const maxBtn = document.getElementById("ptMax");
   if(ptState.max){
@@ -10404,16 +10917,38 @@ function togglePtMin(){
 }
 
 function togglePtMax(){
+  if(isMobileView()){
+    const ptPanel = document.getElementById("ptPanel");
+    const maxBtn = document.getElementById("ptMax");
+    if(!ptPanel) return;
+    const isRestored = ptPanel.classList.contains("mobile-pt-restored");
+    if(isRestored){
+      ptPanel.classList.remove("mobile-pt-restored");
+      ptPanel.classList.add("mobile-pt-maximized");
+      if(maxBtn){
+        maxBtn.innerHTML = '<svg class="app-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>';
+        maxBtn.title = "Restore";
+      }
+    } else {
+      ptPanel.classList.remove("mobile-pt-maximized");
+      ptPanel.classList.add("mobile-pt-restored");
+      if(maxBtn){
+        maxBtn.innerHTML = '<svg class="app-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>';
+        maxBtn.title = "Maximize";
+      }
+    }
+    renderPtActive();
+    if(ptTab === "analytics") requestAnimationFrame(fitAnalytics);
+    return;
+  }
   const ptPanel = document.getElementById("ptPanel");
   const maxBtn = document.getElementById("ptMax");
   if(ptState.max){
-    // Restore from maximized mode
     if(ptPanel) ptPanel.classList.remove("pt-maximized");
     ptState.max = false;
     if(maxBtn){ maxBtn.innerHTML = '<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/></svg>'; maxBtn.title = "Maximize / restore"; }
     setPtHeight(ptState.prev || 260);
   } else {
-    // Maximize to cover the complete application window
     if(!ptState.min) ptState.prev = ptState.h;
     if(ptPanel) ptPanel.classList.add("pt-maximized");
     ptState.max = true;
@@ -10431,6 +10966,10 @@ function togglePtMax(){
 
 document.getElementById("ptMin").addEventListener("click", togglePtMin);
 document.getElementById("ptMax").addEventListener("click", togglePtMax);
+const ptMobileBackBtn = document.getElementById("ptMobileBack");
+if(ptMobileBackBtn) ptMobileBackBtn.addEventListener("click", closeMobilePtPanel);
+const ptCloseBtn = document.getElementById("ptClose");
+if(ptCloseBtn) ptCloseBtn.addEventListener("click", closeMobilePtPanel);
 document.getElementById("ptTitle").addEventListener("dblclick",(e)=>{ if(!e.target.closest("button")) togglePtMin(); });
 
 function startPtDrag(e){
@@ -10458,6 +10997,7 @@ function startPtDrag(e){
         return;
       }
     }
+    if(ev.cancelable) ev.preventDefault();
     setPtHeight(startH + dy);
   };
 
@@ -10474,7 +11014,7 @@ function startPtDrag(e){
     }
   };
 
-  window.addEventListener("pointermove", move);
+  window.addEventListener("pointermove", move, { passive: false });
   window.addEventListener("pointerup", up);
   window.addEventListener("pointercancel", up);
 }
@@ -10574,8 +11114,11 @@ window.addEventListener("keydown", (e)=>{
   }
 });
 
-if(localStorage.getItem("paperExchange.sidebarCollapsed") === "1"){
+if(window.innerWidth > 880 && localStorage.getItem("paperExchange.sidebarCollapsed") === "1"){
   toggleSidebar(true);
+} else if(window.innerWidth <= 880) {
+  closeMobileDrawer();
+  if(typeof setBottomNavActive === "function") setBottomNavActive("chart");
 }
 
 /* ---- NEW FEATURE: Wide Chart Mode (Desktop, Tablet, Mobile) ---- */
@@ -10590,6 +11133,12 @@ function toggleWideChart(forceState){
     wideBtn.classList.toggle("active", isWide);
     wideBtn.innerHTML = isWide ? `<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg> <span>Restore</span>` : `<svg class="app-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg> <span>Wide Chart</span>`;
     wideBtn.title = isWide ? "Exit Wide Chart Mode (Restore Panels) [Alt+W]" : "Enter Wide Chart Mode (Maximize Chart) [Alt+W]";
+  }
+  const mobileWideBtn = document.getElementById("tvBtnWideChart");
+  if(mobileWideBtn){
+    mobileWideBtn.classList.toggle("active", isWide);
+    mobileWideBtn.innerHTML = isWide ? `<svg class="app-icon" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/></svg>` : `<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg>`;
+    mobileWideBtn.title = isWide ? "Exit Wide Chart Mode (Restore Normal View)" : "Wide Chart (Maximize Chart)";
   }
   const headerWideBtn = document.getElementById("btnHeaderWideChart");
   if(headerWideBtn){
@@ -11341,6 +11890,43 @@ if(sideMenuClose) sideMenuClose.addEventListener("click", ()=> toggleSideMenu(fa
 const sideMenuBackdrop = document.getElementById("sideMenuBackdrop");
 if(sideMenuBackdrop) sideMenuBackdrop.addEventListener("click", ()=> toggleSideMenu(false));
 
+const sideMenuEl = document.getElementById("mobileSideMenu");
+const sideDragHandle = document.getElementById("sideMenuDragHandle");
+if(sideMenuEl && sideDragHandle){
+  let dragStartY = 0;
+  let dragCurrentY = 0;
+  let isDraggingMenu = false;
+
+  sideDragHandle.addEventListener("touchstart", (e) => {
+    if(e.touches && e.touches[0]){
+      dragStartY = e.touches[0].clientY;
+      dragCurrentY = dragStartY;
+      isDraggingMenu = true;
+      sideMenuEl.style.transition = "none";
+    }
+  }, { passive: true });
+
+  sideDragHandle.addEventListener("touchmove", (e) => {
+    if(!isDraggingMenu || !e.touches || !e.touches[0]) return;
+    dragCurrentY = e.touches[0].clientY;
+    const dy = dragCurrentY - dragStartY;
+    if(dy > 0){
+      sideMenuEl.style.transform = `translateY(${dy}px)`;
+    }
+  }, { passive: true });
+
+  sideDragHandle.addEventListener("touchend", () => {
+    if(!isDraggingMenu) return;
+    isDraggingMenu = false;
+    sideMenuEl.style.transition = "";
+    const dy = dragCurrentY - dragStartY;
+    if(dy > 60){
+      toggleSideMenu(false);
+    }
+    sideMenuEl.style.transform = "";
+  }, { passive: true });
+}
+
 /* ---- Mobile Bottom Navigation (Screens <= 880px) ---- */
 function setBottomNavActive(tabName){
   document.querySelectorAll(".mobile-bottom-nav .nav-item").forEach(item => {
@@ -11368,9 +11954,13 @@ if(navPositions) navPositions.addEventListener("click", ()=>{
   closeMobileDrawer();
   const app = document.getElementById("app");
   if(app && app.classList.contains("wide-chart-mode")) toggleWideChart(false);
-  const posTab = document.querySelector('.pt-tabs button[data-tab="positions"]');
-  if(posTab) posTab.click();
-  if(ptState.min && typeof togglePtMin === "function") togglePtMin();
+  if(isMobileView()){
+    openMobilePtPanel("positions");
+  } else {
+    const posTab = document.querySelector('.pt-tabs button[data-tab="positions"]');
+    if(posTab) posTab.click();
+    if(ptState.min && typeof togglePtMin === "function") togglePtMin();
+  }
   setBottomNavActive("positions");
 });
 
@@ -11406,22 +11996,34 @@ setupSideMenuItem("smTrade", ()=>{ toggleSidebar(true); setBottomNavActive("trad
 setupSideMenuItem("smPositions", ()=>{
   const app = document.getElementById("app");
   if(app && app.classList.contains("wide-chart-mode")) toggleWideChart(false);
-  const b = document.querySelector('.pt-tabs button[data-tab="positions"]');
-  if(b) b.click();
-  if(ptState.min && typeof togglePtMin === "function") togglePtMin();
+  if(isMobileView()){
+    openMobilePtPanel("positions");
+  } else {
+    const b = document.querySelector('.pt-tabs button[data-tab="positions"]');
+    if(b) b.click();
+    if(ptState.min && typeof togglePtMin === "function") togglePtMin();
+  }
   setBottomNavActive("positions");
 });
 setupSideMenuItem("smOrders", ()=>{
   const app = document.getElementById("app");
   if(app && app.classList.contains("wide-chart-mode")) toggleWideChart(false);
-  const b = document.querySelector('.pt-tabs button[data-tab="orders"]');
-  if(b) b.click();
-  if(ptState.min && typeof togglePtMin === "function") togglePtMin();
+  if(isMobileView()){
+    openMobilePtPanel("orders");
+  } else {
+    const b = document.querySelector('.pt-tabs button[data-tab="orders"]');
+    if(b) b.click();
+    if(ptState.min && typeof togglePtMin === "function") togglePtMin();
+  }
 });
 setupSideMenuItem("smPaperTrading", ()=>{
   const app = document.getElementById("app");
   if(app && app.classList.contains("wide-chart-mode")) toggleWideChart(false);
-  if(ptState.min && typeof togglePtMin === "function") togglePtMin();
+  if(isMobileView()){
+    openMobilePtPanel();
+  } else {
+    if(ptState.min && typeof togglePtMin === "function") togglePtMin();
+  }
 });
 setupSideMenuItem("smStrategies", ()=>{
   const sbBtn = document.getElementById("sbOpenBtn");
@@ -17639,6 +18241,11 @@ window.MX = {
 
 /* ================= INIT ================= */
 async function init(){
+  if(window.innerWidth <= 880 && typeof closeMobileDrawer === "function"){
+    closeMobileDrawer();
+    if(typeof setBottomNavActive === "function") setBottomNavActive("chart");
+  }
+
   // 1. Immediately render local account state, balances, equity, tabs synchronously
   try {
     populateAccountSelect();
