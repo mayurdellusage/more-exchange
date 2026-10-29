@@ -184,7 +184,8 @@ header{
   min-height:350px;
   position:relative;
 }
-#price-chart{flex:1;min-height:320px;cursor:crosshair;}
+#price-chart{flex:1;min-height:320px;cursor:crosshair;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+#price-chart canvas{touch-action:none !important;-webkit-user-select:none !important;user-select:none !important;-webkit-touch-callout:none !important;}
 #price-chart.picking{cursor:copy;}
 .chart-pnl-badge{
   display:none !important;
@@ -1130,7 +1131,7 @@ tbody tr:hover{background:var(--bg-2);}
     grid-template-rows:auto 1fr var(--bottom-h, 215px) !important;
     height:100%;
     height:100dvh;
-    padding-bottom:calc(46px + 38px + var(--sab, 0px)) !important;
+    padding-bottom:calc(46px + 42px + var(--sab, 0px)) !important;
   }
   #app.wide-chart-mode{
     grid-template-rows:auto 1fr 0px !important;
@@ -1171,86 +1172,130 @@ tbody tr:hover{background:var(--bg-2);}
     bottom:calc(46px + var(--sab, 0px));
     left:0;
     right:0;
-    height:38px;
-    background:#131722;
-    border-top:1px solid var(--line);
-    border-bottom:1px solid rgba(0, 0, 0, 0.45);
+    height:42px;
+    background:#000000;
+    border-top:1px solid rgba(255, 255, 255, 0.08);
+    border-bottom:1px solid #131722;
     z-index:79;
     align-items:center;
     justify-content:space-between;
-    padding:0 6px;
-    padding-left:max(6px, var(--sal));
-    padding-right:max(6px, var(--sar));
+    padding:0 12px;
+    padding-left:max(12px, var(--sal));
+    padding-right:max(12px, var(--sar));
     box-sizing:border-box;
     user-select:none;
     -webkit-user-select:none;
     pointer-events:auto;
-    gap:4px;
   }
-  .mob-strip-group{
+  .tv-drum-pickers{
     display:flex;
     align-items:center;
-    gap:3px;
-    overflow-x:auto;
-    overflow-y:hidden;
+    gap:16px;
+    flex-shrink:0;
+  }
+  .tv-drum-picker{
+    height:38px;
+    overflow:hidden;
+    position:relative;
+    cursor:pointer;
+    user-select:none;
+    -webkit-user-select:none;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    touch-action:pan-y;
+  }
+  .tv-drum-track{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-start;
+    justify-content:center;
+    transform:translateY(0);
+    transition:transform 0.16s cubic-bezier(0.2, 0.8, 0.25, 1);
+  }
+  .tv-drum-item{
+    font-family:-apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
     white-space:nowrap;
-    -webkit-overflow-scrolling:touch;
-    scrollbar-width:none;
-    padding:2px 0;
+    cursor:pointer;
   }
-  .mob-strip-group::-webkit-scrollbar{
-    display:none;
+  .tv-drum-item.tv-drum-prev,
+  .tv-drum-item.tv-drum-next{
+    font-size:11px;
+    font-weight:500;
+    color:#787b86;
+    opacity:0.35;
+    line-height:11px;
+    height:11px;
+    letter-spacing:-0.2px;
   }
-  .mob-strip-symbols{
-    flex-shrink:0;
-    max-width:48%;
-  }
-  .mob-strip-divider{
-    width:1px;
+  .tv-drum-item.tv-drum-active{
+    font-size:16px;
+    font-weight:700;
+    color:#ffffff;
+    line-height:18px;
     height:18px;
-    background:var(--line);
+    letter-spacing:-0.3px;
+    display:flex;
+    align-items:center;
+  }
+  .tv-symbol-arrow{
+    font-size:12px;
+    color:#787b86;
+    margin-right:3px;
+    font-weight:400;
+    opacity:0.75;
+    line-height:1;
+  }
+  .tv-tools-group{
+    display:flex;
+    align-items:center;
+    gap:2px;
     flex-shrink:0;
-    margin:0 2px;
   }
-  .mob-strip-timeframes{
-    flex:1 1 auto;
-    min-width:0;
-  }
-  .mob-strip-btn{
+  .tv-tool-btn{
+    background:transparent;
     border:none;
     outline:none;
-    background:transparent;
-    color:var(--text-dim);
-    font-family:var(--sans);
-    font-size:11.5px;
-    font-weight:600;
-    padding:4px 9px;
+    padding:0;
+    width:32px;
+    height:32px;
     border-radius:4px;
-    cursor:pointer;
-    flex-shrink:0;
     display:inline-flex;
     align-items:center;
     justify-content:center;
-    min-height:28px;
-    transition:background .15s ease, color .15s ease, border-color .15s ease;
-    touch-action:pan-x;
-  }
-  .mob-strip-btn:active{
-    opacity:0.75;
-  }
-  /* Selected state: subtle dark-gray pill for instrument */
-  .mob-symbol-btn.active{
-    background:#2a2e39;
+    cursor:pointer;
     color:#ffffff;
-    font-weight:700;
-    box-shadow:inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+    transition:background-color .15s ease, opacity .15s ease, color .15s ease;
+    position:relative;
+    touch-action:manipulation;
   }
-  /* Selected state: distinct active indicator for timeframe */
-  .mob-tf-btn.active{
-    background:rgba(41,98,255,0.18);
+  .tv-tool-btn:active{
+    background:rgba(255, 255, 255, 0.12);
+  }
+  .tv-tool-btn.active{
     color:#2962ff;
-    font-weight:700;
-    border:1px solid rgba(41,98,255,0.45);
+  }
+  .tv-tool-btn.tv-tool-disabled{
+    color:#434651;
+    opacity:0.38;
+    cursor:default;
+  }
+  .tv-dot-badge{
+    position:absolute;
+    top:5px;
+    right:4px;
+    width:6px;
+    height:6px;
+    background:#f23645;
+    border-radius:50%;
+    pointer-events:none;
+  }
+  .tv-strip-divider{
+    width:1px;
+    height:18px;
+    background:rgba(255, 255, 255, 0.16);
+    margin:0 4px;
+    flex-shrink:0;
   }
 
   .nav-item{
@@ -4209,19 +4254,75 @@ tbody tr:hover{background:var(--bg-2);}
 </div>
 
 <!-- Mobile Chart Control Strip (TradingView-Inspired, Screens <= 880px) -->
-<div class="mobile-chart-strip" id="mobileChartStrip" role="toolbar" aria-label="Mobile Instrument & Timeframe Selector">
-  <div class="mob-strip-group mob-strip-symbols" id="mobStripSymbols" role="tablist" aria-label="Select Instrument">
-    <button type="button" class="mob-strip-btn mob-symbol-btn active" data-symbol="BTCUSDT" role="tab" aria-selected="true">BTCUSDT</button>
-    <button type="button" class="mob-strip-btn mob-symbol-btn" data-symbol="ETHUSDT" role="tab" aria-selected="false">ETHUSDT</button>
+<div class="mobile-chart-strip" id="mobileChartStrip" role="toolbar" aria-label="Mobile Chart Control Strip">
+  <!-- Left: Vertical Drum Pickers for Symbol & Timeframe -->
+  <div class="tv-drum-pickers">
+    <!-- Symbol Vertical Drum Picker -->
+    <div class="tv-drum-picker tv-drum-symbol" id="tvDrumSymbol" role="button" aria-label="Switch Symbol" tabindex="0">
+      <div class="tv-drum-track">
+        <div class="tv-drum-item tv-drum-prev" id="tvDrumSymPrev">BTCUSDT</div>
+        <div class="tv-drum-item tv-drum-active" id="tvDrumSymActive"><span class="tv-symbol-arrow" aria-hidden="true">‹</span><span class="tv-symbol-text">ETHUSDT</span></div>
+        <div class="tv-drum-item tv-drum-next" id="tvDrumSymNext">BTCUSDT</div>
+      </div>
+    </div>
+
+    <!-- Timeframe Vertical Drum Picker -->
+    <div class="tv-drum-picker tv-drum-tf" id="tvDrumTf" role="button" aria-label="Switch Timeframe" tabindex="0">
+      <div class="tv-drum-track">
+        <div class="tv-drum-item tv-drum-prev" id="tvDrumTfPrev">5m</div>
+        <div class="tv-drum-item tv-drum-active" id="tvDrumTfActive">15m</div>
+        <div class="tv-drum-item tv-drum-next" id="tvDrumTfNext">1h</div>
+      </div>
+    </div>
   </div>
-  <div class="mob-strip-divider" aria-hidden="true"></div>
-  <div class="mob-strip-group mob-strip-timeframes" id="mobStripTimeframes" role="tablist" aria-label="Select Timeframe">
-    <button type="button" class="mob-strip-btn mob-tf-btn" data-tf="1m" role="tab" aria-selected="false">1m</button>
-    <button type="button" class="mob-strip-btn mob-tf-btn active" data-tf="5m" role="tab" aria-selected="true">5m</button>
-    <button type="button" class="mob-strip-btn mob-tf-btn" data-tf="15m" role="tab" aria-selected="false">15m</button>
-    <button type="button" class="mob-strip-btn mob-tf-btn" data-tf="1h" role="tab" aria-selected="false">1h</button>
-    <button type="button" class="mob-strip-btn mob-tf-btn" data-tf="4h" role="tab" aria-selected="false">4h</button>
-    <button type="button" class="mob-strip-btn mob-tf-btn" data-tf="1d" role="tab" aria-selected="false">1D</button>
+
+  <!-- Right: TradingView Tools Group -->
+  <div class="tv-tools-group" role="group" aria-label="Chart Tools">
+    <!-- 1. Drawing Tool (Pencil with underline) -->
+    <button type="button" class="tv-tool-btn" id="tvBtnDrawing" title="Drawing Tools" aria-label="Drawing Tools">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+        <path d="m14 6 3 3"/>
+        <path d="M3 21.5c2.5 0 4-2 6.5-2s4 2 6.5 1"/>
+      </svg>
+    </button>
+
+    <!-- 2. Indicators Tool (Two Zigzag waves) -->
+    <button type="button" class="tv-tool-btn" id="tvBtnIndicators" title="Indicators & Layers" aria-label="Indicators & Layers">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 17l4.5-4.5 4.5 4.5"/>
+        <path d="M10 11l4.5-4.5 4.5 4.5"/>
+      </svg>
+    </button>
+
+    <!-- 3. More Options Tool (3 dots with red badge) -->
+    <button type="button" class="tv-tool-btn" id="tvBtnMore" title="More Options" aria-label="More Options">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+        <circle cx="5" cy="12" r="1.8" fill="none" stroke="currentColor"/>
+        <circle cx="12" cy="12" r="1.8" fill="none" stroke="currentColor"/>
+        <circle cx="19" cy="12" r="1.8" fill="none" stroke="currentColor"/>
+      </svg>
+      <span class="tv-dot-badge" aria-hidden="true"></span>
+    </button>
+
+    <!-- 4. Vertical Divider -->
+    <div class="tv-strip-divider" aria-hidden="true"></div>
+
+    <!-- 5. Undo Tool -->
+    <button type="button" class="tv-tool-btn tv-tool-disabled" id="tvBtnUndo" title="Undo" aria-label="Undo">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 14 4 9l5-5"/>
+        <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5v0a5.5 5.5 0 0 1-5.5 5.5H11"/>
+      </svg>
+    </button>
+
+    <!-- 6. Redo Tool -->
+    <button type="button" class="tv-tool-btn tv-tool-disabled" id="tvBtnRedo" title="Redo" aria-label="Redo">
+      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m15 14 5-5-5-5"/>
+        <path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5v0A5.5 5.5 0 0 0 9.5 20H13"/>
+      </svg>
+    </button>
   </div>
 </div>
 
@@ -5722,6 +5823,25 @@ const chart = LightweightCharts.createChart(chartEl, {
     fontSize:32,
     horzAlign:"center",
     vertAlign:"center"
+  },
+  handleScroll:{
+    mouseWheel:true,
+    pressedMouseMove:true,
+    horzTouchDrag:true,
+    vertTouchDrag:true
+  },
+  handleScale:{
+    axisPressedMouseMove:{ time:true, price:true },
+    axisDoubleClickReset:{ time:true, price:true },
+    mouseWheel:true,
+    pinch:true
+  },
+  kineticScroll:{
+    touch:true,
+    mouse:false
+  },
+  trackingMode:{
+    exitMode:1
   }
 });
 const candleSeries = chart.addCandlestickSeries({
@@ -6913,7 +7033,7 @@ document.addEventListener("click",(e)=>{
   }
 });
 
-function startLineDrag(targetType, pointerId, handleEl){
+function startLineDrag(targetType, pointerId, handleEl, sourceEl){
   const pos = account.positions[ui.symbol];
   if(!pos) return;
   if(targetType === "sl" && pos.sl == null) return;
@@ -6936,19 +7056,24 @@ function startLineDrag(targetType, pointerId, handleEl){
     } catch(e){}
   }
 
+  const captureEl = (sourceEl && typeof sourceEl.setPointerCapture === "function") ? sourceEl : (handle && typeof handle.setPointerCapture === "function") ? handle : chartEl;
+
   activeDrag = {
     type: targetType,
     pointerId,
     origPrice,
     currentPrice: origPrice,
     handleEl: handle,
+    captureEl,
     dom,
     prevOptions,
     line: targetType === "sl" ? slLine : tpLine
   };
 
   handle.classList.add("dragging");
-  try { handle.setPointerCapture(pointerId); } catch(e){}
+  if(pointerId != null && captureEl && captureEl.setPointerCapture){
+    try { captureEl.setPointerCapture(pointerId); } catch(e){}
+  }
 
   if(chart && chart.applyOptions){
     chart.applyOptions({ handleScroll: false, handleScale: false });
@@ -6965,7 +7090,7 @@ function initDragHandles(){
     slH.addEventListener("pointerdown", (e)=>{
       if(e.target.closest("button") || e.target.closest("[data-act]")) return;
       e.preventDefault(); e.stopPropagation();
-      startLineDrag("sl", e.pointerId, slH);
+      startLineDrag("sl", e.pointerId, slH, slH);
     });
     slH.addEventListener("lostpointercapture", ()=> {
       if(activeDrag && activeDrag.type === "sl") endLineDrag(true);
@@ -6976,7 +7101,7 @@ function initDragHandles(){
     tpH.addEventListener("pointerdown", (e)=>{
       if(e.target.closest("button") || e.target.closest("[data-act]")) return;
       e.preventDefault(); e.stopPropagation();
-      startLineDrag("tp", e.pointerId, tpH);
+      startLineDrag("tp", e.pointerId, tpH, tpH);
     });
     tpH.addEventListener("lostpointercapture", ()=> {
       if(activeDrag && activeDrag.type === "tp") endLineDrag(true);
@@ -6991,13 +7116,13 @@ chartEl.addEventListener("pointerdown", (e)=>{
   if(pos){
     const rect = chartEl.getBoundingClientRect();
     const y = e.clientY - rect.top;
-    const HIT = (e.pointerType === "touch") ? 26 : 10;
+    const HIT = (e.pointerType === "touch") ? 28 : 10;
     if(pos.sl != null && candleSeries){
       const slY = candleSeries.priceToCoordinate(pos.sl);
       if(slY != null && Math.abs(slY - y) <= HIT){
         e.preventDefault(); e.stopPropagation();
         const slH = document.getElementById("chartSlHandle");
-        startLineDrag("sl", e.pointerId, slH);
+        startLineDrag("sl", e.pointerId, slH, e.target || chartEl);
         return;
       }
     }
@@ -7006,7 +7131,7 @@ chartEl.addEventListener("pointerdown", (e)=>{
       if(tpY != null && Math.abs(tpY - y) <= HIT){
         e.preventDefault(); e.stopPropagation();
         const tpH = document.getElementById("chartTpHandle");
-        startLineDrag("tp", e.pointerId, tpH);
+        startLineDrag("tp", e.pointerId, tpH, e.target || chartEl);
         return;
       }
     }
@@ -7039,37 +7164,43 @@ chartEl.addEventListener("mousedown", (e)=>{
   }
 }, true);
 
+function handleLineDragMove(clientY){
+  if(!activeDrag) return;
+  const pos = account.positions[ui.symbol];
+  if(!pos){ endLineDrag(false); return; }
+
+  const rect = chartEl.getBoundingClientRect();
+  const y = Math.max(8, Math.min(chartEl.clientHeight - 8, clientY - rect.top));
+  const price = candleSeries.coordinateToPrice(y);
+  if(price == null || isNaN(price)) return;
+
+  const rounded = roundPrice(ui.symbol, price);
+  activeDrag.currentPrice = rounded;
+
+  const isSl = activeDrag.type === "sl";
+  const estPnl = pos.side === "LONG" ? (rounded - pos.entry) * pos.qty : (pos.entry - rounded) * pos.qty;
+  const tag = isSl ? "SL" : "TP";
+
+  // 1. Update line on chart
+  if(activeDrag.line){
+    activeDrag.line.applyOptions({
+      price: rounded,
+      title: `${tag}: ${fmtPrice(ui.symbol, rounded)} (${estPnl >= 0 ? '+' : ''}${fmtUsd(estPnl)})`
+    });
+  }
+
+  // 2. Update handle element DOM directly (ZERO innerHTML destruction)
+  activeDrag.handleEl.style.top = Math.round(y) + "px";
+  activeDrag.handleEl.style.display = "inline-flex";
+  activeDrag.dom.priceSpan.textContent = fmtPrice(ui.symbol, rounded);
+  activeDrag.dom.pnlSpan.className = "tv-pill-pnl-sub " + (estPnl >= 0 ? "up" : "down");
+  activeDrag.dom.pnlSpan.textContent = (estPnl >= 0 ? "+" : "") + fmtUsd(estPnl);
+}
+window.handleLineDragMove = handleLineDragMove;
+
 window.addEventListener("pointermove", (e)=>{
   if(activeDrag){
-    const pos = account.positions[ui.symbol];
-    if(!pos){ endLineDrag(false); return; }
-
-    const rect = chartEl.getBoundingClientRect();
-    const y = Math.max(8, Math.min(chartEl.clientHeight - 8, e.clientY - rect.top));
-    const price = candleSeries.coordinateToPrice(y);
-    if(price == null || isNaN(price)) return;
-
-    const rounded = roundPrice(ui.symbol, price);
-    activeDrag.currentPrice = rounded;
-
-    const isSl = activeDrag.type === "sl";
-    const estPnl = pos.side === "LONG" ? (rounded - pos.entry) * pos.qty : (pos.entry - rounded) * pos.qty;
-    const tag = isSl ? "SL" : "TP";
-
-    // 1. Update line on chart
-    if(activeDrag.line){
-      activeDrag.line.applyOptions({
-        price: rounded,
-        title: `${tag}: ${fmtPrice(ui.symbol, rounded)} (${estPnl >= 0 ? '+' : ''}${fmtUsd(estPnl)})`
-      });
-    }
-
-    // 2. Update handle element DOM directly (ZERO innerHTML destruction)
-    activeDrag.handleEl.style.top = Math.round(y) + "px";
-    activeDrag.handleEl.style.display = "inline-flex";
-    activeDrag.dom.priceSpan.textContent = fmtPrice(ui.symbol, rounded);
-    activeDrag.dom.pnlSpan.className = "tv-pill-pnl-sub " + (estPnl >= 0 ? "up" : "down");
-    activeDrag.dom.pnlSpan.textContent = (estPnl >= 0 ? "+" : "") + fmtUsd(estPnl);
+    handleLineDragMove(e.clientY);
     return;
   }
 
@@ -7094,6 +7225,12 @@ window.addEventListener("pointermove", (e)=>{
   if(chartEl) chartEl.style.cursor = overLine ? "ns-resize" : (pickMode ? "copy" : "crosshair");
 });
 
+window.addEventListener("touchmove", (e)=>{
+  if(activeDrag && e.touches[0]){
+    handleLineDragMove(e.touches[0].clientY);
+  }
+}, { passive: true });
+
 function endLineDrag(commit = true){
   if(!activeDrag) return;
   const drag = activeDrag;
@@ -7104,6 +7241,10 @@ function endLineDrag(commit = true){
 
   if(drag.handleEl){
     drag.handleEl.classList.remove("dragging");
+  }
+  if(drag.captureEl && drag.pointerId != null && drag.captureEl.releasePointerCapture){
+    try { drag.captureEl.releasePointerCapture(drag.pointerId); } catch(e){}
+  } else if(drag.handleEl && drag.pointerId != null && drag.handleEl.releasePointerCapture){
     try { drag.handleEl.releasePointerCapture(drag.pointerId); } catch(e){}
   }
 
@@ -7197,17 +7338,22 @@ function endLineDrag(commit = true){
 window.addEventListener("pointerup", ()=> endLineDrag(true));
 window.addEventListener("pointercancel", ()=> endLineDrag(false));
 
-chartEl.addEventListener("click",(e)=>{
+let lastPickActionTime = 0;
+function tryPickModePlacement(clientX, clientY, target){
   if(!pickMode || dragTarget) return;
-  if(e.target.closest("#chartPositionStrip") || e.target.closest("#chartSlHandle") || e.target.closest("#chartTpHandle") || e.target.closest("#floatTb") || e.target.closest(".chart-legend") || e.target.closest("#quickTradeBar") || e.target.closest("#quickPosPill")) return;
+  if(target && (target.closest("#chartPositionStrip") || target.closest("#chartSlHandle") || target.closest("#chartTpHandle") || target.closest("#floatTb") || target.closest(".chart-legend") || target.closest("#quickTradeBar") || target.closest("#quickPosPill"))) return;
+  const now = Date.now();
+  if(now - lastPickActionTime < 350) return;
+  const maxTol = (window.innerWidth <= 880) ? 24 : 6;
+  if(typeof downXY !== "undefined" && downXY && Math.hypot(clientX - downXY[0], clientY - downXY[1]) > maxTol) return;
   const rect = chartEl.getBoundingClientRect();
-  const y = e.clientY - rect.top;
+  const y = clientY - rect.top;
   const price = candleSeries.coordinateToPrice(y);
-  if(price==null) return;
+  if(price == null) return;
+  lastPickActionTime = now;
   const rounded = roundPrice(ui.symbol, price);
   const pos = account.positions[ui.symbol];
   if(pos){
-    // If position exists, update the position's SL/TP directly
     if(pickMode === "sl"){
       pos.sl = rounded;
       document.getElementById("slInput").value = rounded;
@@ -7230,7 +7376,9 @@ chartEl.addEventListener("click",(e)=>{
     }
   }
   setPickMode(null);
-});
+}
+chartEl.addEventListener("click", (e)=> tryPickModePlacement(e.clientX, e.clientY, e.target));
+chartEl.addEventListener("pointerup", (e)=> { if(e.pointerType === "touch") tryPickModePlacement(e.clientX, e.clientY, e.target); });
 
 /* ================= RENDERING ================= */
 function updatePriceStrip(){
@@ -7463,11 +7611,7 @@ async function switchSymbol(symbol){
     if(b.hasAttribute("aria-selected")) b.setAttribute("aria-selected", isAct ? "true" : "false");
   });
 
-  // Reveal active mobile button in the scroll strip if needed
-  const activeMobBtn = document.querySelector("#mobStripSymbols button[data-symbol='" + symbol + "']");
-  if(activeMobBtn){
-    try { activeMobBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" }); } catch(e){}
-  }
+  if(typeof updateTvMobileStripUI === "function") updateTvMobileStripUI();
 
   if(prevSymbol !== ui.symbol){
     if(typeof previewSlLine !== "undefined" && previewSlLine){
@@ -7539,15 +7683,66 @@ async function switchTimeframe(tf){
     if(b.hasAttribute("aria-selected")) b.setAttribute("aria-selected", isAct ? "true" : "false");
   });
 
-  // Reveal active mobile button in the scroll strip if needed
-  const activeMobBtn = document.querySelector("#mobStripTimeframes button[data-tf='" + tf + "']");
-  if(activeMobBtn){
-    try { activeMobBtn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "nearest" }); } catch(e){}
-  }
+  if(typeof updateTvMobileStripUI === "function") updateTvMobileStripUI();
 
   await refreshChart();
   connectWS();
 }
+
+const TV_TF_LIST = ["1m", "5m", "15m", "1h", "4h", "1d"];
+const TV_SYM_LIST = ["BTCUSDT", "ETHUSDT"];
+window.hlRedoStore = window.hlRedoStore || [];
+
+function updateTvUndoRedoState(){
+  const undoBtn = document.getElementById("tvBtnUndo");
+  const redoBtn = document.getElementById("tvBtnRedo");
+  const curSym = (typeof ui !== "undefined" && ui.symbol) ? ui.symbol : "BTCUSDT";
+  const hasUndo = Boolean(window.hlStore && window.hlStore[curSym] && window.hlStore[curSym].length > 0);
+  const hasRedo = Boolean(window.hlRedoStore && window.hlRedoStore.length > 0);
+
+  if(undoBtn){
+    undoBtn.classList.toggle("tv-tool-disabled", !hasUndo);
+    undoBtn.setAttribute("aria-disabled", hasUndo ? "false" : "true");
+  }
+  if(redoBtn){
+    redoBtn.classList.toggle("tv-tool-disabled", !hasRedo);
+    redoBtn.setAttribute("aria-disabled", hasRedo ? "false" : "true");
+  }
+}
+
+function updateTvMobileStripUI(){
+  // 1. Symbol Drum
+  const currentSym = (typeof ui !== "undefined" && ui.symbol) ? ui.symbol.toUpperCase() : "BTCUSDT";
+  const symIdx = TV_SYM_LIST.indexOf(currentSym);
+  const validSymIdx = symIdx >= 0 ? symIdx : 0;
+  const prevSym = TV_SYM_LIST[(validSymIdx - 1 + TV_SYM_LIST.length) % TV_SYM_LIST.length];
+  const nextSym = TV_SYM_LIST[(validSymIdx + 1) % TV_SYM_LIST.length];
+
+  const elSymPrev = document.getElementById("tvDrumSymPrev");
+  const elSymActive = document.getElementById("tvDrumSymActive");
+  const elSymNext = document.getElementById("tvDrumSymNext");
+  if(elSymPrev) elSymPrev.textContent = prevSym;
+  if(elSymActive) elSymActive.innerHTML = `<span class="tv-symbol-arrow" aria-hidden="true">‹</span><span class="tv-symbol-text">${currentSym}</span>`;
+  if(elSymNext) elSymNext.textContent = nextSym;
+
+  // 2. Timeframe Drum
+  const currentTf = (typeof ui !== "undefined" && ui.tf) ? ui.tf : "15m";
+  const tfIdx = TV_TF_LIST.indexOf(currentTf);
+  const validTfIdx = tfIdx >= 0 ? tfIdx : 2; // default 15m
+  const prevTf = TV_TF_LIST[(validTfIdx - 1 + TV_TF_LIST.length) % TV_TF_LIST.length];
+  const nextTf = TV_TF_LIST[(validTfIdx + 1) % TV_TF_LIST.length];
+
+  const elTfPrev = document.getElementById("tvDrumTfPrev");
+  const elTfActive = document.getElementById("tvDrumTfActive");
+  const elTfNext = document.getElementById("tvDrumTfNext");
+  if(elTfPrev) elTfPrev.textContent = prevTf === "1d" ? "1D" : prevTf;
+  if(elTfActive) elTfActive.textContent = currentTf === "1d" ? "1D" : currentTf;
+  if(elTfNext) elTfNext.textContent = nextTf === "1d" ? "1D" : nextTf;
+
+  updateTvUndoRedoState();
+}
+window.updateTvMobileStripUI = updateTvMobileStripUI;
+window.updateTvUndoRedoState = updateTvUndoRedoState;
 
 function initMobileChartStrip(){
   const strip = document.getElementById("mobileChartStrip");
@@ -7558,61 +7753,222 @@ function initMobileChartStrip(){
   strip.addEventListener("mousedown", e => e.stopPropagation());
   strip.addEventListener("touchstart", e => e.stopPropagation(), { passive: true });
 
-  let touchStartX = 0, touchStartY = 0, isTouchDrag = false;
-
-  strip.addEventListener("touchstart", (e) => {
-    if(e.touches.length === 1){
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
-      isTouchDrag = false;
-    }
-  }, { passive: true });
-
-  strip.addEventListener("touchmove", (e) => {
-    if(e.touches.length === 1){
-      const dx = Math.abs(e.touches[0].clientX - touchStartX);
-      const dy = Math.abs(e.touches[0].clientY - touchStartY);
-      if(dx > 6 || dy > 6){
-        isTouchDrag = true;
+  // Attach Symbol Drum interactions (swipe + tap)
+  const drumSym = document.getElementById("tvDrumSymbol");
+  if(drumSym){
+    let symStartY = 0, isSymDrag = false;
+    drumSym.addEventListener("touchstart", (e) => {
+      if(e.touches.length === 1){
+        symStartY = e.touches[0].clientY;
+        isSymDrag = false;
       }
-    }
-  }, { passive: true });
+    }, { passive: true });
 
-  // Handle symbol clicks
-  const symGroup = document.getElementById("mobStripSymbols");
-  if(symGroup){
-    symGroup.addEventListener("click", (e) => {
-      if(isTouchDrag) return;
-      const btn = e.target.closest("button[data-symbol]");
-      if(!btn) return;
+    drumSym.addEventListener("touchmove", (e) => {
+      if(e.touches.length === 1){
+        const dy = e.touches[0].clientY - symStartY;
+        if(Math.abs(dy) > 10){
+          isSymDrag = true;
+        }
+      }
+    }, { passive: true });
+
+    drumSym.addEventListener("touchend", (e) => {
+      if(isSymDrag && e.changedTouches.length === 1){
+        const dy = e.changedTouches[0].clientY - symStartY;
+        const curSym = (typeof ui !== "undefined" && ui.symbol) ? ui.symbol.toUpperCase() : "BTCUSDT";
+        const symIdx = TV_SYM_LIST.indexOf(curSym);
+        const validSymIdx = symIdx >= 0 ? symIdx : 0;
+        const track = drumSym.querySelector(".tv-drum-track");
+        if(track){
+          track.style.transform = dy < 0 ? "translateY(-5px)" : "translateY(5px)";
+          setTimeout(() => { track.style.transform = "translateY(0)"; }, 150);
+        }
+        if(dy < -10){
+          const nextSym = TV_SYM_LIST[(validSymIdx + 1) % TV_SYM_LIST.length];
+          switchSymbol(nextSym);
+        } else if(dy > 10){
+          const prevSym = TV_SYM_LIST[(validSymIdx - 1 + TV_SYM_LIST.length) % TV_SYM_LIST.length];
+          switchSymbol(prevSym);
+        }
+      }
+    }, { passive: true });
+
+    drumSym.addEventListener("click", (e) => {
+      if(isSymDrag) return;
       e.preventDefault();
-      switchSymbol(btn.dataset.symbol);
+      e.stopPropagation();
+      const prevEl = e.target.closest("#tvDrumSymPrev");
+      const curSym = (typeof ui !== "undefined" && ui.symbol) ? ui.symbol.toUpperCase() : "BTCUSDT";
+      const symIdx = TV_SYM_LIST.indexOf(curSym);
+      const validSymIdx = symIdx >= 0 ? symIdx : 0;
+      const track = drumSym.querySelector(".tv-drum-track");
+      if(track){
+        track.style.transform = prevEl ? "translateY(4px)" : "translateY(-4px)";
+        setTimeout(() => { track.style.transform = "translateY(0)"; }, 150);
+      }
+      if(prevEl){
+        const prevSym = TV_SYM_LIST[(validSymIdx - 1 + TV_SYM_LIST.length) % TV_SYM_LIST.length];
+        switchSymbol(prevSym);
+      } else {
+        const nextSym = TV_SYM_LIST[(validSymIdx + 1) % TV_SYM_LIST.length];
+        switchSymbol(nextSym);
+      }
     });
   }
 
-  // Handle timeframe clicks
-  const tfGroup = document.getElementById("mobStripTimeframes");
-  if(tfGroup){
-    tfGroup.addEventListener("click", (e) => {
-      if(isTouchDrag) return;
-      const btn = e.target.closest("button[data-tf]");
-      if(!btn) return;
+  // Attach Timeframe Drum interactions (swipe + tap)
+  const drumTf = document.getElementById("tvDrumTf");
+  if(drumTf){
+    let tfStartY = 0, isTfDrag = false;
+    drumTf.addEventListener("touchstart", (e) => {
+      if(e.touches.length === 1){
+        tfStartY = e.touches[0].clientY;
+        isTfDrag = false;
+      }
+    }, { passive: true });
+
+    drumTf.addEventListener("touchmove", (e) => {
+      if(e.touches.length === 1){
+        const dy = e.touches[0].clientY - tfStartY;
+        if(Math.abs(dy) > 10){
+          isTfDrag = true;
+        }
+      }
+    }, { passive: true });
+
+    drumTf.addEventListener("touchend", (e) => {
+      if(isTfDrag && e.changedTouches.length === 1){
+        const dy = e.changedTouches[0].clientY - tfStartY;
+        const curTf = (typeof ui !== "undefined" && ui.tf) ? ui.tf : "15m";
+        const tfIdx = TV_TF_LIST.indexOf(curTf);
+        const validTfIdx = tfIdx >= 0 ? tfIdx : 2;
+        const track = drumTf.querySelector(".tv-drum-track");
+        if(track){
+          track.style.transform = dy < 0 ? "translateY(-5px)" : "translateY(5px)";
+          setTimeout(() => { track.style.transform = "translateY(0)"; }, 150);
+        }
+        if(dy < -10){
+          const nextTf = TV_TF_LIST[(validTfIdx + 1) % TV_TF_LIST.length];
+          switchTimeframe(nextTf);
+        } else if(dy > 10){
+          const prevTf = TV_TF_LIST[(validTfIdx - 1 + TV_TF_LIST.length) % TV_TF_LIST.length];
+          switchTimeframe(prevTf);
+        }
+      }
+    }, { passive: true });
+
+    drumTf.addEventListener("click", (e) => {
+      if(isTfDrag) return;
       e.preventDefault();
-      switchTimeframe(btn.dataset.tf);
+      e.stopPropagation();
+      const prevEl = e.target.closest("#tvDrumTfPrev");
+      const curTf = (typeof ui !== "undefined" && ui.tf) ? ui.tf : "15m";
+      const tfIdx = TV_TF_LIST.indexOf(curTf);
+      const validTfIdx = tfIdx >= 0 ? tfIdx : 2;
+      const track = drumTf.querySelector(".tv-drum-track");
+      if(track){
+        track.style.transform = prevEl ? "translateY(4px)" : "translateY(-4px)";
+        setTimeout(() => { track.style.transform = "translateY(0)"; }, 150);
+      }
+      if(prevEl){
+        const prevTf = TV_TF_LIST[(validTfIdx - 1 + TV_TF_LIST.length) % TV_TF_LIST.length];
+        switchTimeframe(prevTf);
+      } else {
+        const nextTf = TV_TF_LIST[(validTfIdx + 1) % TV_TF_LIST.length];
+        switchTimeframe(nextTf);
+      }
     });
   }
 
-  // Initial sync with active state
-  document.querySelectorAll("#mobStripSymbols button[data-symbol]").forEach(b => {
-    const isAct = b.dataset.symbol === ui.symbol;
-    b.classList.toggle("active", isAct);
-    if(b.hasAttribute("aria-selected")) b.setAttribute("aria-selected", isAct ? "true" : "false");
-  });
-  document.querySelectorAll("#mobStripTimeframes button[data-tf]").forEach(b => {
-    const isAct = b.dataset.tf === ui.tf;
-    b.classList.toggle("active", isAct);
-    if(b.hasAttribute("aria-selected")) b.setAttribute("aria-selected", isAct ? "true" : "false");
-  });
+  // 1. Drawing Tool (Pencil)
+  const btnDrawing = document.getElementById("tvBtnDrawing");
+  if(btnDrawing){
+    btnDrawing.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const floatTb = document.getElementById("floatTb");
+      if(floatTb){
+        const isCollapsed = floatTb.classList.contains("tb-collapsed");
+        if(typeof toggleTbCollapsed === "function"){
+          toggleTbCollapsed(!isCollapsed);
+        } else {
+          floatTb.classList.toggle("tb-collapsed");
+        }
+        btnDrawing.classList.toggle("active", isCollapsed);
+      }
+    });
+  }
+
+  // 2. Indicators Tool (Zigzag waves)
+  const btnInd = document.getElementById("tvBtnIndicators");
+  if(btnInd){
+    btnInd.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const layersBtn = document.getElementById("layersBtn");
+      if(layersBtn){
+        layersBtn.click();
+      } else {
+        const p = document.getElementById("layersPop");
+        if(p) p.classList.toggle("open");
+      }
+    });
+  }
+
+  // 3. More Options Tool (3 dots with red badge)
+  const btnMore = document.getElementById("tvBtnMore");
+  if(btnMore){
+    btnMore.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if(typeof toggleSideMenu === "function"){
+        toggleSideMenu(true);
+      } else {
+        const m = document.getElementById("mobileSideMenu");
+        if(m) m.classList.add("open");
+      }
+    });
+  }
+
+  // 4. Undo Tool
+  const btnUndo = document.getElementById("tvBtnUndo");
+  if(btnUndo){
+    btnUndo.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const curSym = (typeof ui !== "undefined" && ui.symbol) ? ui.symbol : "BTCUSDT";
+      if(window.hlStore && window.hlStore[curSym] && window.hlStore[curSym].length > 0){
+        const popped = window.hlStore[curSym].pop();
+        window.hlRedoStore = window.hlRedoStore || [];
+        window.hlRedoStore.push(popped);
+        if(typeof saveHL === "function") saveHL();
+        if(typeof renderHLines === "function") renderHLines();
+        updateTvUndoRedoState();
+      }
+    });
+  }
+
+  // 5. Redo Tool
+  const btnRedo = document.getElementById("tvBtnRedo");
+  if(btnRedo){
+    btnRedo.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const curSym = (typeof ui !== "undefined" && ui.symbol) ? ui.symbol : "BTCUSDT";
+      if(window.hlRedoStore && window.hlRedoStore.length > 0){
+        const restored = window.hlRedoStore.pop();
+        window.hlStore[curSym] = window.hlStore[curSym] || [];
+        window.hlStore[curSym].push(restored);
+        if(typeof saveHL === "function") saveHL();
+        if(typeof renderHLines === "function") renderHLines();
+        updateTvUndoRedoState();
+      }
+    });
+  }
+
+  // Initial sync
+  updateTvMobileStripUI();
 }
 
 // Attach event listeners to desktop header buttons
@@ -8094,27 +8450,42 @@ function setTool(t){
 document.getElementById("floatTb").addEventListener("click",(e)=>{
   const b = e.target.closest("button[data-tool]");
   if(b){ setTool(b.dataset.tool); return; }
-  if(e.target.closest("#tbClear")){ hlStore[ui.symbol] = []; saveHL(); renderHLines(); }
+  if(e.target.closest("#tbClear")){ hlStore[ui.symbol] = []; saveHL(); renderHLines(); window.hlRedoStore = []; if(typeof updateTvUndoRedoState === "function") updateTvUndoRedoState(); }
 });
 document.addEventListener("keydown",(e)=>{ if(e.key==="Escape" && tool) setTool(tool); });
 
 let downXY = null;
-chartEl.addEventListener("mousedown",(e)=>{ downXY = [e.clientX, e.clientY]; }, true);
-chartEl.addEventListener("click",(e)=>{
+const recordChartDownXY = (e) => {
+  const pt = (e.touches && e.touches[0]) ? e.touches[0] : (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : e;
+  if(pt) downXY = [pt.clientX, pt.clientY];
+};
+chartEl.addEventListener("mousedown", recordChartDownXY, true);
+chartEl.addEventListener("pointerdown", recordChartDownXY, true);
+chartEl.addEventListener("touchstart", recordChartDownXY, { passive: true, capture: true });
+
+let lastDrawActionTime = 0;
+function tryChartDrawPlacement(clientX, clientY, target){
   if(!tool || pickMode || dragTarget) return;
-  if(downXY && Math.hypot(e.clientX-downXY[0], e.clientY-downXY[1]) > 4) return;
-  const y = e.clientY - chartEl.getBoundingClientRect().top;
+  if(target && (target.closest("#chartPositionStrip") || target.closest("#chartSlHandle") || target.closest("#chartTpHandle") || target.closest("#floatTb") || target.closest(".chart-legend") || target.closest("#quickTradeBar") || target.closest("#quickPosPill"))) return;
+  const now = Date.now();
+  if(now - lastDrawActionTime < 350) return;
+  const maxTol = (window.innerWidth <= 880) ? 22 : 6;
+  if(downXY && Math.hypot(clientX - downXY[0], clientY - downXY[1]) > maxTol) return;
+  const y = clientY - chartEl.getBoundingClientRect().top;
   const raw = candleSeries.coordinateToPrice(y);
-  if(raw==null) return;
+  if(raw == null) return;
+  lastDrawActionTime = now;
   const price = roundPrice(ui.symbol, raw);
-  if(tool==="h"){
+  if(tool === "h"){
     (hlStore[ui.symbol] = hlStore[ui.symbol] || []).push(price);
+    window.hlRedoStore = [];
+    if(typeof updateTvUndoRedoState === "function") updateTvUndoRedoState();
     saveHL(); renderHLines(); setTool("h"); return;
   }
   const ref = market[ui.symbol].last;
   if(!ref) return;
-  const isLong = tool==="long";
-  if(isLong ? price>=ref : price<=ref){
+  const isLong = tool === "long";
+  if(isLong ? price >= ref : price <= ref){
     document.getElementById("orderWarn").textContent = isLong ? "Long stop-loss must be below the current price." : "Short stop-loss must be above the current price.";
     return;
   }
@@ -8125,6 +8496,28 @@ chartEl.addEventListener("click",(e)=>{
   document.getElementById("tpInput").value = tp;
   setTool(tool);
   if(parseFloat(document.getElementById("riskInput").value) > 0) applyRiskSizing(); else refreshOrderPreview();
+}
+
+chartEl.addEventListener("click", (e) => tryChartDrawPlacement(e.clientX, e.clientY, e.target));
+chartEl.addEventListener("pointerup", (e) => {
+  if(e.pointerType === "touch") tryChartDrawPlacement(e.clientX, e.clientY, e.target);
+});
+window.setTool = setTool;
+window.getTool = () => tool;
+window.startLineDrag = startLineDrag;
+window.endLineDrag = endLineDrag;
+window.saveState = saveState;
+window.drawOrderLinesForCurrentSymbol = drawOrderLinesForCurrentSymbol;
+window.updateAll = updateAll;
+Object.defineProperty(window, "account", {
+  get(){ return account; },
+  set(v){ account = v; },
+  configurable: true
+});
+Object.defineProperty(window, "hlStore", {
+  get(){ return hlStore; },
+  set(v){ hlStore = v; },
+  configurable: true
 });
 
 /* ---- draggable floating toolbar ---- */
@@ -9529,18 +9922,25 @@ chartEl.addEventListener("touchstart", (e) => {
   const t = e.touches[0];
   if(!t) return;
   const rect = chartEl.getBoundingClientRect();
+  const x = t.clientX - rect.left;
   const y = t.clientY - rect.top;
+  const pScaleWidth = getPriceScaleWidth();
   
-  // If tapping near an active alert line, start alert line drag
+  // If tapping near an active alert line, let alert line drag handle it
   const nearAlert = findActiveAlertNearY(y, 22);
   if(nearAlert){
     return;
   }
   
-  const rawPrice = candleSeries.coordinateToPrice(y);
-  if(rawPrice != null && !isNaN(rawPrice)){
-    lastHoverPrice = roundPrice(ui.symbol, rawPrice);
-    updateChartPlusPosition(t.clientX, t.clientY);
+  // Only show chart plus marker if tapping explicitly near the right price scale area
+  if(x >= rect.width - pScaleWidth - 30){
+    const rawPrice = candleSeries.coordinateToPrice(y);
+    if(rawPrice != null && !isNaN(rawPrice)){
+      lastHoverPrice = roundPrice(ui.symbol, rawPrice);
+      updateChartPlusPosition(t.clientX, t.clientY);
+    }
+  } else {
+    hideChartPlusMarker();
   }
 }, { passive: true });
 
@@ -10752,7 +11152,7 @@ chartEl.addEventListener("touchmove", (e)=>{
     const curY = e.touches[0].clientY;
     const dx = Math.abs(curX - mobTouchStartX);
     const dy = Math.abs(curY - mobTouchStartY);
-    if(dx > 4){
+    if(dx > 16){
       mobTouchMoved = true;
       if(e.cancelable && dx > dy) e.preventDefault();
     }
