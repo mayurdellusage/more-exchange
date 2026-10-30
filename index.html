@@ -5986,14 +5986,21 @@ function saveUi(){ try{ localStorage.setItem("paperExchange.ui.v1", JSON.stringi
 /* ================= ACCOUNT STORAGE ================= */
 function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
 
+let cachedAccountsIndex = null;
 function loadAccountsIndex(){
+  if(cachedAccountsIndex !== null) return cachedAccountsIndex;
   try{
     const raw = localStorage.getItem(ACCOUNTS_INDEX_KEY);
-    if(raw) return JSON.parse(raw);
+    if(raw){
+      cachedAccountsIndex = JSON.parse(raw);
+      return cachedAccountsIndex;
+    }
   }catch(e){}
-  return [];
+  cachedAccountsIndex = [];
+  return cachedAccountsIndex;
 }
 function saveAccountsIndex(idx){
+  cachedAccountsIndex = idx;
   try{ localStorage.setItem(ACCOUNTS_INDEX_KEY, JSON.stringify(idx)); }catch(e){}
 }
 
@@ -6028,8 +6035,96 @@ function loadAccount(id){
   }catch(e){ return null; }
 }
 
-function persistAccountBlob(acc){
-  try{ localStorage.setItem(ACCOUNT_KEY_PREFIX+acc.id, JSON.stringify(acc)); }catch(e){}
+/* ================= STORAGE & PERSISTENCE OPTIMIZATION (PHASE 4) ================= */
+let lastSavedAccountJson = {}; // id -> string
+let isAccountCriticalDirty = false;
+let isAccountEquityDirty = false;
+let pendingSaveTimers = {}; // accId -> timeoutId
+let pendingIdleCallbacks = {}; // accId -> idleCallbackId
+
+function markAccountDirty(targetAcc){
+  if(!targetAcc) return;
+  if(!Object.prototype.hasOwnProperty.call(targetAcc, "_dirty")){
+    Object.defineProperty(targetAcc, "_dirty", { value: true, writable: true, enumerable: false, configurable: true });
+  } else {
+    targetAcc._dirty = true;
+  }
+}
+
+function persistAccountBlob(acc, immediate = false){
+  if(!acc || !acc.id) return;
+  const accId = acc.id;
+
+  function doWrite(){
+    if(pendingSaveTimers[accId]){
+      clearTimeout(pendingSaveTimers[accId]);
+      delete pendingSaveTimers[accId];
+    }
+    if(pendingIdleCallbacks[accId] && typeof cancelIdleCallback === "function"){
+      cancelIdleCallback(pendingIdleCallbacks[accId]);
+      delete pendingIdleCallbacks[accId];
+    }
+
+    // Completely avoid JSON serialization if account is clean and cached representation exists
+    if(!immediate && !acc._dirty && !isAccountCriticalDirty && !isAccountEquityDirty && lastSavedAccountJson[accId]){
+      return;
+    }
+
+    try {
+      const json = JSON.stringify(acc);
+      // Skip redundant disk write if account serialized state has not changed
+      if(lastSavedAccountJson[accId] === json){
+        acc._dirty = false;
+        isAccountCriticalDirty = false;
+        isAccountEquityDirty = false;
+        return;
+      }
+      localStorage.setItem(ACCOUNT_KEY_PREFIX + accId, json);
+      lastSavedAccountJson[accId] = json;
+      acc._dirty = false;
+      isAccountCriticalDirty = false;
+      isAccountEquityDirty = false;
+    } catch(e) {
+      // Graceful quota recovery: if browser storage quota is reached, trim oldest equity history
+      if(e && (e.name === 'QuotaExceededError' || e.code === 22) && acc.equityHistory && acc.equityHistory.length > 50){
+        try {
+          acc.equityHistory = acc.equityHistory.slice(-50);
+          const trimmed = JSON.stringify(acc);
+          localStorage.setItem(ACCOUNT_KEY_PREFIX + accId, trimmed);
+          lastSavedAccountJson[accId] = trimmed;
+          acc._dirty = false;
+          isAccountCriticalDirty = false;
+          isAccountEquityDirty = false;
+        } catch(retryErr){}
+      }
+    }
+  }
+
+  if(immediate || isAccountCriticalDirty){
+    if(pendingSaveTimers[accId]){
+      clearTimeout(pendingSaveTimers[accId]);
+      delete pendingSaveTimers[accId];
+    }
+    if(pendingIdleCallbacks[accId] && typeof cancelIdleCallback === "function"){
+      cancelIdleCallback(pendingIdleCallbacks[accId]);
+      delete pendingIdleCallbacks[accId];
+    }
+    doWrite();
+  } else {
+    // Non-critical updates (e.g. routine equity samples): debounce per account and write during idle
+    if(pendingSaveTimers[accId]) return;
+    pendingSaveTimers[accId] = setTimeout(()=>{
+      delete pendingSaveTimers[accId];
+      if(typeof requestIdleCallback === "function"){
+        pendingIdleCallbacks[accId] = requestIdleCallback(()=>{
+          delete pendingIdleCallbacks[accId];
+          doWrite();
+        }, { timeout: 1000 });
+      } else {
+        doWrite();
+      }
+    }, 1500);
+  }
 }
 
 function initAccounts(){
@@ -6052,13 +6147,13 @@ function initAccounts(){
     }
     idx = [{ id:acc.id, name:acc.name, currencySymbol:acc.currencySymbol }];
     saveAccountsIndex(idx);
-    persistAccountBlob(acc);
+    persistAccountBlob(acc, true);
     try{ localStorage.setItem(ACTIVE_ACCOUNT_KEY, acc.id); }catch(e){}
     return acc;
   }
   let activeId = localStorage.getItem(ACTIVE_ACCOUNT_KEY) || idx[0].id;
   let acc = loadAccount(activeId);
-  if(!acc){ activeId = idx[0].id; acc = loadAccount(activeId) || freshAccount(idx[0].name, DEFAULT_STARTING_BALANCE, idx[0].currencySymbol); persistAccountBlob(acc); }
+  if(!acc){ activeId = idx[0].id; acc = loadAccount(activeId) || freshAccount(idx[0].name, DEFAULT_STARTING_BALANCE, idx[0].currencySymbol); persistAccountBlob(acc, true); }
   try{ localStorage.setItem(ACTIVE_ACCOUNT_KEY, activeId); }catch(e){}
   return acc;
 }
@@ -6066,17 +6161,40 @@ function initAccounts(){
 let account = initAccounts();
 
 let saveTimer = null;
-function saveState(){
+function saveState(immediate = false){
+  markAccountDirty(account);
+  if(immediate){
+    isAccountCriticalDirty = true;
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    persistAccountBlob(account, true);
+    return;
+  }
   clearTimeout(saveTimer);
   saveTimer = setTimeout(()=>{
-    persistAccountBlob(account);
+    saveTimer = null;
+    persistAccountBlob(account, false);
     const idx = loadAccountsIndex();
     const entry = idx.find(a=>a.id===account.id);
     if(entry && (entry.name!==account.name || entry.currencySymbol!==account.currencySymbol)){
-      entry.name = account.name; entry.currencySymbol = account.currencySymbol;
+      entry.name = account.name;
+      entry.currencySymbol = account.currencySymbol;
       saveAccountsIndex(idx);
     }
-  }, 150);
+  }, 200);
+}
+
+if(typeof window !== "undefined"){
+  window.addEventListener("beforeunload", ()=>{
+    if(typeof isAccountCriticalDirty !== "undefined" && (isAccountCriticalDirty || isAccountEquityDirty)){
+      persistAccountBlob(account, true);
+    }
+  });
+  window.addEventListener("pagehide", ()=>{
+    if(typeof isAccountCriticalDirty !== "undefined" && (isAccountCriticalDirty || isAccountEquityDirty)){
+      persistAccountBlob(account, true);
+    }
+  });
 }
 
 function escapeHtml(s){
@@ -6092,6 +6210,14 @@ function populateAccountSelect(){
 }
 
 async function switchAccount(id){
+  if(saveTimer !== null){
+    clearTimeout(saveTimer);
+    saveTimer = null;
+  }
+  if(account && account.id){
+    markAccountDirty(account);
+    persistAccountBlob(account, true);
+  }
   const next = loadAccount(id);
   if(!next) return;
   account = next;
@@ -6108,6 +6234,7 @@ let market = {
   BTCUSDT: { last:0, bid:0, ask:0, prevDayClose:0 },
   ETHUSDT: { last:0, bid:0, ask:0, prevDayClose:0 }
 };
+window.market = market;
 
 /* ================= CHART SETUP ================= */
 const TV_CHART_FONT = "-apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif";
@@ -6289,6 +6416,7 @@ async function load24h(symbol){
 
 let lastLoadedBar = null;
 let liveBar = null;
+Object.defineProperty(window, 'liveBar', { get: () => liveBar, set: v => { liveBar = v; }, configurable: true });
 
 /* ===== History engine: paged loading, jump-to-date, ranges ===== */
 const PAGE = 1500;
@@ -6345,6 +6473,7 @@ function paintAll(){
   candleSeries.setData(H.bars.map(b=>({time:b.time,open:b.open,high:b.high,low:b.low,close:b.close})));
   volumeSeries.setData(H.bars.map(b=>({time:b.time,value:b.volume,color:b.close>=b.open?"rgba(8,153,129,.45)":"rgba(242,54,69,.45)"})));
   if(typeof updateStrategyOverlays === "function") updateStrategyOverlays();
+  if(typeof updateLegendIfIdle === "function") updateLegendIfIdle();
 }
 
 function syncLast(bar, vol){
@@ -6423,6 +6552,11 @@ async function refreshChart(opts){
   if(typeof exitReplay === "function" && typeof replayState !== "undefined" && (replayState.active || replayState.selecting)){
     exitReplay(false);
   }
+  if(typeof visualTickRaf !== "undefined" && visualTickRaf !== null){
+    cancelAnimationFrame(visualTickRaf);
+    visualTickRaf = null;
+  }
+  if(typeof liveBarVisualDirty !== "undefined") liveBarVisualDirty = false;
   opts = opts || {};
   clearOrderLines(); hideNotice(); 
   const matchingMarkers = (lastBacktestResult && lastBacktestResult.opts && lastBacktestResult.opts.symbol === ui.symbol && lastBacktestResult.opts.tf === ui.tf) ? backtestOverlayMarkers : [];
@@ -6598,6 +6732,151 @@ function bucketStartSec(tf){
   const ms = TF_MS[tf];
   return Math.floor(Date.now()/ms) * ms / 1000;
 }
+
+/* ================= VISUAL TICK COALESCING (PHASE 1) ================= */
+let visualTickRaf = null;
+let liveBarVisualDirty = false;
+
+function isPageHidden(){
+  return typeof document !== "undefined" && (document.hidden || document.visibilityState === "hidden");
+}
+
+function scheduleVisualTickUpdate(){
+  if(isPageHidden()) return;
+  if(visualTickRaf !== null) return;
+  visualTickRaf = requestAnimationFrame(flushVisualTickUpdates);
+}
+
+function flushVisualTickUpdates(){
+  visualTickRaf = null;
+  if(isPageHidden()) return;
+  if(liveBarVisualDirty && liveBar && typeof candleSeries !== "undefined" && candleSeries){
+    liveBarVisualDirty = false;
+    try {
+      candleSeries.update(liveBar);
+    } catch(err){ console.warn("Visual candleSeries update warning:", err); }
+  }
+  updatePriceStrip();
+  updateAccountAndPositions();
+  if(typeof updateLegendIfIdle === "function") updateLegendIfIdle();
+}
+window.flushVisualTickUpdates = flushVisualTickUpdates;
+window.scheduleVisualTickUpdate = scheduleVisualTickUpdate;
+
+/* ================= VISIBILITY & BACKGROUND LIFECYCLE (PHASE 2) ================= */
+let isAppHidden = typeof document !== "undefined" ? (document.hidden || document.visibilityState === "hidden") : false;
+let lastHiddenTs = 0;
+let bgReconcileTimer = null;
+
+async function reconcileOnForeground(hiddenDurationMs){
+  clearTimeout(bgReconcileTimer);
+  bgReconcileTimer = setTimeout(async ()=>{
+    if(isPageHidden()) return;
+
+    // Do NOT refresh chart if user is currently inside an active Bar Replay session
+    const isReplay = typeof replayState !== "undefined" && (replayState.active || replayState.selecting);
+
+    // 1. WebSocket Health Check & Stale Socket Reconnection
+    // Guard against duplicate sockets: never attempt reconnect if already in CONNECTING state
+    const now = Date.now();
+    const isConnecting = ws && ws.readyState === WebSocket.CONNECTING;
+    const isStale = !ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING || (ws.readyState === WebSocket.OPEN && now - lastTickerTs > 8000);
+    if(!isConnecting && isStale && !isReplay){
+      try {
+        clearTimeout(wsReconnectTimer);
+        wsReconnectTimer = null;
+        connectWS();
+      } catch(err){ console.warn("Foreground WS reconnect notice:", err); }
+    }
+
+    // 2. Chart & Candle Reconciliation
+    if(!isReplay){
+      if(hiddenDurationMs > 3000){
+        // Backfill any candles missed during screen-lock / backgrounding
+        try {
+          await refreshChart();
+        } catch(err){ console.warn("Foreground chart refresh notice:", err); }
+      } else {
+        // Less than 3s or pending visual update: reconcile live candle series directly
+        if(liveBar && typeof candleSeries !== "undefined" && candleSeries){
+          try {
+            candleSeries.update(liveBar);
+          } catch(err){}
+        }
+        liveBarVisualDirty = false;
+        flushVisualTickUpdates();
+      }
+    } else {
+      // Replay mode: preserve user replay position, flush visual updates
+      if(typeof flushVisualTickUpdates === "function"){
+        flushVisualTickUpdates();
+      }
+    }
+
+    // 3. Reconcile Open Positions & Liquidation
+    try {
+      await reconcileOpenPositions();
+    } catch(err){ console.warn("Foreground position reconciliation notice:", err); }
+
+    // 4. Update UI & Tables
+    try {
+      updateAll();
+    } catch(err){}
+  }, 80);
+}
+
+function handleVisibilityChange(){
+  const currentlyHidden = isPageHidden();
+  const wasHidden = isAppHidden;
+  isAppHidden = currentlyHidden;
+
+  if(currentlyHidden){
+    lastHiddenTs = Date.now();
+    if(visualTickRaf !== null){
+      cancelAnimationFrame(visualTickRaf);
+      visualTickRaf = null;
+    }
+    if(typeof replayState !== "undefined" && replayState.playing){
+      if(replayState.timer){
+        clearInterval(replayState.timer);
+        replayState.timer = null;
+      }
+      replayState.playing = false;
+      replayState.wasPlayingBeforeHidden = true;
+    }
+  } else if(wasHidden && !currentlyHidden){
+    // GENUINE transition from hidden to visible
+    const elapsed = lastHiddenTs > 0 ? (Date.now() - lastHiddenTs) : 0;
+    lastHiddenTs = 0;
+    reconcileOnForeground(elapsed);
+    if(typeof replayState !== "undefined" && replayState.wasPlayingBeforeHidden){
+      replayState.wasPlayingBeforeHidden = false;
+      playReplay();
+    }
+  }
+}
+
+document.addEventListener("visibilitychange", handleVisibilityChange);
+window.addEventListener("pageshow", () => {
+  // Never force visible if browser still considers the page hidden
+  if(isPageHidden()) return;
+  if(isAppHidden){
+    handleVisibilityChange();
+  }
+});
+window.addEventListener("focus", () => {
+  // Never force visible if browser still considers the page hidden
+  if(isPageHidden()) return;
+  if(isAppHidden){
+    handleVisibilityChange();
+  } else if(lastTickerTs && (Date.now() - lastTickerTs > 8000)){
+    reconcileOnForeground(Date.now() - (lastHiddenTs || Date.now()));
+  }
+});
+window.reconcileOnForeground = reconcileOnForeground;
+window.handleVisibilityChange = handleVisibilityChange;
+window.isPageHidden = isPageHidden;
+
 function updateLiveBar(price){
   if(H.hasNewer || !price || isNaN(price)) return;
   if(typeof replayState !== "undefined" && replayState.active) return;
@@ -6610,8 +6889,8 @@ function updateLiveBar(price){
     liveBar.low = Math.min(liveBar.low, price);
     liveBar.close = price;
   }
-  candleSeries.update(liveBar);
   syncLast(liveBar);
+  liveBarVisualDirty = true;
 }
 
 /* ================= WEBSOCKET ================= */
@@ -6621,6 +6900,7 @@ let wsReconnectDelay = 1000;
 let wsReconnectTimer = null;
 let lastKlineTs = 0;
 let lastTickerTs = 0;
+Object.defineProperty(window, "lastTickerTs", { get(){ return lastTickerTs; }, set(v){ lastTickerTs = v; }, configurable: true });
 
 function setStatus(state, text){
   const el = document.getElementById("wsStatus");
@@ -6641,12 +6921,30 @@ function buildStreams(){
 }
 
 function connectWS(){
+  clearTimeout(wsReconnectTimer);
+  wsReconnectTimer = null;
+
+  // Guard against duplicate connection initiation during active handshake
+  if(ws && ws.readyState === WebSocket.CONNECTING){
+    return;
+  }
+
   const myGen = ++wsGen;
-  if(ws){ try{ ws.close(); }catch(e){} }
+  if(ws){
+    try{
+      ws.onopen = null;
+      ws.onmessage = null;
+      ws.onclose = null;
+      ws.onerror = null;
+      ws.close();
+    }catch(e){}
+  }
   setStatus("reconnecting","CONNECTING");
   const url = WS_BASE + buildStreams().join("/");
   const socket = new WebSocket(url);
   ws = socket;
+  window.ws = socket;
+  window.wsGen = wsGen;
 
   socket.onopen = ()=>{
     if(myGen !== wsGen) return;
@@ -6660,9 +6958,9 @@ function connectWS(){
     if(!msg || !msg.stream || !msg.data) return;
     try{
       if(msg.stream.endsWith("@bookTicker")){
-        handleBookTicker(msg.data);
+        (window.handleBookTicker || handleBookTicker)(msg.data);
       }else if(msg.stream.includes("@kline_")){
-        handleKline(msg.data);
+        (window.handleKline || handleKline)(msg.data);
       }
     }catch(err){ console.error("WS message handling error:", err); }
   };
@@ -6671,7 +6969,10 @@ function connectWS(){
     setStatus("reconnecting","RECONNECTING");
     scheduleReconnect(myGen);
   };
-  socket.onerror = ()=>{ try{ socket.close(); }catch(e){} };
+  socket.onerror = ()=>{
+    if(myGen !== wsGen) return;
+    try{ socket.close(); }catch(e){}
+  };
 }
 
 function scheduleReconnect(myGen){
@@ -6700,11 +7001,11 @@ function handleBookTicker(d){
     MXLiveStrategyEngine.onTick(symbol, market[symbol].last);
   }
   if(symbol === ui.symbol){
-    updatePriceStrip();
     updateLiveBar(market[symbol].last);
   }
-  updateAccountAndPositions();
+  scheduleVisualTickUpdate();
 }
+window.handleBookTicker = handleBookTicker;
 
 function handleKline(d){
   const k = d.k;
@@ -6727,8 +7028,12 @@ function handleKline(d){
     lastKlineTs = Date.now();
     return;
   }
-  candleSeries.update(bar);
-  volumeSeries.update({ time:bar.time, value: parseFloat(k.v)||0, color: bar.close>=bar.open ? "rgba(8,153,129,.45)" : "rgba(242,54,69,.45)" });
+  if(!isPageHidden()){
+    candleSeries.update(bar);
+    volumeSeries.update({ time:bar.time, value: parseFloat(k.v)||0, color: bar.close>=bar.open ? "rgba(8,153,129,.45)" : "rgba(242,54,69,.45)" });
+  } else {
+    liveBarVisualDirty = true;
+  }
   liveBar = bar;
   syncLast(bar, parseFloat(k.v)||0);
   if(typeof evaluateAlerts === "function"){
@@ -6736,14 +7041,32 @@ function handleKline(d){
   }
   lastKlineTs = Date.now();
 }
+window.handleKline = handleKline;
 
-setInterval(()=>{
+let lastFreshText = "";
+function updateWsFresh(){
+  if(typeof isPageHidden === "function" ? isPageHidden() : document.hidden) return;
   const el = document.getElementById("wsFresh");
   if(!el) return;
-  if(!lastTickerTs){ el.textContent = ""; return; }
+  if(!lastTickerTs){
+    if(lastFreshText !== ""){ el.textContent = ""; lastFreshText = ""; }
+    return;
+  }
   const secs = Math.round((Date.now()-lastTickerTs)/1000);
-  el.textContent = secs < 2 ? "· live" : `· updated ${secs}s ago`;
-}, 1000);
+  const text = secs < 2 ? "· live" : `· updated ${secs}s ago`;
+  if(text !== lastFreshText){
+    el.textContent = text;
+    lastFreshText = text;
+  }
+  // Silent-freeze watchdog: if connection received no ticker for >= 10s while tab is visible and not in replay
+  const isReplay = typeof replayState !== "undefined" && (replayState.active || replayState.selecting);
+  if(secs >= 10 && ws && ws.readyState === WebSocket.OPEN && !isReplay){
+    console.warn("WebSocket silent freeze detected, reconnecting...");
+    try { ws.close(); } catch(e){}
+  }
+}
+setInterval(updateWsFresh, 2000);
+window.updateWsFresh = updateWsFresh;
 
 /* ================= FORMATTING ================= */
 function fmtPrice(symbol, v){
@@ -6928,7 +7251,7 @@ function placeOrder(){
   account.balance -= p.fee;
   logEv({type:"open", symbol:p.symbol, side:p.side, qty:p.qty, price:p.entryEst, leverage:p.leverage, delta:-p.fee});
   account.positions[p.symbol] = position;
-  saveState();
+  saveState(true);
   if(p.symbol === ui.symbol) drawOrderLinesForCurrentSymbol();
   clearOrderForm();
   updateAll();
@@ -6980,7 +7303,7 @@ function closePosition(symbol, fraction, reason, override){
     pos.qty -= closedQty;
     pos.margin = pos.margin * (1-fraction);
   }
-  saveState();
+  saveState(true);
   updateAll();
 }
 
@@ -7310,14 +7633,14 @@ document.addEventListener("click",(e)=>{
   } else if(act === "del-sl"){
     pos.sl = null;
     document.getElementById("slInput").value = "";
-    saveState();
+    saveState(true);
     drawOrderLinesForCurrentSymbol();
     updatePositionsTable();
     showNotice("Stop Loss removed");
   } else if(act === "del-tp"){
     pos.tp = null;
     document.getElementById("tpInput").value = "";
-    saveState();
+    saveState(true);
     drawOrderLinesForCurrentSymbol();
     updatePositionsTable();
     showNotice("Take Profit removed");
@@ -7330,7 +7653,7 @@ document.addEventListener("click",(e)=>{
       const defaultSl = roundPrice(ui.symbol, pos.side === "LONG" ? (pos.entry - dist) : (pos.entry + dist));
       pos.sl = defaultSl;
       document.getElementById("slInput").value = defaultSl;
-      saveState();
+      saveState(true);
       drawOrderLinesForCurrentSymbol();
       updatePositionsTable();
       showNotice("Stop Loss added at " + fmtPrice(ui.symbol, defaultSl) + " (drag to adjust)");
@@ -7347,7 +7670,7 @@ document.addEventListener("click",(e)=>{
       const defaultTp = roundPrice(ui.symbol, pos.side === "LONG" ? (pos.entry + dist) : (pos.entry - dist));
       pos.tp = defaultTp;
       document.getElementById("tpInput").value = defaultTp;
-      saveState();
+      saveState(true);
       drawOrderLinesForCurrentSymbol();
       updatePositionsTable();
       showNotice("Take Profit added at " + fmtPrice(ui.symbol, defaultTp) + " (drag to adjust)");
@@ -7626,7 +7949,7 @@ function endLineDrag(commit = true){
       if(slInp) slInp.value = p.sl;
       logEv({ type: "edit", symbol: ui.symbol, text: `SL adjusted to ${fmtPrice(ui.symbol, p.sl)}` });
       showNotice(`Stop Loss updated to ${fmtPrice(ui.symbol, p.sl)}`);
-      saveState();
+      saveState(true);
       updateAll();
     }
   } else if(target === "tp"){
@@ -7652,7 +7975,7 @@ function endLineDrag(commit = true){
       if(tpInp) tpInp.value = p.tp;
       logEv({ type: "edit", symbol: ui.symbol, text: `TP adjusted to ${fmtPrice(ui.symbol, p.tp)}` });
       showNotice(`Take Profit updated to ${fmtPrice(ui.symbol, p.tp)}`);
-      saveState();
+      saveState(true);
       updateAll();
     }
   }
@@ -7819,7 +8142,7 @@ function editLevel(symbol, which){
     pos[which] = v;
   }
   logEv({type:"edit", symbol, text: label+(pos[which]==null ? " removed" : " set to "+fmtPrice(symbol,pos[which]))});
-  saveState();
+  saveState(true);
   drawOrderLinesForCurrentSymbol();
   updateAll();
 }
@@ -7872,14 +8195,27 @@ function sampleEquity(force){
   lastEquitySample = now;
   const eq = equity();
   const hist = account.equityHistory;
+  const lastVal = hist.length ? hist[hist.length-1].v : null;
+  const hasPositions = Object.keys(account.positions || {}).length > 0;
+
+  // If no open positions and equity is unchanged, avoid duplicate data points and redundant disk writes
+  if(!force && !hasPositions && lastVal !== null && Math.abs(lastVal - eq) < 0.001){
+    return;
+  }
+
   if(hist.length && hist[hist.length-1].t === now){
     hist[hist.length-1].v = eq;
   }else{
     hist.push({ t: now, v: eq });
   }
   compactEquityHistory();
-  eqSeries.setData(account.equityHistory.map(p=>({ time:p.t, value:p.v })));
-  saveState();
+  if(typeof isPageHidden === "function" ? !isPageHidden() : !document.hidden){
+    if(typeof eqSeries !== "undefined" && eqSeries){
+      eqSeries.setData(account.equityHistory.map(p=>({ time:p.t, value:p.v })));
+    }
+  }
+  isAccountEquityDirty = true;
+  saveState(false);
 }
 
 function updateAccountAndPositions(){
@@ -7992,6 +8328,7 @@ async function switchSymbol(symbol){
     updateQuickTradePositionPill();
   }
 }
+window.switchSymbol = switchSymbol;
 
 async function switchTimeframe(tf){
   if(typeof exitReplay === "function" && typeof replayState !== "undefined" && (replayState.active || replayState.selecting)){
@@ -8013,6 +8350,8 @@ async function switchTimeframe(tf){
   await refreshChart();
   connectWS();
 }
+window.switchTimeframe = switchTimeframe;
+window.switchTf = switchTimeframe;
 
 const TV_TF_LIST = ["1m", "5m", "15m", "1h", "4h", "1d"];
 const TV_SYM_LIST = ["BTCUSDT", "ETHUSDT"];
@@ -8460,7 +8799,7 @@ if(resetAcctBtn){
     const keepId = account.id, keepName = account.name, keepCur = account.currencySymbol, keepStart = account.startingBalance;
     account = freshAccount(keepName, keepStart, keepCur);
     account.id = keepId;
-    saveState();
+    saveState(true);
     clearOrderLines();
     updateAll();
   });
@@ -8495,7 +8834,7 @@ document.getElementById("restoreFile").addEventListener("change",(e)=>{
       parsed.id = account.id;
       parsed.name = account.name;
       account = parsed;
-      saveState();
+      saveState(true);
       await reconcileOpenPositions();
       drawOrderLinesForCurrentSymbol();
       updateAll();
@@ -8832,15 +9171,45 @@ function renderLegend(bar, vol){
   }
   legendEl.innerHTML = html;
 }
+function updateLegendIfIdle(){
+  if(lgHover || (typeof isPageHidden === "function" ? isPageHidden() : document.hidden)) return;
+  const b = (typeof liveBar !== "undefined" && liveBar) ? liveBar : lastBar();
+  renderLegend(b, b ? b.volume : null);
+}
+window.updateLegendIfIdle = updateLegendIfIdle;
+
 chart.subscribeCrosshairMove(param=>{
-  if(!param || !param.time || !param.seriesData){ lgHover=false; return; }
+  if(!param || !param.point){
+    if(typeof hideChartPlusMarker === "function") hideChartPlusMarker();
+  } else {
+    if(typeof updateChartPlusPosition === "function"){
+      const rect = chartEl.getBoundingClientRect();
+      updateChartPlusPosition(rect.left + param.point.x, rect.top + param.point.y);
+    }
+  }
+
+  if(!param || !param.time || !param.seriesData){
+    if(lgHover){
+      lgHover = false;
+      updateLegendIfIdle();
+    }
+    return;
+  }
   const bar = param.seriesData.get(candleSeries);
-  if(!bar){ lgHover=false; return; }
+  if(!bar){
+    if(lgHover){
+      lgHover = false;
+      updateLegendIfIdle();
+    }
+    return;
+  }
   lgHover = true;
   const v = param.seriesData.get(volumeSeries);
   renderLegend(bar, v ? v.value : null);
 });
-setInterval(()=>{ if(!lgHover){ const b = lastBar(); renderLegend(b, b ? b.volume : null); } }, 400);
+
+// Phase 5: Replaced 400ms setInterval polling with reactive updateLegendIfIdle()
+updateLegendIfIdle();
 
 /* ---- horizontal lines (saved per symbol) ---- */
 const HL_KEY = "paperExchange.hlines.v1";
@@ -9002,7 +9371,7 @@ function tickClock(){
   document.getElementById("utcClock").textContent =
     d.toLocaleTimeString([], {hour12:false}) + " UTC" + (off>=0?"+":"-") + Math.floor(a/60) + (a%60 ? ":"+String(a%60).padStart(2,"0") : "");
 }
-tickClock(); setInterval(tickClock, 1000);
+tickClock(); setInterval(()=>{ if(document.hidden) return; tickClock(); }, 1000);
 
 /* ================= TRADINGVIEW-STYLE CHART CONTEXT MENU & PRICE ALERTS ================= */
 
@@ -9142,47 +9511,103 @@ function renderAlertPriceLines(){
   updateAlertMarkerPositions();
 }
 
-// Update right-edge arrow markers (▶) for active alert lines
+/* ================= ALERT MARKER DOM POOLING & REUSE (PHASE 3) ================= */
+const ALERT_MARKER_SVG = `<svg width="8" height="10" viewBox="0 0 8 10" fill="#d1d4dc"><polygon points="0,0 8,5 0,10"/></svg>`;
+const activeAlertMarkerMap = new Map(); // alertId -> markerEl
+const alertMarkerPool = []; // recycled markerEl
+const MAX_MARKER_POOL_SIZE = 25;
+
+function createAlertMarkerElement(){
+  const marker = document.createElement("div");
+  marker.className = "chart-alert-marker";
+  marker.innerHTML = ALERT_MARKER_SVG;
+  let lastPointerDownTs = 0;
+  
+  // Attach pointer & mouse event listeners ONCE upon creation
+  marker.addEventListener("pointerdown", (e) => {
+    if(!marker._currentAlert) return;
+    if(e.button !== 0 && e.pointerType === "mouse") return;
+    e.preventDefault();
+    e.stopPropagation();
+    lastPointerDownTs = Date.now();
+    startAlertLineDrag(marker._currentAlert, e.pointerId, marker._currentLineY);
+  });
+  
+  marker.addEventListener("mousedown", (e) => {
+    if(e.button !== 0 || !marker._currentAlert) return;
+    // Deduplicate: If pointerdown already initiated drag within 300ms, ignore compatibility mousedown
+    if(Date.now() - lastPointerDownTs < 300) return;
+    if(activeAlertDrag) return;
+    e.preventDefault();
+    e.stopPropagation();
+    startAlertLineDrag(marker._currentAlert, 1, marker._currentLineY);
+  });
+  
+  marker.addEventListener("contextmenu", (e) => {
+    if(!marker._currentAlert) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openAlertLineMenu(e.clientX, e.clientY, marker._currentAlert);
+  });
+  
+  return marker;
+}
+
+// Update right-edge arrow markers (▶) for active alert lines with safe DOM reuse
 function updateAlertMarkerPositions(){
+  if(typeof isPageHidden === "function" && isPageHidden()) return;
   const container = document.getElementById("chartAlertMarkersContainer");
   if(!container || typeof candleSeries === "undefined" || !candleSeries || !chartEl) return;
   const pScaleWidth = getPriceScaleWidth();
   const currentSymbol = ui.symbol;
   const activeAlerts = alertsStore.filter(a => a.active && a.symbol === currentSymbol);
-  
-  container.innerHTML = "";
-  activeAlerts.forEach(a => {
+  const activeIds = new Set();
+  const clientHeight = chartEl.clientHeight;
+
+  for(let i = 0; i < activeAlerts.length; i++){
+    const a = activeAlerts[i];
     try {
       const lineY = candleSeries.priceToCoordinate(a.price);
-      if(lineY != null && lineY >= 0 && lineY <= chartEl.clientHeight){
-        const marker = document.createElement("div");
-        marker.className = "chart-alert-marker";
-        marker.dataset.alertId = a.id;
-        marker.style.top = Math.round(lineY) + "px";
-        marker.style.right = pScaleWidth + "px";
-        marker.title = `Alert: ${fmtPriceWithCommas(a.price, currentSymbol)} (Drag to adjust, right-click for menu)`;
-        marker.innerHTML = `<svg width="8" height="10" viewBox="0 0 8 10" fill="#d1d4dc"><polygon points="0,0 8,5 0,10"/></svg>`;
-        
-        marker.addEventListener("pointerdown", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          startAlertLineDrag(a, e.pointerId, lineY);
-        });
-        marker.addEventListener("mousedown", (e) => {
-          if(e.button !== 0) return;
-          e.preventDefault();
-          e.stopPropagation();
-          startAlertLineDrag(a, 1, lineY);
-        });
-        marker.addEventListener("contextmenu", (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          openAlertLineMenu(e.clientX, e.clientY, a);
-        });
-        
-        container.appendChild(marker);
+      if(lineY != null && lineY >= 0 && lineY <= clientHeight){
+        activeIds.add(a.id);
+        let marker = activeAlertMarkerMap.get(a.id);
+        if(!marker){
+          if(alertMarkerPool.length > 0){
+            marker = alertMarkerPool.pop();
+          } else {
+            marker = createAlertMarkerElement();
+          }
+          marker.dataset.alertId = a.id;
+          container.appendChild(marker);
+          activeAlertMarkerMap.set(a.id, marker);
+        }
+        marker._currentAlert = a;
+        marker._currentLineY = lineY;
+        const topPx = Math.round(lineY) + "px";
+        const rightPx = pScaleWidth + "px";
+        if(marker.style.top !== topPx) marker.style.top = topPx;
+        if(marker.style.right !== rightPx) marker.style.right = rightPx;
+        const expectedTitle = `Alert: ${fmtPriceWithCommas(a.price, currentSymbol)} (Drag to adjust, right-click for menu)`;
+        if(marker.title !== expectedTitle) marker.title = expectedTitle;
       }
     } catch(e){}
+  }
+
+  // Recycle markers that are offscreen, deleted, deactivated, or for other symbols
+  activeAlertMarkerMap.forEach((marker, alertId) => {
+    if(!activeIds.has(alertId)){
+      if(marker.parentElement === container){
+        container.removeChild(marker);
+      }
+      marker._currentAlert = null;
+      marker._currentLineY = null;
+      delete marker.dataset.alertId;
+      marker.title = "";
+      if(alertMarkerPool.length < MAX_MARKER_POOL_SIZE){
+        alertMarkerPool.push(marker);
+      }
+      activeAlertMarkerMap.delete(alertId);
+    }
   });
 }
 
@@ -9211,6 +9636,7 @@ function findActiveAlertNearY(y, maxDist = 8){
 
 // Dragging active alert line
 function startAlertLineDrag(alert, pointerId, startY){
+  if(activeAlertDrag) return; // Prevent duplicate drag initialization
   let prevOptions = { handleScroll: true, handleScale: true };
   if(chart && chart.options){
     try {
@@ -9984,14 +10410,6 @@ function updateChartPlusPosition(clientX, clientY){
   const x = clientX - rect.left;
   const y = clientY - rect.top;
   const pScaleWidth = getPriceScaleWidth();
-
-  // On mobile view (<= 880px), do not auto-display plus marker across the candle area.
-  // The user holds touch to inspect candles with the crosshair ("dashed plus").
-  // Plus marker on mobile should only appear if explicitly interacting near the right price scale!
-  if(window.innerWidth <= 880 && x < rect.width - pScaleWidth - 30){
-    hideChartPlusMarker();
-    return;
-  }
   
   // Only change cursor to ns-resize if near the right-edge marker handle!
   const isNearRightEdge = (x >= rect.width - pScaleWidth - 50);
@@ -10291,19 +10709,22 @@ chartEl.addEventListener("touchend", () => { lastChartTouchTime = Date.now(); },
 const plusBadge = document.getElementById("chartPlusBadge");
 const plusBtn = document.getElementById("chartPlusMarker");
 function handlePlusClick(e){
-  e.stopPropagation();
-  e.preventDefault();
-  // On mobile view (<= 880px), suppress accidental clicks following chart touch gestures / holds
-  if(window.innerWidth <= 880 && (Date.now() - lastChartTouchTime < 400)){
-    return;
+  if(e){
+    e.stopPropagation();
+    e.preventDefault();
   }
   if(lastHoverPrice != null){
     const rect = plusBtn ? plusBtn.getBoundingClientRect() : (plusBadge ? plusBadge.getBoundingClientRect() : { left: lastHoverX, top: lastHoverY });
     openChartContextMenu(rect.left, rect.top, lastHoverPrice);
   }
 }
-if(plusBtn) plusBtn.addEventListener("click", handlePlusClick);
+if(plusBtn){
+  plusBtn.addEventListener("click", handlePlusClick);
+  plusBtn.addEventListener("touchend", handlePlusClick);
+  plusBtn.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: false });
+}
 if(plusBadge){
+  plusBadge.addEventListener("touchstart", (e) => e.stopPropagation(), { passive: false });
   plusBadge.addEventListener("mouseleave", (e) => {
     if(e.relatedTarget && (e.relatedTarget === chartEl || chartEl.contains(e.relatedTarget) || e.relatedTarget.closest("#chartContextMenu"))){
       return;
@@ -10398,8 +10819,6 @@ chartEl.addEventListener("touchstart", (e) => {
       lastHoverPrice = roundPrice(ui.symbol, rawPrice);
       updateChartPlusPosition(t.clientX, t.clientY);
     }
-  } else {
-    hideChartPlusMarker();
   }
 }, { passive: true });
 
@@ -10613,11 +11032,22 @@ window.updateChartPlusOnScaleChange = updateChartPlusOnScaleChange;
 window.addHorizontalLineAt = addHorizontalLineAt;
 window.createPriceAlertImmediate = createPriceAlertImmediate;
 window.createIndicatorAlertImmediate = createIndicatorAlertImmediate;
+window.renderAlertPriceLines = renderAlertPriceLines;
+window.evaluateAlerts = evaluateAlerts;
+window.triggerAlert = triggerAlert;
 window.startAlertLineDrag = startAlertLineDrag;
 window.handleAlertDragMove = handleAlertDragMove;
 window.endAlertLineDrag = endAlertLineDrag;
 window.findActiveAlertNearY = findActiveAlertNearY;
 window.updateAlertMarkerPositions = updateAlertMarkerPositions;
+window.activeAlertMarkerMap = activeAlertMarkerMap;
+window.alertMarkerPool = alertMarkerPool;
+window.openAlertLineMenu = openAlertLineMenu;
+window.closeAlertLineMenu = closeAlertLineMenu;
+Object.defineProperty(window, "activeAlertDrag", {
+  get(){ return activeAlertDrag; },
+  configurable: true
+});
 Object.defineProperty(window, "alertsStore", {
   get(){ return alertsStore; },
   set(val){ alertsStore = val; saveAlerts(); },
@@ -11444,6 +11874,7 @@ function startReplayAt(index){
 
   if(typeof renderPositionOverlay === "function") renderPositionOverlay();
   if(typeof drawOrderLinesForCurrentSymbol === "function") drawOrderLinesForCurrentSymbol();
+  if(typeof updateLegendIfIdle === "function") updateLegendIfIdle();
 
   requestAnimationFrame(resizeChartAfterReplayChange);
   showNotice(`Replay set at bar ${index + 1} of ${replayState.fullBars.length}. Press ▶ or Space to play, ▶| to step.`, true);
@@ -11480,6 +11911,7 @@ function replayStepForward(){
 
   if(typeof renderPositionOverlay === "function") renderPositionOverlay();
   if(typeof drawOrderLinesForCurrentSymbol === "function") drawOrderLinesForCurrentSymbol();
+  if(typeof updateLegendIfIdle === "function") updateLegendIfIdle();
 
   if(replayState.currentIndex >= replayState.fullBars.length - 1){
     pauseReplay();
@@ -11507,6 +11939,7 @@ function playReplay(){
 
 function pauseReplay(){
   replayState.playing = false;
+  replayState.wasPlayingBeforeHidden = false;
   if(replayState.timer){
     clearInterval(replayState.timer);
     replayState.timer = null;
@@ -11539,6 +11972,7 @@ function replayJumpToStart(){
   } catch(e){}
   if(typeof renderPositionOverlay === "function") renderPositionOverlay();
   if(typeof drawOrderLinesForCurrentSymbol === "function") drawOrderLinesForCurrentSymbol();
+  if(typeof updateLegendIfIdle === "function") updateLegendIfIdle();
   showNotice(`Reset to start bar ${replayState.startIndex + 1}.`, true);
 }
 
@@ -11580,6 +12014,7 @@ function exitReplay(showMsg = true){
 
   if(typeof renderPositionOverlay === "function") renderPositionOverlay();
   if(typeof drawOrderLinesForCurrentSymbol === "function") drawOrderLinesForCurrentSymbol();
+  if(typeof updateLegendIfIdle === "function") updateLegendIfIdle();
 
   requestAnimationFrame(resizeChartAfterReplayChange);
   if(showMsg && wasActive){
@@ -14392,7 +14827,7 @@ document.getElementById("btApplyToPaperBtn").addEventListener("click", ()=>{
     account.balance += t.netPnl;
   });
 
-  saveState();
+  saveState(true);
   updateAll();
   alert(`Imported ${lastBacktestResult.trades.length} trades into Paper Trading.`);
 });
@@ -17105,6 +17540,7 @@ const MXLiveStrategyEngine = (function(){
 
   function scheduleTableUpdate(){
     if(renderThrottleTimer) return;
+    if(ptTab !== "live-strategies" || (typeof isPageHidden === "function" ? isPageHidden() : document.hidden)) return;
     renderThrottleTimer = setTimeout(() => {
       renderThrottleTimer = null;
       if(ptTab === "live-strategies"){
@@ -17460,36 +17896,44 @@ const MXStorage = (function(){
 
   function syncFromLocalStorage(){
     if(!db) return;
-    try {
-      if(typeof sb !== "undefined" && Array.isArray(sb.list)){
-        const tx = db.transaction(["strategies"], "readwrite");
-        const store = tx.objectStore("strategies");
-        sb.list.forEach(s => store.put(s));
-      }
-      const accIdx = loadAccountsIndex();
-      if(Array.isArray(accIdx)){
-        const txAcc = db.transaction(["accounts"], "readwrite");
-        const storeAcc = txAcc.objectStore("accounts");
-        accIdx.forEach(item => {
-          const full = loadAccount(item.id);
-          if(full) storeAcc.put(full);
-        });
-      }
-      if(typeof MXLiveStrategyEngine !== "undefined"){
-        const insts = MXLiveStrategyEngine.getInstances();
-        if(Array.isArray(insts)){
-          const txEng = db.transaction(["liveEngines"], "readwrite");
-          const storeEng = txEng.objectStore("liveEngines");
-          insts.forEach(inst => {
-            const copy = Object.assign({}, inst);
-            delete copy.barBuffer;
-            delete copy.isWarmedUp;
-            storeEng.put(copy);
+    const runSync = () => {
+      try {
+        if(typeof sb !== "undefined" && Array.isArray(sb.list)){
+          const tx = db.transaction(["strategies"], "readwrite");
+          const store = tx.objectStore("strategies");
+          sb.list.forEach(s => store.put(s));
+        }
+        const accIdx = loadAccountsIndex();
+        if(Array.isArray(accIdx)){
+          const txAcc = db.transaction(["accounts"], "readwrite");
+          const storeAcc = txAcc.objectStore("accounts");
+          accIdx.forEach(item => {
+            const full = loadAccount(item.id);
+            if(full) storeAcc.put(full);
           });
         }
+        if(typeof MXLiveStrategyEngine !== "undefined"){
+          const insts = MXLiveStrategyEngine.getInstances();
+          if(Array.isArray(insts)){
+            const txEng = db.transaction(["liveEngines"], "readwrite");
+            const storeEng = txEng.objectStore("liveEngines");
+            insts.forEach(inst => {
+              const copy = Object.assign({}, inst);
+              delete copy.barBuffer;
+              delete copy.isWarmedUp;
+              storeEng.put(copy);
+            });
+          }
+        }
+      } catch(err){
+        console.warn("IndexedDB background sync notice:", err);
       }
-    } catch(err){
-      console.warn("IndexedDB background sync notice:", err);
+    };
+
+    if(typeof requestIdleCallback === "function"){
+      requestIdleCallback(runSync, { timeout: 2000 });
+    } else {
+      setTimeout(runSync, 200);
     }
   }
 
@@ -18225,9 +18669,16 @@ window.MX = {
   get market(){ return market; },
   get chart(){ return chart; },
   get candleSeries(){ return candleSeries; },
+  get liveBar(){ return liveBar; },
   get entryLine(){ return entryLine; },
   get slLine(){ return slLine; },
   get tpLine(){ return tpLine; },
+  checkSlTp,
+  evaluateAlerts,
+  switchSymbol,
+  switchTf,
+  handleBookTicker,
+  equity,
   placeOrder,
   closePosition,
   reversePosition,
@@ -18236,8 +18687,28 @@ window.MX = {
   startLineDrag,
   endLineDrag,
   drawOrderLinesForCurrentSymbol,
-  updateAll
+  updateAll,
+  reconcileOnForeground,
+  handleVisibilityChange,
+  get ws(){ return ws; },
+  get wsGen(){ return wsGen; }
 };
+window.checkSlTp = checkSlTp;
+window.closePosition = closePosition;
+window.updateAll = updateAll;
+window.reconcileOnForeground = reconcileOnForeground;
+window.handleVisibilityChange = handleVisibilityChange;
+window.connectWS = connectWS;
+window.saveState = saveState;
+window.persistAccountBlob = persistAccountBlob;
+window.switchTf = switchTimeframe;
+window.switchTimeframe = switchTimeframe;
+window.refreshChart = refreshChart;
+window.switchAccount = switchAccount;
+window.placeOrder = placeOrder;
+window.updateStrategyOverlays = updateStrategyOverlays;
+Object.defineProperty(window, "account", { get(){ return account; }, configurable: true });
+Object.defineProperty(window, "acc", { get(){ return account; }, configurable: true });
 
 /* ================= INIT ================= */
 async function init(){
@@ -18320,7 +18791,7 @@ async function init(){
     setTimeout(handleViewportResize, 200);
   });
 
-  setInterval(()=>sampleEquity(false), 5000);
+  setInterval(()=>{ if(document.hidden) return; sampleEquity(false); }, 5000);
 }
 init();
 
