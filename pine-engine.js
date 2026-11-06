@@ -247,7 +247,13 @@
     "strategy.percent_of_equity", "strategy.fixed", "strategy.cash",
     "strategy.commission.percent", "strategy.commission.cash_per_contract", "strategy.commission.cash_per_order",
     "color.blue", "color.red", "color.green", "color.white", "color.yellow", "color.purple", "color.orange", "color.gray",
-    "color.black", "color.teal", "color.navy", "color.maroon", "color.olive", "color.silver", "color.lime", "color.aqua", "color.fuchsia"
+    "color.black", "color.teal", "color.navy", "color.maroon", "color.olive", "color.silver", "color.lime", "color.aqua", "color.fuchsia",
+    "shape.triangleup", "shape.triangledown", "shape.arrowup", "shape.arrowdown", "shape.circle", "shape.cross", "shape.xcross", "shape.diamond", "shape.square", "shape.labelup", "shape.labeldown", "shape.flag",
+    "plot.style_line", "plot.style_histogram", "plot.style_cross", "plot.style_area", "plot.style_columns", "plot.style_circles", "plot.style_stepline",
+    "location.abovebar", "location.belowbar", "location.top", "location.bottom", "location.absolute",
+    "size.auto", "size.tiny", "size.small", "size.normal", "size.large", "size.huge",
+    "display.none", "display.all", "display.status_line", "display.pane",
+    "alert.freq_all", "alert.freq_once_per_bar", "alert.freq_once_per_bar_close"
   ]);
 
   // --------------------------------------------------------------------------
@@ -1839,6 +1845,7 @@
 
       // Resolve length argument
       let length = Number(resolveArg("length", lenArgIndex, 14)) || 14;
+      env.maxIndicatorLength = Math.max(env.maxIndicatorLength || 0, length);
 
       if (callee === "ta.ema") return calcEMA(srcSeries, length);
       if (callee === "ta.sma") return calcSMA(srcSeries, length);
@@ -1854,17 +1861,20 @@
       if (callee === "ta.bb") {
         const bbLen = Number(resolveArg("length", 1, 20)) || 20;
         const bbMult = Number(resolveArg("mult", 2, 2.0)) || 2.0;
+        env.maxIndicatorLength = Math.max(env.maxIndicatorLength || 0, bbLen);
         return calcBollingerBands(srcSeries, bbLen, bbMult);
       }
       if (callee === "ta.dmi") {
         const diLen = Number(resolveArg("diLength", 0, 14)) || 14;
         const adxSmooth = Number(resolveArg("adxSmoothing", 1, 14)) || 14;
+        env.maxIndicatorLength = Math.max(env.maxIndicatorLength || 0, diLen, adxSmooth);
         return calcDMI(highs, lows, closes, diLen, adxSmooth);
       }
       if (callee === "ta.macd") {
         const fast = Number(resolveArg("fastlen", 1, 12)) || 12;
         const slow = Number(resolveArg("slowlen", 2, 26)) || 26;
         const sig = Number(resolveArg("siglen", 3, 9)) || 9;
+        env.maxIndicatorLength = Math.max(env.maxIndicatorLength || 0, fast, slow + sig);
         return calcMACD(srcSeries, fast, slow, sig);
       }
       return null;
@@ -2052,9 +2062,9 @@
     const avgConsecLosses = lossStreaks.length ? lossStreaks.reduce((a, b) => a + b, 0) / lossStreaks.length : 0;
 
     // Drawdown Calculation:
-    // Tracks maximum peak-to-trough equity drop
-    let maxDrawdownUsd = 0;
-    let maxDrawdownPct = 0;
+    // Tracks maximum peak-to-trough equity drop, factoring adverse candle extremes if provided
+    let maxDrawdownUsd = (options && typeof options.simMaxDdUsd === "number") ? options.simMaxDdUsd : 0;
+    let maxDrawdownPct = (options && typeof options.simMaxDdPct === "number") ? options.simMaxDdPct : 0;
     let peak = initCap;
 
     if (Array.isArray(equityCurve) && equityCurve.length > 0) {
@@ -2082,40 +2092,79 @@
 
     const recoveryFactor = maxDrawdownUsd > 0 ? (netProfit / maxDrawdownUsd) : (netProfit > 0 ? Infinity : 0);
 
-    // Sharpe & Sortino (annualized based on equityCurve returns or trade returns)
+    // Sharpe & Sortino (annualized with real periods per year for the timeframe)
+    let tfMinutes = 60;
+    if (options && options.tf) {
+      const tf = String(options.tf).toLowerCase();
+      if (tf === "1m") tfMinutes = 1;
+      else if (tf === "3m") tfMinutes = 3;
+      else if (tf === "5m") tfMinutes = 5;
+      else if (tf === "15m") tfMinutes = 15;
+      else if (tf === "30m") tfMinutes = 30;
+      else if (tf === "1h" || tf === "60") tfMinutes = 60;
+      else if (tf === "2h" || tf === "120") tfMinutes = 120;
+      else if (tf === "4h" || tf === "240") tfMinutes = 240;
+      else if (tf === "6h" || tf === "360") tfMinutes = 360;
+      else if (tf === "8h" || tf === "480") tfMinutes = 480;
+      else if (tf === "12h" || tf === "720") tfMinutes = 720;
+      else if (tf === "1d" || tf === "d") tfMinutes = 1440;
+      else if (tf === "1w" || tf === "w") tfMinutes = 10080;
+    } else if (options && typeof options.tfMinutes === "number" && options.tfMinutes > 0) {
+      tfMinutes = options.tfMinutes;
+    }
+    const periodsPerYear = (365 * 24 * 60) / tfMinutes;
+    let annualFactor = Math.sqrt(periodsPerYear);
+
     let rets = [];
     let negRets = [];
-    const eq = Array.isArray(equityCurve) && equityCurve.length > 1 ? equityCurve : null;
-    if (eq) {
-      for (let k = 1; k < eq.length; k++) {
-        const prev = eq[k - 1].value;
-        const curr = eq[k].value;
+    if (options && options.fullEquitySeries && options.fullEquitySeries.length > 1) {
+      const fes = options.fullEquitySeries;
+      for (let k = 1; k < fes.length; k++) {
+        const prev = fes[k - 1];
+        const curr = fes[k];
         if (prev > 0) {
           const r = (curr - prev) / prev;
           rets.push(r);
           if (r < 0) negRets.push(r);
         }
       }
-    } else if (tList.length > 1) {
-      let prevEq = initCap;
-      for (const t of tList) {
-        const nextEq = Math.max(0, prevEq + (t.netPnl || 0));
-        if (prevEq > 0) {
-          const r = (nextEq - prevEq) / prevEq;
-          rets.push(r);
-          if (r < 0) negRets.push(r);
+    } else {
+      const eq = Array.isArray(equityCurve) && equityCurve.length > 1 ? equityCurve : null;
+      if (eq) {
+        const step = (options && typeof options.eqStep === "number" && options.eqStep > 0) ? options.eqStep : 1;
+        // If equity curve was downsampled, adjust annualization factor if full series wasn't provided
+        const effectiveAnnualFactor = step > 1 ? Math.sqrt(periodsPerYear / step) : annualFactor;
+        for (let k = 1; k < eq.length; k++) {
+          const prev = eq[k - 1].value;
+          const curr = eq[k].value;
+          if (prev > 0) {
+            const r = (curr - prev) / prev;
+            rets.push(r);
+            if (r < 0) negRets.push(r);
+          }
         }
-        prevEq = nextEq;
+        annualFactor = effectiveAnnualFactor;
+      } else if (tList.length > 1) {
+        let prevEq = initCap;
+        for (const t of tList) {
+          const nextEq = Math.max(0, prevEq + (t.netPnl || 0));
+          if (prevEq > 0) {
+            const r = (nextEq - prevEq) / prevEq;
+            rets.push(r);
+            if (r < 0) negRets.push(r);
+          }
+          prevEq = nextEq;
+        }
       }
     }
 
     const meanRet = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : 0;
     const variance = rets.length > 1 ? rets.reduce((a, b) => a + Math.pow(b - meanRet, 2), 0) / (rets.length - 1) : 0;
     const stdDev = Math.sqrt(variance);
-    const sharpe = stdDev > 0 ? (meanRet / stdDev) * Math.sqrt(365 * 24) : 0;
-    const downsideVar = negRets.length > 1 ? negRets.reduce((a, b) => a + Math.pow(b, 2), 0) / negRets.length : 0;
+    const sharpe = stdDev > 0 ? (meanRet / stdDev) * annualFactor : 0;
+    const downsideVar = negRets.length > 0 ? negRets.reduce((a, b) => a + Math.pow(b, 2), 0) / negRets.length : 0;
     const downsideDev = Math.sqrt(downsideVar);
-    const sortino = downsideDev > 0 ? (meanRet / downsideDev) * Math.sqrt(365 * 24) : (sharpe > 0 ? sharpe * 1.3 : 0);
+    const sortino = downsideDev > 0 ? (meanRet / downsideDev) * annualFactor : 0;
 
     return {
       initialCapital: initCap,
@@ -2150,8 +2199,13 @@
       sharpe,
       sortino,
       totalFees,
+      tradingFees: Math.max(0, totalFees - ((options && typeof options.fundingPaid === "number") ? options.fundingPaid : 0)),
+      fundingPaid: (options && typeof options.fundingPaid === "number") ? options.fundingPaid : 0,
+      warmupBars: (options && typeof options.warmupBars === "number") ? options.warmupBars : 0,
+      rejectedOrders: (options && typeof options.rejectedOrders === "number") ? options.rejectedOrders : 0,
+      lastRejectReason: (options && options.lastRejectReason) ? options.lastRejectReason : null,
       bankruptcyDeficit,
-      equityReconciled: Math.abs(finCap - (initCap + realizedPnl + bankruptcyDeficit)) < 1e-6
+      equityReconciled: Math.abs(finCap - (initCap + realizedPnl + bankruptcyDeficit)) < 0.01
     };
   }
 
@@ -2214,21 +2268,59 @@
     // Pre-Scan and pre-compute indicator vectors
     preScanAndVectorize(ast, dataset, options, env);
 
-    // Derived strategy options from script configuration and caller overrides
-    const initialCapital = (typeof options.initialCapital === "number") ? options.initialCapital : (env.strategyConfig.initialCapital || 10000);
-    const leverage = options.leverage || 10;
-    const maxPyramiding = Math.max(1, env.strategyConfig.pyramiding || 1);
+    // Derived strategy options with strict Precedence: Caller / UI options OVERRIDE script header
+    const initialCapital = (typeof options.initialCapital === "number" && !isNaN(options.initialCapital) && options.initialCapital > 0)
+      ? options.initialCapital
+      : (env.strategyConfig.initialCapital || 10000);
+    const leverage = (typeof options.leverage === "number" && !isNaN(options.leverage) && options.leverage > 0)
+      ? options.leverage
+      : 10;
+    const maxPyramiding = Math.max(1, (typeof options.pyramiding === "number" && !isNaN(options.pyramiding))
+      ? options.pyramiding
+      : (env.strategyConfig.pyramiding || 1));
 
-    const commType = env.strategyConfig.commission_type || "strategy.commission.percent";
-    const commVal = (typeof env.strategyConfig.commission_value === "number") ? env.strategyConfig.commission_value : null;
-    let feeRate = (typeof options.feeRate === "number") ? options.feeRate : 0.0004;
-    if (commVal !== null && (commType.includes("percent") || commType === "percent")) {
-      feeRate = commVal / 100.0;
+    // Fee precedence: UI options.feeRate wins over script strategy() header
+    let feeRate = 0.0004;
+    if (typeof options.feeRate === "number" && !isNaN(options.feeRate)) {
+      feeRate = options.feeRate;
+    } else {
+      const commType = env.strategyConfig.commission_type || "strategy.commission.percent";
+      const commVal = (typeof env.strategyConfig.commission_value === "number") ? env.strategyConfig.commission_value : null;
+      if (commVal !== null && (commType.includes("percent") || commType === "percent")) {
+        feeRate = commVal / 100.0;
+      }
     }
 
-    const slippageTicks = (typeof env.strategyConfig.slippage === "number") ? env.strategyConfig.slippage : 0;
-    const slippageBps = (typeof options.slippageBps === "number") ? options.slippageBps : (slippageTicks > 0 ? slippageTicks : 2);
+    // Slippage precedence: UI options.slippageBps wins
+    let slippageBps = 2;
+    if (typeof options.slippageBps === "number" && !isNaN(options.slippageBps)) {
+      slippageBps = options.slippageBps;
+    } else {
+      const slippageTicks = (typeof env.strategyConfig.slippage === "number") ? env.strategyConfig.slippage : 0;
+      if (slippageTicks > 0) slippageBps = slippageTicks;
+    }
     const slippageFactor = slippageBps / 10000;
+
+    // Sizing precedence: UI options win over script header
+    const sizeType = (typeof options.sizeType === "string" && options.sizeType)
+      ? options.sizeType
+      : (env.strategyConfig.default_qty_type || "strategy.percent_of_equity");
+    const sizeVal = (typeof options.sizeVal === "number" && !isNaN(options.sizeVal))
+      ? options.sizeVal
+      : ((typeof env.strategyConfig.default_qty_value === "number") ? env.strategyConfig.default_qty_value : 10);
+    const direction = (options.direction === "long" || options.direction === "short") ? options.direction : "both";
+    const fundingRate8h = (typeof options.fundingRate8h === "number" && !isNaN(options.fundingRate8h)) ? options.fundingRate8h : 0.0001;
+    const defaultSlPct = (typeof options.defaultSlPct === "number" && options.defaultSlPct > 0) ? options.defaultSlPct : 0;
+    const defaultTpPct = (typeof options.defaultTpPct === "number" && options.defaultTpPct > 0) ? options.defaultTpPct : 0;
+    const trailingStopPct = (typeof options.trailingStopPct === "number" && options.trailingStopPct > 0) ? options.trailingStopPct : 0;
+    const warmupBars = (typeof options.warmupBars === "number" && !isNaN(options.warmupBars))
+      ? options.warmupBars
+      : Math.min(env.maxIndicatorLength || 0, Math.floor(N * 0.5));
+
+    let totalFundingPaid = 0;
+    let peakCapital = initialCapital;
+    let maxDrawdownUsd = 0;
+    let maxDrawdownPct = 0;
 
     env.state.capital = initialCapital;
     env.state.initialCapital = initialCapital;
@@ -2267,13 +2359,21 @@
 
     // Broker Emulator State
     let capital = initialCapital;
-    let position = null; // { id, side: "LONG"|"SHORT", qty, entryPrice, entryTime, entryBar, fees, stop, limit, trail_points, trail_offset, trail_price, highWaterMark, lowWaterMark, lots }
+    let position = null; // { id, side: "LONG"|"SHORT", qty, entryPrice, entryTime, entryBar, fees, stop, limit, trail_points, trail_offset, trail_price, highWaterMark, lowWaterMark, lots, equityAtEntry }
     let pendingEntry = null; // Order placed for next bar Open
+    let pendingClose = null; // Close placed for next bar Open (ITEM 9)
+    let rejectedOrders = 0; // Count of rejected orders (ITEM 7)
+    let lastRejectReason = null;
+    let totalBankruptcyDeficit = 0;
+    const closeFill = (options && options.closeFill) ? options.closeFill : "next_open";
+    const maintMarginRate = (options && typeof options.maintMarginRate === "number") ? options.maintMarginRate : 0.005;
+    const tickSize = (options && typeof options.tickSize === "number" && options.tickSize > 0) ? options.tickSize : 1.0;
     const defaultBrackets = new Map(); // Store exit bracket settings per entry ID
     const trades = [];
     const signals = [];
     const equityCurve = [{ time: times[0], value: capital }];
     const eqStep = N > 2000 ? Math.ceil(N / 2000) : 1;
+    const fullEquitySeries = new Float64Array(N);
 
     // Helper to evaluate and execute statements inside an AST block
     function executeBlock(statements, barIndex) {
@@ -2321,6 +2421,13 @@
               const dirVal = evaluateExpression(dirArg, barIndex, env);
               const side = (dirVal === "SHORT" || dirVal === -1) ? "SHORT" : "LONG";
 
+              // Filter entries by direction option (both / long / short)
+              if (direction === "long" && side === "SHORT") continue;
+              if (direction === "short" && side === "LONG") continue;
+
+              // Indicator Warmup: Skip trade entries before indicators have stabilized
+              if (barIndex < warmupBars) continue;
+
               const whenArg = getArgValue(expr.args, "when");
               const whenVal = whenArg ? evaluateExpression(whenArg, barIndex, env) : true;
 
@@ -2362,88 +2469,109 @@
               const whenVal = whenArg ? evaluateExpression(whenArg, barIndex, env) : true;
 
               if (whenVal && position && (!id || position.id === id)) {
-                // Execute Strategy Close at bar Close
-                const barClose = closes[barIndex];
-                const slippedExit = position.side === "LONG"
-                  ? barClose * (1 - slippageFactor)
-                  : barClose * (1 + slippageFactor);
-                const grossPnl = position.side === "LONG"
-                  ? (slippedExit - position.entryPrice) * position.qty
-                  : (position.entryPrice - slippedExit) * position.qty;
-                const exitFee = slippedExit * position.qty * feeRate;
-                const totalFees = position.fees + exitFee;
-                const netPnl = grossPnl - totalFees;
-                capital += netPnl;
-
                 signals.push({
                   barIndex,
                   time: times[barIndex],
                   action: "close",
                   id: position.id,
-                  price: barClose
+                  price: closes[barIndex]
                 });
 
-                trades.push({
-                  id: trades.length + 1,
-                  symbol: options.symbol || "BTCUSDT",
-                  side: position.side,
-                  qty: position.qty,
-                  entryPrice: position.entryPrice,
-                  entryTime: position.entryTime,
-                  entryBar: position.entryBar,
-                  exitPrice: slippedExit,
-                  exitTime: times[barIndex],
-                  exitBar: barIndex,
-                  grossPnl,
-                  fees: totalFees,
-                  netPnl,
-                  returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
-                  reason: "Strategy Close"
-                });
-                position = null;
+                if (closeFill === "signal_close") {
+                  const barClose = closes[barIndex];
+                  const slippedExit = position.side === "LONG"
+                    ? barClose * (1 - slippageFactor)
+                    : barClose * (1 + slippageFactor);
+                  const grossPnl = position.side === "LONG"
+                    ? (slippedExit - position.entryPrice) * position.qty
+                    : (position.entryPrice - slippedExit) * position.qty;
+                  const exitFee = slippedExit * position.qty * feeRate;
+                  const totalFees = position.fees + exitFee;
+                  const netPnl = grossPnl - totalFees;
+                  capital += netPnl;
+                  const eqAtEntry = (position && position.equityAtEntry) || initialCapital;
+
+                  trades.push({
+                    id: trades.length + 1,
+                    symbol: options.symbol || "BTCUSDT",
+                    side: position.side,
+                    qty: position.qty,
+                    entryPrice: position.entryPrice,
+                    entryTime: position.entryTime,
+                    entryBar: position.entryBar,
+                    exitPrice: slippedExit,
+                    exitTime: times[barIndex],
+                    exitBar: barIndex,
+                    grossPnl,
+                    fees: totalFees,
+                    fundingPaid: position.fundingPaid || 0,
+                    netPnl,
+                    returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
+                    equityAtEntry: eqAtEntry,
+                    pnlPctOfEquity: eqAtEntry > 0 ? (netPnl / eqAtEntry) : 0,
+                    reason: "Strategy Close"
+                  });
+                  position = null;
+                } else {
+                  pendingClose = {
+                    id: position.id,
+                    reason: "Strategy Close"
+                  };
+                }
               }
             } else if (callee === "strategy.close_all") {
               const whenArg = getArgValue(expr.args, "when");
               const whenVal = whenArg ? evaluateExpression(whenArg, barIndex, env) : true;
               if (whenVal && position) {
-                const barClose = closes[barIndex];
-                const slippedExit = position.side === "LONG"
-                  ? barClose * (1 - slippageFactor)
-                  : barClose * (1 + slippageFactor);
-                const grossPnl = position.side === "LONG"
-                  ? (slippedExit - position.entryPrice) * position.qty
-                  : (position.entryPrice - slippedExit) * position.qty;
-                const exitFee = slippedExit * position.qty * feeRate;
-                const totalFees = position.fees + exitFee;
-                const netPnl = grossPnl - totalFees;
-                capital += netPnl;
-
                 signals.push({
                   barIndex,
                   time: times[barIndex],
                   action: "close",
                   id: position.id,
-                  price: barClose
+                  price: closes[barIndex]
                 });
 
-                trades.push({
-                  id: trades.length + 1,
-                  symbol: options.symbol || "BTCUSDT",
-                  side: position.side,
-                  qty: position.qty,
-                  entryPrice: position.entryPrice,
-                  entryTime: position.entryTime,
-                  entryBar: position.entryBar,
-                  exitPrice: slippedExit,
-                  exitTime: times[barIndex],
-                  exitBar: barIndex,
-                  grossPnl,
-                  fees: totalFees,
-                  netPnl,
-                  returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
-                  reason: "Strategy Close All"
-                });
-                position = null;
+                if (closeFill === "signal_close") {
+                  const barClose = closes[barIndex];
+                  const slippedExit = position.side === "LONG"
+                    ? barClose * (1 - slippageFactor)
+                    : barClose * (1 + slippageFactor);
+                  const grossPnl = position.side === "LONG"
+                    ? (slippedExit - position.entryPrice) * position.qty
+                    : (position.entryPrice - slippedExit) * position.qty;
+                  const exitFee = slippedExit * position.qty * feeRate;
+                  const totalFees = position.fees + exitFee;
+                  const netPnl = grossPnl - totalFees;
+                  capital += netPnl;
+                  const eqAtEntry = (position && position.equityAtEntry) || initialCapital;
+
+                  trades.push({
+                    id: trades.length + 1,
+                    symbol: options.symbol || "BTCUSDT",
+                    side: position.side,
+                    qty: position.qty,
+                    entryPrice: position.entryPrice,
+                    entryTime: position.entryTime,
+                    entryBar: position.entryBar,
+                    exitPrice: slippedExit,
+                    exitTime: times[barIndex],
+                    exitBar: barIndex,
+                    grossPnl,
+                    fees: totalFees,
+                    fundingPaid: position.fundingPaid || 0,
+                    netPnl,
+                    returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
+                    equityAtEntry: eqAtEntry,
+                    pnlPctOfEquity: eqAtEntry > 0 ? (netPnl / eqAtEntry) : 0,
+                    reason: "Strategy Close All"
+                  });
+                  position = null;
+                } else {
+                  pendingClose = {
+                    id: position.id,
+                    reason: "Strategy Close All"
+                  };
+                }
               }
             } else if (callee === "strategy.exit") {
               const idArg = getArgValue(expr.args, "id", 0);
@@ -2468,16 +2596,16 @@
                 const trailPriceVal = trailPriceArg ? evaluateExpression(trailPriceArg, barIndex, env) : null;
                 const trailOffsetVal = trailOffsetArg ? evaluateExpression(trailOffsetArg, barIndex, env) : null;
                 const trailPointsVal = trailPointsArg ? evaluateExpression(trailPointsArg, barIndex, env) : null;
+                const profitTicksVal = profitArg ? evaluateExpression(profitArg, barIndex, env) : null;
+                const lossTicksVal = lossArg ? evaluateExpression(lossArg, barIndex, env) : null;
 
-                // Profit / Loss tick offsets relative to position entry price
+                // Profit / Loss tick offsets relative to position entry price (Item 12c)
                 if (position) {
-                  if (profitArg) {
-                    const pVal = evaluateExpression(profitArg, barIndex, env);
-                    limitVal = position.side === "LONG" ? position.entryPrice + pVal : position.entryPrice - pVal;
+                  if (profitTicksVal !== null && !isNaN(profitTicksVal)) {
+                    limitVal = position.side === "LONG" ? (position.entryPrice + profitTicksVal * tickSize) : (position.entryPrice - profitTicksVal * tickSize);
                   }
-                  if (lossArg) {
-                    const lVal = evaluateExpression(lossArg, barIndex, env);
-                    stopVal = position.side === "LONG" ? position.entryPrice - lVal : position.entryPrice + lVal;
+                  if (lossTicksVal !== null && !isNaN(lossTicksVal)) {
+                    stopVal = position.side === "LONG" ? (position.entryPrice - lossTicksVal * tickSize) : (position.entryPrice + lossTicksVal * tickSize);
                   }
                 }
 
@@ -2486,7 +2614,9 @@
                   limit: (limitVal !== null && !isNaN(limitVal)) ? limitVal : null,
                   trail_price: trailPriceVal,
                   trail_offset: trailOffsetVal,
-                  trail_points: trailPointsVal
+                  trail_points: trailPointsVal,
+                  profitTicks: (profitTicksVal !== null && !isNaN(profitTicksVal)) ? profitTicksVal : null,
+                  lossTicks: (lossTicksVal !== null && !isNaN(lossTicksVal)) ? lossTicksVal : null
                 };
 
                 // Store in default brackets map for future entries
@@ -2494,19 +2624,21 @@
                 if (idArg && idArg.value) defaultBrackets.set(idArg.value, bracketObj);
 
                 // Update active position bracket immediately
-                if (position && (!fromEntry || position.id === fromEntry)) {
+                if (position && (!fromEntry || !position.id || position.id === fromEntry)) {
                   if (bracketObj.stop !== null) position.stop = bracketObj.stop;
                   if (bracketObj.limit !== null) position.limit = bracketObj.limit;
                   if (bracketObj.trail_price !== null) position.trail_price = bracketObj.trail_price;
                   if (bracketObj.trail_offset !== null) position.trail_offset = bracketObj.trail_offset;
                   if (bracketObj.trail_points !== null) position.trail_points = bracketObj.trail_points;
                 }
-                if (pendingEntry && (!fromEntry || pendingEntry.id === fromEntry)) {
+                if (pendingEntry && (!fromEntry || !pendingEntry.id || pendingEntry.id === fromEntry)) {
                   if (bracketObj.stop !== null) pendingEntry.stop = bracketObj.stop;
                   if (bracketObj.limit !== null) pendingEntry.limit = bracketObj.limit;
                   if (bracketObj.trail_price !== null) pendingEntry.trail_price = bracketObj.trail_price;
                   if (bracketObj.trail_offset !== null) pendingEntry.trail_offset = bracketObj.trail_offset;
                   if (bracketObj.trail_points !== null) pendingEntry.trail_points = bracketObj.trail_points;
+                  if (bracketObj.profitTicks !== null) pendingEntry.profitTicks = bracketObj.profitTicks;
+                  if (bracketObj.lossTicks !== null) pendingEntry.lossTicks = bracketObj.lossTicks;
                 }
               }
             }
@@ -2536,6 +2668,10 @@
         }
       }
 
+      if (i === N - 1 && !position && options.seededPosition) {
+        position = Object.assign({}, options.seededPosition);
+      }
+
       const barOpen = opens[i];
       const barHigh = highs[i];
       const barLow = lows[i];
@@ -2545,6 +2681,60 @@
       // Update env state for strategy position access
       env.state.capital = capital;
       env.state.position = position;
+
+      // 0. Funding rate check across 8h boundaries (00:00, 08:00, 16:00 UTC)
+      if (position && i > 0 && fundingRate8h !== 0) {
+        const prevBarTime = times[i - 1] > 1e11 ? times[i - 1] : times[i - 1] * 1000;
+        const currBarTime = times[i] > 1e11 ? times[i] : times[i] * 1000;
+        const prev8h = Math.floor(prevBarTime / (8 * 3600 * 1000));
+        const curr8h = Math.floor(currBarTime / (8 * 3600 * 1000));
+        if (curr8h > prev8h) {
+          const numBoundaries = curr8h - prev8h;
+          const fundingCost = position.qty * barClose * fundingRate8h * (position.side === "LONG" ? 1 : -1) * numBoundaries;
+          position.fees = (position.fees || 0) + fundingCost;
+          position.fundingPaid = (position.fundingPaid || 0) + fundingCost;
+          totalFundingPaid += fundingCost;
+        }
+      }
+
+      // 1a. Process pending close at next candle Open (ITEM 9)
+      if (pendingClose && position) {
+        const fillBasePrice = barOpen;
+        const slippedExit = position.side === "LONG"
+          ? fillBasePrice * (1 - slippageFactor)
+          : fillBasePrice * (1 + slippageFactor);
+        const grossPnl = position.side === "LONG"
+          ? (slippedExit - position.entryPrice) * position.qty
+          : (position.entryPrice - slippedExit) * position.qty;
+        const exitFee = slippedExit * position.qty * feeRate;
+        const totalFees = position.fees + exitFee;
+        const netPnl = grossPnl - totalFees;
+        capital += netPnl;
+        const eqAtEntry = (position && position.equityAtEntry) || initialCapital;
+
+        trades.push({
+          id: trades.length + 1,
+          symbol: options.symbol || "BTCUSDT",
+          side: position.side,
+          qty: position.qty,
+          entryPrice: position.entryPrice,
+          entryTime: position.entryTime,
+          entryBar: position.entryBar,
+          exitPrice: slippedExit,
+          exitTime: barTime,
+          exitBar: i,
+          grossPnl,
+          fees: totalFees,
+          fundingPaid: position.fundingPaid || 0,
+          netPnl,
+          returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
+          equityAtEntry: eqAtEntry,
+          pnlPctOfEquity: eqAtEntry > 0 ? (netPnl / eqAtEntry) : 0,
+          reason: pendingClose.reason || "Strategy Close"
+        });
+        position = null;
+        pendingClose = null;
+      }
 
       // 1. Process pending entry orders at bar Open or limit/stop touch
       if (pendingEntry) {
@@ -2594,6 +2784,7 @@
             const totalFees = position.fees + exitFee;
             const netPnl = grossPnl - totalFees;
             capital += netPnl;
+            const eqAtEntry = (position && position.equityAtEntry) || initialCapital;
 
             trades.push({
               id: trades.length + 1,
@@ -2608,226 +2799,196 @@
               exitBar: i,
               grossPnl,
               fees: totalFees,
+              fundingPaid: position.fundingPaid || 0,
               netPnl,
               returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
+              equityAtEntry: eqAtEntry,
+              pnlPctOfEquity: eqAtEntry > 0 ? (netPnl / eqAtEntry) : 0,
               reason: "Reversal Close"
             });
             position = null;
           }
 
-          // Open or Scale-in with pyramiding support (GAP-03)
+          // Open or Scale-in with pyramiding support (GAP-03 & ITEM 7)
           const currentLots = position ? (position.lots ? position.lots.length : 1) : 0;
           if (!position || (position.side === pendingEntry.side && currentLots < maxPyramiding)) {
+            let orderRejected = false;
             if (capital <= 10) {
               pendingEntry = null;
-              continue;
+              orderRejected = true;
+              rejectedOrders++;
+              lastRejectReason = "capital<=10";
             }
-            const slippedEntry = pendingEntry.side === "LONG"
-              ? fillBasePrice * (1 + slippageFactor)
-              : fillBasePrice * (1 - slippageFactor);
+            if (!orderRejected) {
+              const slippedEntry = pendingEntry.side === "LONG"
+                ? fillBasePrice * (1 + slippageFactor)
+                : fillBasePrice * (1 - slippageFactor);
 
-            let qty = (pendingEntry.qty && pendingEntry.qty > 0) ? pendingEntry.qty : null;
-            if (!qty) {
-              const qType = env.strategyConfig.default_qty_type || "strategy.percent_of_equity";
-              const qVal = (typeof env.strategyConfig.default_qty_value === "number") ? env.strategyConfig.default_qty_value : 10;
-              if (qType.includes("percent_of_equity") || qType === "percent_of_equity") {
-                const curEquity = capital + (position ? ((position.side === "LONG" ? fillBasePrice - position.entryPrice : position.entryPrice - fillBasePrice) * position.qty) : 0);
-                const alloc = Math.max(0, curEquity * (qVal / 100.0));
-                qty = (alloc * leverage) / slippedEntry;
-              } else if (qType.includes("fixed") || qType === "fixed") {
-                qty = qVal;
-              } else if (qType.includes("cash") || qType === "cash") {
-                qty = (qVal * leverage) / slippedEntry;
+              let qty = (pendingEntry.qty && pendingEntry.qty > 0) ? pendingEntry.qty : null;
+              if (!qty) {
+                const qType = sizeType;
+                const qVal = sizeVal;
+                if (qType.includes("percent_of_equity") || qType === "percent_of_equity" || qType === "pct_equity") {
+                  const curEquity = capital + (position ? ((position.side === "LONG" ? fillBasePrice - position.entryPrice : position.entryPrice - fillBasePrice) * position.qty) : 0);
+                  const alloc = Math.max(0, curEquity * (qVal / 100.0));
+                  qty = (alloc * leverage) / slippedEntry;
+                } else if (qType.includes("fixed_qty") || qType === "fixed_qty") {
+                  qty = qVal;
+                } else if (qType.includes("fixed_usd") || qType === "fixed_usd" || qType.includes("cash") || qType === "cash") {
+                  qty = (qVal * leverage) / slippedEntry;
+                } else {
+                  qty = ((capital * 0.1) * leverage) / slippedEntry;
+                }
+              }
+
+              const requiredMargin = (qty * slippedEntry) / leverage;
+              const entryFee = qty * slippedEntry * feeRate;
+
+              if (requiredMargin + entryFee > capital) {
+                // Insufficient margin / capital for requested quantity: reject order without skipping candle (ITEM 7: NO continue)
+                pendingEntry = null;
+                orderRejected = true;
+                rejectedOrders++;
+                lastRejectReason = "insufficient margin";
               } else {
-                qty = ((capital * 0.1) * leverage) / slippedEntry;
+                const newLot = {
+                  id: pendingEntry.id,
+                  qty,
+                  entryPrice: slippedEntry,
+                  entryTime: barTime,
+                  entryBar: i,
+                  fees: entryFee
+                };
+
+                const bracket = defaultBrackets.get(pendingEntry.id) || {};
+                if (!position) {
+                  let posStop = pendingEntry.stop !== null ? pendingEntry.stop : (bracket.stop !== undefined ? bracket.stop : null);
+                  let posLimit = pendingEntry.limit !== null ? pendingEntry.limit : (bracket.limit !== undefined ? bracket.limit : null);
+                  const pTicks = (pendingEntry.profitTicks != null) ? pendingEntry.profitTicks : (bracket.profitTicks != null ? bracket.profitTicks : null);
+                  const lTicks = (pendingEntry.lossTicks != null) ? pendingEntry.lossTicks : (bracket.lossTicks != null ? bracket.lossTicks : null);
+                  if (posLimit === null && pTicks != null) {
+                    posLimit = pendingEntry.side === "LONG" ? (slippedEntry + pTicks * tickSize) : (slippedEntry - pTicks * tickSize);
+                  }
+                  if (posStop === null && lTicks != null) {
+                    posStop = pendingEntry.side === "LONG" ? (slippedEntry - lTicks * tickSize) : (slippedEntry + lTicks * tickSize);
+                  }
+                  if (defaultSlPct > 0 && posStop === null) {
+                    posStop = pendingEntry.side === "LONG"
+                      ? slippedEntry * (1 - defaultSlPct / 100)
+                      : slippedEntry * (1 + defaultSlPct / 100);
+                  }
+                  if (defaultTpPct > 0 && posLimit === null) {
+                    posLimit = pendingEntry.side === "LONG"
+                      ? slippedEntry * (1 + defaultTpPct / 100)
+                      : slippedEntry * (1 - defaultTpPct / 100);
+                  }
+                  position = {
+                    id: pendingEntry.id,
+                    side: pendingEntry.side,
+                    qty,
+                    entryPrice: slippedEntry,
+                    entryTime: barTime,
+                    entryBar: i,
+                    fees: entryFee,
+                    fundingPaid: 0,
+                    stop: posStop,
+                    limit: posLimit,
+                    trail_points: pendingEntry.trail_points || bracket.trail_points || null,
+                    trail_offset: pendingEntry.trail_offset || bracket.trail_offset || null,
+                    trail_price: pendingEntry.trail_price || bracket.trail_price || null,
+                    highWaterMark: barHigh,
+                    lowWaterMark: barLow,
+                    lots: [newLot],
+                    equityAtEntry: capital
+                  };
+                } else {
+                  position.lots.push(newLot);
+                  const totalNotional = position.lots.reduce((s, l) => s + l.qty * l.entryPrice, 0);
+                  position.qty = position.lots.reduce((s, l) => s + l.qty, 0);
+                  position.entryPrice = totalNotional / position.qty;
+                  position.fees += entryFee;
+                  position.equityAtEntry = position.equityAtEntry || capital;
+                  if (pendingEntry.stop !== null) position.stop = pendingEntry.stop;
+                  else if (bracket.stop !== undefined && bracket.stop !== null) position.stop = bracket.stop;
+                  if (pendingEntry.limit !== null) position.limit = pendingEntry.limit;
+                  else if (bracket.limit !== undefined && bracket.limit !== null) position.limit = bracket.limit;
+                }
               }
             }
-
-            const requiredMargin = (qty * slippedEntry) / leverage;
-            const entryFee = qty * slippedEntry * feeRate;
-
-            if (requiredMargin + entryFee > capital) {
-              // Insufficient margin / capital for requested quantity: reject order without scaling
-              pendingEntry = null;
-              continue;
-            }
-
-            const newLot = {
-              id: pendingEntry.id,
-              qty,
-              entryPrice: slippedEntry,
-              entryTime: barTime,
-              entryBar: i,
-              fees: entryFee
-            };
-
-            const bracket = defaultBrackets.get(pendingEntry.id) || {};
-            if (!position) {
-              position = {
-                id: pendingEntry.id,
-                side: pendingEntry.side,
-                qty,
-                entryPrice: slippedEntry,
-                entryTime: barTime,
-                entryBar: i,
-                fees: entryFee,
-                stop: pendingEntry.stop !== null ? pendingEntry.stop : (bracket.stop !== undefined ? bracket.stop : null),
-                limit: pendingEntry.limit !== null ? pendingEntry.limit : (bracket.limit !== undefined ? bracket.limit : null),
-                trail_points: pendingEntry.trail_points || bracket.trail_points || null,
-                trail_offset: pendingEntry.trail_offset || bracket.trail_offset || null,
-                trail_price: pendingEntry.trail_price || bracket.trail_price || null,
-                highWaterMark: barHigh,
-                lowWaterMark: barLow,
-                lots: [newLot]
-              };
-            } else {
-              position.lots.push(newLot);
-              const totalNotional = position.lots.reduce((s, l) => s + l.qty * l.entryPrice, 0);
-              position.qty = position.lots.reduce((s, l) => s + l.qty, 0);
-              position.entryPrice = totalNotional / position.qty;
-              position.fees += entryFee;
-              if (pendingEntry.stop !== null) position.stop = pendingEntry.stop;
-              else if (bracket.stop !== undefined && bracket.stop !== null) position.stop = bracket.stop;
-              if (pendingEntry.limit !== null) position.limit = pendingEntry.limit;
-              else if (bracket.limit !== undefined && bracket.limit !== null) position.limit = bracket.limit;
-            }
+            pendingEntry = null;
           }
-          pendingEntry = null;
         }
       }
 
-      // 2. Intrabar Stop / Limit Bracket Execution for open position
-      if (position && (position.stop !== null || position.limit !== null || position.trail_price !== null)) {
-        const priorStop = position.stop;
-        const priorLimit = position.limit;
+      // 2. Liquidation vs Stop / Limit Bracket Execution (ITEM 8 & ITEM 12d)
+      if (position) {
+        // Calculate isolated margin liquidation price FIRST
+        let liqPrice = null;
+        let isLiquidated = false;
+        if (position.side === "LONG") {
+          liqPrice = position.entryPrice * (1 - 1 / leverage + maintMarginRate + feeRate);
+          isLiquidated = barLow <= liqPrice;
+        } else if (position.side === "SHORT") {
+          liqPrice = position.entryPrice * (1 + 1 / leverage - maintMarginRate - feeRate);
+          isLiquidated = barHigh >= liqPrice;
+        }
 
         // Trailing Stop Ratchet Logic (Resolves GAP-02)
+        let isTrailed = false;
         if (position.side === "LONG") {
           position.highWaterMark = Math.max(position.highWaterMark || position.entryPrice, barHigh);
           if (position.trail_price !== null && position.highWaterMark >= position.trail_price && position.trail_offset !== null) {
             const dynTrailStop = position.highWaterMark - position.trail_offset;
-            if (position.stop === null || dynTrailStop > position.stop) position.stop = dynTrailStop;
+            if (position.stop === null || dynTrailStop > position.stop) { position.stop = dynTrailStop; isTrailed = true; }
+          }
+          if (trailingStopPct > 0) {
+            const dynTrailStop = position.highWaterMark * (1 - trailingStopPct / 100);
+            if (position.stop === null || dynTrailStop > position.stop) { position.stop = dynTrailStop; isTrailed = true; }
           }
         } else if (position.side === "SHORT") {
           position.lowWaterMark = Math.min(position.lowWaterMark || position.entryPrice, barLow);
           if (position.trail_price !== null && position.lowWaterMark <= position.trail_price && position.trail_offset !== null) {
             const dynTrailStop = position.lowWaterMark + position.trail_offset;
-            if (position.stop === null || dynTrailStop < position.stop) position.stop = dynTrailStop;
+            if (position.stop === null || dynTrailStop < position.stop) { position.stop = dynTrailStop; isTrailed = true; }
+          }
+          if (trailingStopPct > 0) {
+            const dynTrailStop = position.lowWaterMark * (1 + trailingStopPct / 100);
+            if (position.stop === null || dynTrailStop < position.stop) { position.stop = dynTrailStop; isTrailed = true; }
           }
         }
 
-        let exitPrice = null;
-        let exitReason = "";
+        const priorStop = position.stop;
+        const priorLimit = position.limit;
 
-        if (position.side === "LONG") {
-          const hitStop = position.stop !== null && barLow <= position.stop;
-          const hitLimit = position.limit !== null && barHigh >= position.limit;
-          const effectiveStop = (priorStop !== null && barOpen <= priorStop) ? barOpen : position.stop;
-          const effectiveLimit = (priorLimit !== null && barOpen >= priorLimit) ? barOpen : position.limit;
+        // Liquidation priority rule:
+        // If liquidation price was touched AND (stop is null OR stop is beyond liquidation), liquidation wins!
+        const stopBeyondLiq = position.side === "LONG"
+          ? (position.stop === null || position.stop <= liqPrice)
+          : (position.stop === null || position.stop >= liqPrice);
 
-          if (hitStop && hitLimit) {
-            // Same-bar collision: evaluate open proximity
-            if (Math.abs(barOpen - position.stop) < Math.abs(barOpen - position.limit)) {
-              exitPrice = effectiveStop;
-              exitReason = "Stop Loss";
-            } else {
-              exitPrice = effectiveLimit;
-              exitReason = "Take Profit";
-            }
-          } else if (hitStop) {
-            exitPrice = effectiveStop;
-            exitReason = "Stop Loss";
-          } else if (hitLimit) {
-            exitPrice = effectiveLimit;
-            exitReason = "Take Profit";
-          }
-        } else if (position.side === "SHORT") {
-          const hitStop = position.stop !== null && barHigh >= position.stop;
-          const hitLimit = position.limit !== null && barLow <= position.limit;
-          const effectiveStop = (priorStop !== null && barOpen >= priorStop) ? barOpen : position.stop;
-          const effectiveLimit = (priorLimit !== null && barOpen <= priorLimit) ? barOpen : position.limit;
-
-          if (hitStop && hitLimit) {
-            if (Math.abs(barOpen - position.stop) < Math.abs(barOpen - position.limit)) {
-              exitPrice = effectiveStop;
-              exitReason = "Stop Loss";
-            } else {
-              exitPrice = effectiveLimit;
-              exitReason = "Take Profit";
-            }
-          } else if (hitStop) {
-            exitPrice = effectiveStop;
-            exitReason = "Stop Loss";
-          } else if (hitLimit) {
-            exitPrice = effectiveLimit;
-            exitReason = "Take Profit";
-          }
-        }
-
-        if (exitPrice !== null) {
-          const slippedExit = position.side === "LONG"
-            ? exitPrice * (1 - slippageFactor)
-            : exitPrice * (1 + slippageFactor);
-          const grossPnl = position.side === "LONG"
-            ? (slippedExit - position.entryPrice) * position.qty
-            : (position.entryPrice - slippedExit) * position.qty;
-          const exitFee = slippedExit * position.qty * feeRate;
-          const totalFees = position.fees + exitFee;
-          const netPnl = grossPnl - totalFees;
-          capital += netPnl;
-
-          trades.push({
-            id: trades.length + 1,
-            symbol: options.symbol || "BTCUSDT",
-            side: position.side,
-            qty: position.qty,
-            entryPrice: position.entryPrice,
-            entryTime: position.entryTime,
-            entryBar: position.entryBar,
-            exitPrice: slippedExit,
-            exitTime: barTime,
-            exitBar: i,
-            grossPnl,
-            fees: totalFees,
-            netPnl,
-            returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
-            reason: exitReason
-          });
-          position = null;
-        }
-      }
-
-      // 2b. Margin Call & Futures Liquidation Check (100% margin wipeout)
-      if (position) {
-        // Exact bankruptcy price where netPnl = grossPnl - totalFees = -capital
-        let bankruptcyPrice;
-        if (position.side === "LONG") {
-          const num = (position.entryPrice * position.qty) + position.fees - capital;
-          const den = position.qty * (1 - feeRate);
-          bankruptcyPrice = den > 0 ? num / den : position.entryPrice;
-        } else {
-          const num = (position.entryPrice * position.qty) - position.fees + capital;
-          const den = position.qty * (1 + feeRate);
-          bankruptcyPrice = den > 0 ? num / den : position.entryPrice;
-        }
-
-        const isLiquidated = position.side === "LONG"
-          ? barLow <= bankruptcyPrice
-          : barHigh >= bankruptcyPrice;
-
-        if (isLiquidated) {
-          const liqExit = (position.side === "LONG" && barOpen < bankruptcyPrice)
+        if (isLiquidated && stopBeyondLiq) {
+          // Isolated margin liquidation (ITEM 8)
+          const posMargin = (position.qty * position.entryPrice) / leverage;
+          const liqExit = (position.side === "LONG" && barOpen < liqPrice)
             ? barOpen
-            : ((position.side === "SHORT" && barOpen > bankruptcyPrice) ? barOpen : bankruptcyPrice);
+            : ((position.side === "SHORT" && barOpen > liqPrice) ? barOpen : liqPrice);
+
           const grossPnl = position.side === "LONG"
             ? (liqExit - position.entryPrice) * position.qty
             : (position.entryPrice - liqExit) * position.qty;
           const exitFee = liqExit * position.qty * feeRate;
           const totalFees = position.fees + exitFee;
-          const netPnl = grossPnl - totalFees;
-          const deficit = Math.max(0, -(capital + netPnl));
+
+          // Loss capped at position margin + exitFee unless gapped beyond
+          const cappedLoss = posMargin + exitFee;
+          const rawLoss = -(grossPnl - totalFees);
+          const actualLoss = Math.max(cappedLoss, rawLoss);
+          const netPnl = -actualLoss;
+          const deficit = Math.max(0, actualLoss - cappedLoss);
+
           capital = Math.max(0, capital + netPnl);
-          if (capital < 1e-6) capital = 0;
+          totalBankruptcyDeficit += deficit;
+          const eqAtEntry = (position && position.equityAtEntry) || initialCapital;
 
           trades.push({
             id: trades.length + 1,
@@ -2842,9 +3003,12 @@
             exitBar: i,
             grossPnl,
             fees: totalFees,
+            fundingPaid: position.fundingPaid || 0,
             netPnl,
+            returnPct: (netPnl / posMargin) * 100,
+            equityAtEntry: eqAtEntry,
+            pnlPctOfEquity: eqAtEntry > 0 ? (netPnl / eqAtEntry) : 0,
             bankruptcyDeficit: deficit,
-            returnPct: -100,
             reason: "Liquidation"
           });
           signals.push({
@@ -2855,6 +3019,79 @@
             price: liqExit
           });
           position = null;
+        } else if (position.stop !== null || position.limit !== null || position.trail_price !== null || trailingStopPct > 0) {
+          let exitPrice = null;
+          let exitReason = "";
+
+          if (position.side === "LONG") {
+            const hitStop = position.stop !== null && barLow <= position.stop;
+            const hitLimit = position.limit !== null && barHigh >= position.limit;
+            const effectiveStop = (priorStop !== null && barOpen <= priorStop) ? barOpen : position.stop;
+            const effectiveLimit = (priorLimit !== null && barOpen >= priorLimit) ? barOpen : position.limit;
+
+            if (hitStop && hitLimit) {
+              exitPrice = effectiveStop;
+              exitReason = isTrailed ? "Trailing Stop" : "Stop Loss";
+            } else if (hitStop) {
+              exitPrice = effectiveStop;
+              exitReason = isTrailed ? "Trailing Stop" : "Stop Loss";
+            } else if (hitLimit) {
+              exitPrice = effectiveLimit;
+              exitReason = "Take Profit";
+            }
+          } else if (position.side === "SHORT") {
+            const hitStop = position.stop !== null && barHigh >= position.stop;
+            const hitLimit = position.limit !== null && barLow <= position.limit;
+            const effectiveStop = (priorStop !== null && barOpen >= priorStop) ? barOpen : position.stop;
+            const effectiveLimit = (priorLimit !== null && barOpen <= priorLimit) ? barOpen : position.limit;
+
+            if (hitStop && hitLimit) {
+              exitPrice = effectiveStop;
+              exitReason = isTrailed ? "Trailing Stop" : "Stop Loss";
+            } else if (hitStop) {
+              exitPrice = effectiveStop;
+              exitReason = isTrailed ? "Trailing Stop" : "Stop Loss";
+            } else if (hitLimit) {
+              exitPrice = effectiveLimit;
+              exitReason = "Take Profit";
+            }
+          }
+
+          if (exitPrice !== null) {
+            const slippedExit = position.side === "LONG"
+              ? exitPrice * (1 - slippageFactor)
+              : exitPrice * (1 + slippageFactor);
+            const grossPnl = position.side === "LONG"
+              ? (slippedExit - position.entryPrice) * position.qty
+              : (position.entryPrice - slippedExit) * position.qty;
+            const exitFee = slippedExit * position.qty * feeRate;
+            const totalFees = position.fees + exitFee;
+            const netPnl = grossPnl - totalFees;
+            capital += netPnl;
+            const eqAtEntry = (position && position.equityAtEntry) || initialCapital;
+
+            trades.push({
+              id: trades.length + 1,
+              symbol: options.symbol || "BTCUSDT",
+              side: position.side,
+              qty: position.qty,
+              entryPrice: position.entryPrice,
+              entryTime: position.entryTime,
+              entryBar: position.entryBar,
+              exitPrice: slippedExit,
+              exitTime: barTime,
+              exitBar: i,
+              grossPnl,
+              fees: totalFees,
+              fundingPaid: position.fundingPaid || 0,
+              netPnl,
+              returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
+              equityAtEntry: eqAtEntry,
+              pnlPctOfEquity: eqAtEntry > 0 ? (netPnl / eqAtEntry) : 0,
+              reason: exitReason
+            });
+            position = null;
+          }
         }
       }
 
@@ -2876,9 +3113,30 @@
       env.state.closedtrades = trades.length;
       env.state.opentrades = position ? 1 : 0;
 
+      // Adverse extreme marking for drawdown
+      let intrabarWorstEquity = curEquity;
+      let intrabarBestEquity = curEquity;
+      if (position) {
+        const worstPrice = position.side === "LONG" ? barLow : barHigh;
+        const bestPrice = position.side === "LONG" ? barHigh : barLow;
+        const worstGrossPnl = position.side === "LONG" ? (worstPrice - position.entryPrice) * position.qty : (position.entryPrice - worstPrice) * position.qty;
+        const bestGrossPnl = position.side === "LONG" ? (bestPrice - position.entryPrice) * position.qty : (position.entryPrice - bestPrice) * position.qty;
+        intrabarWorstEquity = Math.max(0, capital + worstGrossPnl);
+        intrabarBestEquity = Math.max(0, capital + bestGrossPnl);
+      }
+      if (intrabarBestEquity > peakCapital) peakCapital = intrabarBestEquity;
+      if (curEquity > peakCapital) peakCapital = curEquity;
+      const curDd = peakCapital - intrabarWorstEquity;
+      if (curDd > maxDrawdownUsd) maxDrawdownUsd = curDd;
+      const curDdPct = peakCapital > 0 ? (curDd / peakCapital) * 100 : 0;
+      if (curDdPct > maxDrawdownPct) maxDrawdownPct = curDdPct;
+
+      // Track full equity per candle
+      fullEquitySeries[i] = curEquity;
+
       // Track equity curve sampled
       if (i % eqStep === 0 || i === N - 1) {
-        equityCurve.push({ time: barTime, value: capital });
+        equityCurve.push({ time: barTime, value: curEquity });
       }
     }
 
@@ -2906,8 +3164,8 @@
       }
     }
 
-    // Close remaining position at last bar close
-    if (position) {
+    // Close remaining position at last bar close (backtest only)
+    if (position && !options.isLiveEvaluation) {
       const slippedExit = position.side === "LONG"
         ? closes[N - 1] * (1 - slippageFactor)
         : closes[N - 1] * (1 + slippageFactor);
@@ -2932,15 +3190,35 @@
         exitBar: N - 1,
         grossPnl,
         fees: totalFees,
+        fundingPaid: position.fundingPaid || 0,
         netPnl,
         returnPct: (netPnl / (position.qty * position.entryPrice / leverage)) * 100,
+        equityAtEntry: (position && position.equityAtEntry) || initialCapital,
+        pnlPctOfEquity: ((position && position.equityAtEntry) || initialCapital) > 0 ? (netPnl / ((position && position.equityAtEntry) || initialCapital)) : 0,
         reason: "Test Period Ended"
       });
       position = null;
     }
 
+    // Ensure last point on equityCurve matches reconciled final capital
+    if (equityCurve.length === 0 || equityCurve[equityCurve.length - 1].time !== times[N - 1]) {
+      equityCurve.push({ time: times[N - 1], value: capital });
+    } else {
+      equityCurve[equityCurve.length - 1].value = capital;
+    }
+
     // Performance Metrics Compilation
-    const metrics = computeBacktestMetrics(trades, initialCapital, capital, equityCurve, options);
+    const metrics = computeBacktestMetrics(trades, initialCapital, capital, equityCurve, Object.assign({}, options, {
+      simMaxDdUsd: maxDrawdownUsd,
+      simMaxDdPct: maxDrawdownPct,
+      fundingPaid: totalFundingPaid,
+      warmupBars: warmupBars,
+      fullEquitySeries: fullEquitySeries,
+      eqStep: eqStep,
+      rejectedOrders: rejectedOrders,
+      lastRejectReason: lastRejectReason,
+      totalBankruptcyDeficit: totalBankruptcyDeficit
+    }));
 
     return {
       success: true,
@@ -2948,10 +3226,22 @@
       signals,
       trades,
       equityCurve,
+      fullEquitySeries,
       plots,
       barCount: N,
       metrics,
-      vars: Object.fromEntries(env.vars)
+      rejectedOrders,
+      lastRejectReason,
+      vars: Object.fromEntries(env.vars),
+      nextOrder: pendingEntry,
+      currentPosition: position ? Object.assign({}, position) : null,
+      lastStops: position ? {
+        stop: position.stop,
+        limit: position.limit,
+        trail_price: position.trail_price,
+        trail_offset: position.trail_offset,
+        trail_points: position.trail_points
+      } : (defaultBrackets.size > 0 ? Array.from(defaultBrackets.values())[0] : null)
     };
   }
 
@@ -2969,6 +3259,56 @@
       };
     }
     return executeASTProgram(val.ast, dataset, options);
+  }
+
+  // Live Strategy Bar-by-Bar Evaluation API (Stage 3 Parity)
+  function evaluateLiveClosedBar(scriptSource, datasetOrBars, options = {}, livePosition = null) {
+    const dataset = Array.isArray(datasetOrBars) ? barsToDataset(datasetOrBars) : datasetOrBars;
+    const N = dataset.closes ? dataset.closes.length : 0;
+    if (N < 2) {
+      return { success: false, errors: [{ line: 1, message: "At least 2 candles required for live evaluation" }] };
+    }
+
+    const val = validateScript(scriptSource);
+    if (!val.isValid) {
+      return { success: false, errors: val.errors };
+    }
+
+    const execOpts = Object.assign({}, options, {
+      seededPosition: livePosition,
+      isLiveEvaluation: true
+    });
+
+    const res = executeASTProgram(val.ast, dataset, execOpts);
+    if (!res.success) {
+      return { success: false, errors: res.errors };
+    }
+
+    const lastIdx = N - 1;
+    const lastSignals = (res.signals || []).filter(s => s.barIndex === lastIdx);
+    const lastSignal = lastSignals.length ? lastSignals[lastSignals.length - 1] : null;
+
+    let action = null;
+    let order = null;
+    if (res.nextOrder) {
+      action = "entry";
+      order = Object.assign({}, res.nextOrder);
+    } else if (lastSignal && (lastSignal.action === "close" || lastSignal.action === "exit")) {
+      action = "close";
+      order = { action: "close", id: lastSignal.id || "Close" };
+    }
+
+    return {
+      success: true,
+      action,
+      order,
+      lastSignal,
+      nextOrder: res.nextOrder,
+      currentPosition: res.currentPosition,
+      lastStops: res.lastStops,
+      trades: res.trades,
+      metrics: res.metrics
+    };
   }
 
   // Asynchronous Execution with Cooperative Cancellation for Large Datasets
@@ -3392,6 +3732,7 @@
     parsePine,
     executePineScript,
     executePineScriptAsync,
+    evaluateLiveClosedBar,
     tokenize,
     barsToDataset,
     MXDataManager,
@@ -3402,6 +3743,7 @@
       parsePine,
       executePineScript,
       executePineScriptAsync,
+      evaluateLiveClosedBar,
       tokenize,
       barsToDataset,
       dataManager: MXDataManager,
@@ -3419,6 +3761,7 @@
   }
   if (typeof window !== "undefined") {
     window.PineEngine = engineExports.PineEngine;
+    window.PineEngine.evaluateLiveClosedBar = evaluateLiveClosedBar;
     window.PineEngine.barsToDataset = barsToDataset;
     window.PineEngine.dataManager = MXDataManager;
     window.PineEngine.calculateMetrics = computeBacktestMetrics;
